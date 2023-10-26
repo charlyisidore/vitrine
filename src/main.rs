@@ -18,8 +18,9 @@ use crate::{
 };
 
 /// Default file names for configuration files
-const DEFAULT_CONFIG_FILE_NAMES: [&str; 4] = [
+const DEFAULT_CONFIG_FILE_NAMES: [&str; 5] = [
     "vitrine.config.json",
+    "vitrine.config.lua",
     "vitrine.config.rhai",
     "vitrine.config.toml",
     "vitrine.config.yaml",

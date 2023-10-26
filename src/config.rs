@@ -3,9 +3,10 @@
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, Mutex},
 };
 
+use mlua::LuaSerdeExt;
 use serde::Deserialize;
 
 use crate::{error::Error, util::path::PathExt};
@@ -145,7 +146,7 @@ where
 
     let config = if let Some(extension) = config_path.extension().and_then(|v| v.to_str()) {
         match extension {
-            "json" | "rhai" | "toml" | "yaml" => {
+            "json" | "lua" | "rhai" | "toml" | "yaml" => {
                 let content =
                     std::fs::read_to_string(config_path).map_err(|error| Error::LoadConfig {
                         config_path: Some(config_path.to_owned()),
@@ -154,6 +155,7 @@ where
 
                 match extension {
                     "json" => load_config_json(content),
+                    "lua" => load_config_lua(content),
                     "rhai" => load_config_rhai(content),
                     "toml" => load_config_toml(content),
                     "yaml" => load_config_yaml(content),
@@ -186,6 +188,200 @@ where
     let config = serde_json::from_str(content)?;
 
     Ok(config)
+}
+
+/// Load the configuration from a `lua` script.
+fn load_config_lua<S>(script: S) -> Result<PartialConfig, anyhow::Error>
+where
+    S: AsRef<str>,
+{
+    let script = script.as_ref();
+
+    // Initialize the lua engine
+    // Since `mlua::Lua` is not `Sync`, we wrap it in `Mutex`
+    let engine = Arc::new(Mutex::new(mlua::Lua::new()));
+    let lua = engine.lock().unwrap();
+
+    // Execute the script
+    let config: mlua::Table = lua.load(script).eval()?;
+
+    // Input directory
+    let input_dir = config
+        .get::<_, Option<String>>("input_dir")?
+        .map(|v| v.into());
+
+    // Output directory
+    let output_dir = config
+        .get::<_, Option<String>>("output_dir")?
+        .map(|v| v.into());
+
+    // Base URL
+    let base_url = config
+        .get::<_, Option<String>>("base_url")?
+        .map(|v| v.into());
+
+    // Data directory
+    let data_dir = config
+        .get::<_, Option<String>>("data_dir")?
+        .map(|v| v.into());
+
+    // Layout directory
+    let layout_dir = config
+        .get::<_, Option<String>>("layout_dir")?
+        .map(|v| v.into());
+
+    // Filters for the layout engine
+    let layout_filters = config
+        .get::<_, Option<mlua::Table>>("layout_filters")?
+        .map_or_else(
+            || Ok(HashMap::new()),
+            |table| {
+                table
+                    .pairs::<String, mlua::Function>()
+                    .map(|pair| -> Result<(String, LayoutFilter), anyhow::Error> {
+                        let (key, lua_fn) = pair?;
+
+                        // Since `mlua::Function` is not `Sync`, we store it in the lua registry
+                        // See <https://github.com/khvzak/mlua/issues/233#issuecomment-1353831597>
+                        let lua_fn_key = lua.create_registry_value(lua_fn)?;
+
+                        // Clone reference of lua context for use in closure
+                        let engine = Arc::clone(&engine);
+
+                        let tera_filter =
+                            move |value: &tera::Value,
+                                  args: &HashMap<String, tera::Value>|
+                                  -> tera::Result<tera::Value> {
+                                // Wrap closure to avoid repeating `.map_err()`
+                                (|| -> mlua::Result<_> {
+                                    let lua = engine.lock().unwrap();
+
+                                    // Convert arguments from tera to lua types
+                                    let value = lua.to_value(&value)?;
+                                    let args = lua.to_value(&args)?;
+
+                                    // Retrieve and call lua function
+                                    let lua_fn: mlua::Function = lua.registry_value(&lua_fn_key)?;
+                                    let result = lua_fn.call::<_, mlua::Value>((value, args))?;
+
+                                    // Convert result from lua to tera types
+                                    let result = lua.from_value(result)?;
+
+                                    Ok(result)
+                                })()
+                                .map_err(|error| error.to_string().into())
+                            };
+
+                        Ok((key, Box::new(tera_filter)))
+                    })
+                    .collect()
+            },
+        )?;
+
+    // Functions for the layout engine
+    let layout_functions = config
+        .get::<_, Option<mlua::Table>>("layout_functions")?
+        .map_or_else(
+            || Ok(HashMap::new()),
+            |table| {
+                table
+                    .pairs::<String, mlua::Function>()
+                    .map(|pair| -> Result<(String, LayoutFunction), anyhow::Error> {
+                        let (key, lua_fn) = pair?;
+
+                        // Since `mlua::Function` is not `Sync`, we store it in the lua registry
+                        // See <https://github.com/khvzak/mlua/issues/233#issuecomment-1353831597>
+                        let lua_fn_key = lua.create_registry_value(lua_fn)?;
+
+                        // Clone reference of lua context for use in closure
+                        let engine = Arc::clone(&engine);
+
+                        let tera_function =
+                            move |args: &HashMap<String, tera::Value>|
+                                -> tera::Result<tera::Value> {
+                                // Wrap closure to avoid repeating `.map_err()`
+                                (|| -> mlua::Result<_> {
+                                    let lua = engine.lock().unwrap();
+
+                                    // Convert arguments from tera to lua types
+                                    let args = lua.to_value(&args)?;
+
+                                    // Retrieve and call lua function
+                                    let lua_fn: mlua::Function = lua.registry_value(&lua_fn_key)?;
+                                    let result = lua_fn.call::<_, mlua::Value>((args,))?;
+
+                                    // Convert result from lua to tera types
+                                    let result = lua.from_value(result)?;
+
+                                    Ok(result)
+                                })()
+                                .map_err(|error| error.to_string().into())
+                            };
+
+                        Ok((key, Box::new(tera_function)))
+                    })
+                    .collect()
+            },
+        )?;
+
+    // Test functions for the layout engine
+    let layout_tests = config
+        .get::<_, Option<mlua::Table>>("layout_tests")?
+        .map_or_else(
+            || Ok(HashMap::new()),
+            |table| {
+                table
+                    .pairs::<String, mlua::Function>()
+                    .map(|pair| -> Result<(String, LayoutTest), anyhow::Error> {
+                        let (key, lua_fn) = pair?;
+
+                        // Since `mlua::Function` is not `Sync`, we store it in the lua registry
+                        // See <https://github.com/khvzak/mlua/issues/233#issuecomment-1353831597>
+                        let lua_fn_key = lua.create_registry_value(lua_fn)?;
+
+                        // Clone reference of lua context for use in closure
+                        let engine = Arc::clone(&engine);
+
+                        let tera_test = move |value: Option<&tera::Value>,
+                                              args: &[tera::Value]|
+                              -> tera::Result<bool> {
+                            // Wrap closure to avoid repeating `.map_err()`
+                            (|| -> mlua::Result<_> {
+                                let lua = engine.lock().unwrap();
+
+                                // Convert arguments from tera to lua types
+                                let value = lua.to_value(&value)?;
+                                let args = lua.to_value(&args)?;
+
+                                // Retrieve and call lua function
+                                let lua_fn: mlua::Function = lua.registry_value(&lua_fn_key)?;
+                                let result = lua_fn.call::<_, mlua::Value>((value, args))?;
+
+                                // Convert result from lua to tera types
+                                let result = lua.from_value(result)?;
+
+                                Ok(result)
+                            })()
+                            .map_err(|error| error.to_string().into())
+                        };
+
+                        Ok((key, Box::new(tera_test)))
+                    })
+                    .collect()
+            },
+        )?;
+
+    Ok(PartialConfig {
+        input_dir,
+        output_dir,
+        base_url,
+        data_dir,
+        layout_dir,
+        layout_filters,
+        layout_functions,
+        layout_tests,
+        ..Default::default()
+    })
 }
 
 /// Load the configuration from a `rhai` script.
@@ -264,8 +460,8 @@ where
                                 })?;
 
                             // Clone references of rhai context for use in closure
-                            let engine = engine.to_owned();
-                            let ast = ast.to_owned();
+                            let engine = Arc::clone(&engine);
+                            let ast = Arc::clone(&ast);
 
                             let tera_filter =
                                 move |value: &tera::Value,
@@ -275,7 +471,6 @@ where
                                     (|| -> Result<_, Box<rhai::EvalAltResult>> {
                                         // Convert arguments from tera to rhai types
                                         let value = rhai::serde::to_dynamic(value)?.to_owned();
-
                                         let args = rhai::serde::to_dynamic(args)?.to_owned();
 
                                         // Call rhai function
@@ -318,8 +513,8 @@ where
                                 })?;
 
                             // Clone references of rhai context for use in closure
-                            let engine = engine.to_owned();
-                            let ast = ast.to_owned();
+                            let engine = Arc::clone(&engine);
+                            let ast = Arc::clone(&ast);
 
                             let tera_function =
                                 move |args: &HashMap<String, tera::Value>|
@@ -366,8 +561,8 @@ where
                                 .ok_or_else(|| anyhow::anyhow!("layout_tests must be an object"))?;
 
                             // Clone references of rhai context for use in closure
-                            let engine = engine.to_owned();
-                            let ast = ast.to_owned();
+                            let engine = Arc::clone(&engine);
+                            let ast = Arc::clone(&ast);
 
                             let tera_test =
                                 move |value: Option<&tera::Value>,
@@ -377,7 +572,6 @@ where
                                     (|| -> Result<_, Box<rhai::EvalAltResult>> {
                                         // Convert arguments from tera to rhai types
                                         let value = rhai::serde::to_dynamic(value)?.to_owned();
-
                                         let args = rhai::serde::to_dynamic(args)?.to_owned();
 
                                         // Call rhai function
@@ -557,6 +751,39 @@ mod tests {
         assert_eq!(config.base_url.unwrap(), "/baz");
         assert_eq!(config.data_dir.unwrap().to_str().unwrap(), "_data");
         assert_eq!(config.layout_dir.unwrap().to_str().unwrap(), "_layouts");
+    }
+
+    #[test]
+    fn load_config_lua() {
+        const CONTENT: &str = r#"
+        return {
+            input_dir = "foo",
+            output_dir = "bar",
+            base_url = "/baz",
+            data_dir = "_data",
+            layout_dir = "_layouts",
+            layout_filters = {
+                upper = function(value, args) return string.upper(value) end,
+            },
+            layout_functions = {
+                min = function(args) return math.min(table.unpack(args.values)) end,
+            },
+            layout_tests = {
+                odd = function(value) return value % 2 == 1 end,
+            },
+        }
+        "#;
+
+        let config = super::load_config_lua(CONTENT).unwrap();
+
+        assert_eq!(config.input_dir.unwrap().to_str().unwrap(), "foo");
+        assert_eq!(config.output_dir.unwrap().to_str().unwrap(), "bar");
+        assert_eq!(config.base_url.unwrap(), "/baz");
+        assert_eq!(config.data_dir.unwrap().to_str().unwrap(), "_data");
+        assert_eq!(config.layout_dir.unwrap().to_str().unwrap(), "_layouts");
+        assert_eq!(config.layout_filters.contains_key("upper"), true);
+        assert_eq!(config.layout_functions.contains_key("min"), true);
+        assert_eq!(config.layout_tests.contains_key("odd"), true);
     }
 
     #[test]
