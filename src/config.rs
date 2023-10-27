@@ -43,6 +43,12 @@ pub(crate) struct Config {
     /// Custom test functions for the layout engine.
     pub(crate) layout_tests: HashMap<String, LayoutTest>,
 
+    /// Prefix for syntax highlight CSS classes.
+    pub(crate) syntax_highlight_css_prefix: String,
+
+    /// Syntax highlight CSS stylesheets.
+    pub(crate) syntax_highlight_stylesheets: Vec<SyntaxHighlightStylesheet>,
+
     /// Determine whether Vitrine should write output files or not.
     pub(crate) dry_run: bool,
 }
@@ -60,6 +66,14 @@ impl std::fmt::Debug for Config {
             .field("layout_filters", &self.layout_filters.keys())
             .field("layout_functions", &self.layout_functions.keys())
             .field("layout_tests", &self.layout_tests.keys())
+            .field(
+                "syntax_highlight_css_prefix",
+                &self.syntax_highlight_css_prefix,
+            )
+            .field(
+                "syntax_highlight_stylesheets",
+                &self.syntax_highlight_stylesheets,
+            )
             .field("dry_run", &self.dry_run)
             .finish()
     }
@@ -100,6 +114,14 @@ pub(crate) struct PartialConfig {
     /// Custom test functions for the layout engine.
     #[serde(skip)]
     pub(crate) layout_tests: HashMap<String, LayoutTest>,
+
+    /// Prefix for syntax highlight CSS classes.
+    #[serde(default)]
+    pub(crate) syntax_highlight_css_prefix: String,
+
+    /// Syntax highlight CSS stylesheets.
+    #[serde(default)]
+    pub(crate) syntax_highlight_stylesheets: Vec<SyntaxHighlightStylesheet>,
 }
 
 // Some fields in `PartialConfig`` do not support `#[derive(Debug)]`
@@ -115,6 +137,14 @@ impl std::fmt::Debug for PartialConfig {
             .field("layout_filters", &self.layout_filters.keys())
             .field("layout_functions", &self.layout_functions.keys())
             .field("layout_tests", &self.layout_tests.keys())
+            .field(
+                "syntax_highlight_css_prefix",
+                &self.syntax_highlight_css_prefix,
+            )
+            .field(
+                "syntax_highlight_stylesheets",
+                &self.syntax_highlight_stylesheets,
+            )
             .finish()
     }
 }
@@ -131,6 +161,22 @@ pub(crate) type LayoutFunction =
 /// Test function of the layout engine.
 pub(crate) type LayoutTest =
     Box<dyn Fn(Option<&tera::Value>, &[tera::Value]) -> tera::Result<bool> + Sync + Send>;
+
+/// Syntax highlight CSS stylesheet configuration.
+#[derive(Debug, Deserialize)]
+pub(crate) struct SyntaxHighlightStylesheet {
+    /// Prefix for class names.
+    #[serde(default)]
+    pub(crate) prefix: String,
+
+    /// Theme name.
+    ///
+    /// See <https://docs.rs/syntect/latest/syntect/highlighting/struct.ThemeSet.html>
+    pub(crate) theme: String,
+
+    /// Output URL of the stylesheet.
+    pub(crate) url: String,
+}
 
 /// Load the configuration from a file.
 ///
@@ -371,6 +417,18 @@ where
             },
         )?;
 
+    // Prefix for syntax highlight CSS classes
+    let syntax_highlight_css_prefix = config
+        .get::<_, Option<String>>("syntax_highlight_css_prefix")?
+        .unwrap_or_default();
+
+    // Syntax highlight CSS stylesheets
+    let syntax_highlight_stylesheets = config
+        .get::<_, Option<mlua::Value>>("syntax_highlight_stylesheets")?
+        .map(|value| lua.from_value(value))
+        .transpose()?
+        .unwrap_or_default();
+
     Ok(PartialConfig {
         input_dir,
         output_dir,
@@ -380,6 +438,8 @@ where
         layout_filters,
         layout_functions,
         layout_tests,
+        syntax_highlight_css_prefix,
+        syntax_highlight_stylesheets,
         ..Default::default()
     })
 }
@@ -596,6 +656,59 @@ where
             },
         )?;
 
+    // Prefix for syntax highlight CSS classes
+    let syntax_highlight_css_prefix = config
+        .get("syntax_highlight_css_prefix")
+        .map(|v| v.to_owned().into_string())
+        .transpose()
+        .map_err(|error| anyhow::anyhow!(error))?
+        .unwrap_or_default();
+
+    // Syntax highlight CSS stylesheets
+    let syntax_highlight_stylesheets = config
+        .get("syntax_highlight_stylesheets")
+        .and_then(|v| v.to_owned().try_cast::<rhai::Array>())
+        .map_or_else(
+            || Ok(Vec::new()),
+            |array| {
+                array
+                    .iter()
+                    .map(|v| {
+                        v.to_owned()
+                            .try_cast::<rhai::Map>()
+                            .map(|v| {
+                                Ok::<_, &str>(SyntaxHighlightStylesheet {
+                                    prefix: v
+                                        .get("prefix")
+                                        .map(|v| v.to_owned().into_string())
+                                        .transpose()?
+                                        .unwrap_or_default(),
+                                    theme: v
+                                        .get("theme")
+                                        .ok_or_else(|| {
+                                            "Missing theme in syntax_highlight_stylesheets"
+                                        })?
+                                        .to_owned()
+                                        .into_string()?,
+                                    url: v
+                                        .get("url")
+                                        .ok_or_else(|| {
+                                            "Missing url in syntax_highlight_stylesheets"
+                                        })?
+                                        .to_owned()
+                                        .into_string()?,
+                                })
+                            })
+                            .transpose()
+                            .map_err(|error| anyhow::anyhow!(error))?
+                            .ok_or_else(|| {
+                                anyhow::anyhow!("Cannot parse syntax_highlight_stylesheets")
+                            })
+                    })
+                    .collect()
+            },
+        )?;
+
     Ok(PartialConfig {
         input_dir,
         output_dir,
@@ -605,6 +718,8 @@ where
         layout_filters,
         layout_functions,
         layout_tests,
+        syntax_highlight_css_prefix,
+        syntax_highlight_stylesheets,
         ..Default::default()
     })
 }
@@ -771,6 +886,13 @@ mod tests {
             layout_tests = {
                 odd = function(value) return value % 2 == 1 end,
             },
+            syntax_highlight_stylesheets = {
+                {
+                    prefix = "highlight-",
+                    theme = "base16-ocean.dark",
+                    url = "/highlight.css",
+                },
+            },
         }
         "#;
 
@@ -781,9 +903,17 @@ mod tests {
         assert_eq!(config.base_url.unwrap(), "/baz");
         assert_eq!(config.data_dir.unwrap().to_str().unwrap(), "_data");
         assert_eq!(config.layout_dir.unwrap().to_str().unwrap(), "_layouts");
-        assert_eq!(config.layout_filters.contains_key("upper"), true);
-        assert_eq!(config.layout_functions.contains_key("min"), true);
-        assert_eq!(config.layout_tests.contains_key("odd"), true);
+        assert_eq!(config.layout_filters.len(), 1);
+        assert!(config.layout_filters.contains_key("upper"));
+        assert_eq!(config.layout_functions.len(), 1);
+        assert!(config.layout_functions.contains_key("min"));
+        assert_eq!(config.layout_tests.len(), 1);
+        assert!(config.layout_tests.contains_key("odd"));
+        assert_eq!(config.syntax_highlight_stylesheets.len(), 1);
+        let stylesheet = config.syntax_highlight_stylesheets.get(0).unwrap();
+        assert_eq!(stylesheet.prefix, "highlight-");
+        assert_eq!(stylesheet.theme, "base16-ocean.dark");
+        assert_eq!(stylesheet.url, "/highlight.css");
     }
 
     #[test]
@@ -804,6 +934,13 @@ mod tests {
             layout_tests: #{
                 odd: |value| value % 2 == 1,
             },
+            syntax_highlight_stylesheets: [
+                #{
+                    prefix: "highlight-",
+                    theme: "base16-ocean.dark",
+                    url: "/highlight.css",
+                },
+            ],
         }
         "#;
 
@@ -814,9 +951,17 @@ mod tests {
         assert_eq!(config.base_url.unwrap(), "/baz");
         assert_eq!(config.data_dir.unwrap().to_str().unwrap(), "_data");
         assert_eq!(config.layout_dir.unwrap().to_str().unwrap(), "_layouts");
-        assert_eq!(config.layout_filters.contains_key("upper"), true);
-        assert_eq!(config.layout_functions.contains_key("min"), true);
-        assert_eq!(config.layout_tests.contains_key("odd"), true);
+        assert_eq!(config.layout_filters.len(), 1);
+        assert!(config.layout_filters.contains_key("upper"));
+        assert_eq!(config.layout_functions.len(), 1);
+        assert!(config.layout_functions.contains_key("min"));
+        assert_eq!(config.layout_tests.len(), 1);
+        assert!(config.layout_tests.contains_key("odd"));
+        assert_eq!(config.syntax_highlight_stylesheets.len(), 1);
+        let stylesheet = config.syntax_highlight_stylesheets.get(0).unwrap();
+        assert_eq!(stylesheet.prefix, "highlight-");
+        assert_eq!(stylesheet.theme, "base16-ocean.dark");
+        assert_eq!(stylesheet.url, "/highlight.css");
     }
 
     #[test]

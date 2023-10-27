@@ -10,6 +10,7 @@ mod minify_html;
 mod minify_js;
 mod read_file;
 mod scss;
+mod syntax_highlight;
 mod url;
 mod write_file;
 
@@ -92,7 +93,7 @@ struct EntryData {
 pub(super) fn build(config: &Config) -> Result<(), Error> {
     let start_time = std::time::Instant::now();
 
-    let markdown_parser = self::markdown::Parser::new();
+    let markdown_parser = self::markdown::Parser::new(config);
 
     let scss_compiler = self::scss::Compiler::new();
 
@@ -200,7 +201,8 @@ pub(super) fn build(config: &Config) -> Result<(), Error> {
             } else {
                 entry
             }
-        });
+        })
+        .chain(self::syntax_highlight::create_stylesheet_entries(config));
 
     // Rewrite URLs
     self::url::rewrite_url_entries(entries, config)?

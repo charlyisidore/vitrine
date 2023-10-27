@@ -2,9 +2,20 @@
 //!
 //! This module uses [`markdown_it`] under the hood.
 
-use markdown_it::MarkdownIt;
+mod syntax_highlight;
 
-use super::{Entry, Error};
+use markdown_it::{parser::extset::MarkdownItExt, MarkdownIt};
+
+use super::{Config, Entry, Error};
+
+/// Context stored in [`MarkdownIt`].
+#[derive(Debug)]
+pub(self) struct Context {
+    /// Prefix for syntax highlight CSS classes.
+    pub(self) syntax_highlight_css_prefix: String,
+}
+
+impl MarkdownItExt for Context {}
 
 /// Markdown parser.
 pub(super) struct Parser {
@@ -14,7 +25,7 @@ pub(super) struct Parser {
 
 impl Parser {
     /// Create and configure a Markdown parser.
-    pub(super) fn new() -> Self {
+    pub(super) fn new(config: &Config) -> Self {
         let mut parser = MarkdownIt::new();
         markdown_it::plugins::cmark::add(&mut parser);
         markdown_it::plugins::html::add(&mut parser);
@@ -22,9 +33,16 @@ impl Parser {
         markdown_it::plugins::extra::beautify_links::add(&mut parser);
         markdown_it::plugins::extra::linkify::add(&mut parser);
         markdown_it::plugins::extra::tables::add(&mut parser);
+        syntax_highlight::add(&mut parser);
         markdown_it::plugins::extra::typographer::add(&mut parser);
         markdown_it::plugins::extra::smartquotes::add(&mut parser);
         markdown_it::plugins::extra::heading_anchors::add(&mut parser, |s| slug::slugify(s));
+
+        // Context to be used in Markdown rules
+        parser.ext.insert(Context {
+            syntax_highlight_css_prefix: config.syntax_highlight_css_prefix.to_owned(),
+        });
+
         Self { parser }
     }
 
@@ -59,6 +77,8 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
+    use crate::config::Config;
+
     #[test]
     fn parse_common_mark() {
         const CASES: [(&str, &str); 22] = [
@@ -156,8 +176,11 @@ mod tests {
                     "print 'indent 4 spaces'\n", //
                     "```"
                 ),
-                "<pre><code># code block\nprint '3 backticks or'\nprint 'indent 4 \
-                 spaces'\n</code></pre>",
+                // "<pre><code># code block\nprint '3 backticks or'\nprint 'indent 4 \
+                //  spaces'\n</code></pre>",
+                "<pre class=\"code\"><code class=\"code\"><span class=\"text plain\"># code \
+                 block\nprint &#39;3 backticks or&#39;\nprint &#39;indent 4 \
+                 spaces&#39;\n</span></code></pre>",
             ),
             (
                 concat!(
@@ -165,12 +188,16 @@ mod tests {
                     "    print '3 backticks or'\n", //
                     "    print 'indent 4 spaces'"
                 ),
-                "<pre><code># code block\nprint '3 backticks or'\nprint 'indent 4 \
-                 spaces'\n</code></pre>",
+                // "<pre><code># code block\nprint '3 backticks or'\nprint 'indent 4 \
+                //  spaces'\n</code></pre>",
+                "<pre class=\"code\"><code class=\"code\"><span class=\"text plain\"># code \
+                 block\nprint &#39;3 backticks or&#39;\nprint &#39;indent 4 \
+                 spaces&#39;\n</span></code></pre>",
             ),
         ];
 
-        let parser = super::Parser::new();
+        let config = Config::default();
+        let parser = super::Parser::new(&config);
 
         for (input, expected) in CASES {
             let result = parser.parse(input);

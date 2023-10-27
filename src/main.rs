@@ -115,6 +115,12 @@ fn main() -> anyhow::Result<()> {
         // Test functions for layouts
         layout_tests: config.layout_tests,
 
+        // Prefix for syntax highlight CSS class names
+        syntax_highlight_css_prefix: config.syntax_highlight_css_prefix,
+
+        // Syntax highlight CSS stylesheets
+        syntax_highlight_stylesheets: config.syntax_highlight_stylesheets,
+
         // Do not write files
         dry_run: cli.dry_run,
     };
