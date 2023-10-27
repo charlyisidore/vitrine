@@ -606,7 +606,7 @@ where
 
     // Testers for the layout engine
     let layout_testers = config
-        .get("layout_tests")
+        .get("layout_testers")
         .and_then(|v| v.to_owned().try_cast::<rhai::Map>())
         .map_or_else(
             || Ok(HashMap::new()),
