@@ -40,14 +40,12 @@ impl Engine {
                 }
 
                 for (name, function) in config.layout_functions.iter() {
-                    // See <https://github.com/Keats/tera/issues/767>
                     tera.register_function(name, unsafe {
                         crate::util::r#unsafe::static_lifetime(function)
                     });
                 }
 
                 for (name, tester) in config.layout_testers.iter() {
-                    // See <https://github.com/Keats/tera/issues/767>
                     tera.register_tester(name, unsafe {
                         crate::util::r#unsafe::static_lifetime(tester)
                     });
