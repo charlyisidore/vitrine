@@ -884,7 +884,7 @@ mod tests {
                 min = function(args) return math.min(table.unpack(args.values)) end,
             },
             layout_testers = {
-                odd = function(value) return value % 2 == 1 end,
+                odd = function(value, args) return value % 2 == 1 end,
             },
             syntax_highlight_css_prefix = "highlight-",
             syntax_highlight_stylesheets = {
@@ -934,7 +934,7 @@ mod tests {
                 min: |args| args.values?.reduce(|a, b| min(a, b), 0xffffffff),
             },
             layout_testers: #{
-                odd: |value| value % 2 == 1,
+                odd: |value, args| value % 2 == 1,
             },
             syntax_highlight_css_prefix: "highlight-",
             syntax_highlight_stylesheets: [
