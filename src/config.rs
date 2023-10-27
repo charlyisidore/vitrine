@@ -886,6 +886,7 @@ mod tests {
             layout_tests = {
                 odd = function(value) return value % 2 == 1 end,
             },
+            syntax_highlight_css_prefix = "highlight-",
             syntax_highlight_stylesheets = {
                 {
                     prefix = "highlight-",
@@ -909,6 +910,7 @@ mod tests {
         assert!(config.layout_functions.contains_key("min"));
         assert_eq!(config.layout_tests.len(), 1);
         assert!(config.layout_tests.contains_key("odd"));
+        assert_eq!(config.syntax_highlight_css_prefix, "highlight-");
         assert_eq!(config.syntax_highlight_stylesheets.len(), 1);
         let stylesheet = config.syntax_highlight_stylesheets.get(0).unwrap();
         assert_eq!(stylesheet.prefix, "highlight-");
@@ -934,6 +936,7 @@ mod tests {
             layout_tests: #{
                 odd: |value| value % 2 == 1,
             },
+            syntax_highlight_css_prefix: "highlight-",
             syntax_highlight_stylesheets: [
                 #{
                     prefix: "highlight-",
@@ -957,6 +960,7 @@ mod tests {
         assert!(config.layout_functions.contains_key("min"));
         assert_eq!(config.layout_tests.len(), 1);
         assert!(config.layout_tests.contains_key("odd"));
+        assert_eq!(config.syntax_highlight_css_prefix, "highlight-");
         assert_eq!(config.syntax_highlight_stylesheets.len(), 1);
         let stylesheet = config.syntax_highlight_stylesheets.get(0).unwrap();
         assert_eq!(stylesheet.prefix, "highlight-");
