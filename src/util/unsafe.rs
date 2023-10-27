@@ -1,3 +1,5 @@
+//! Unsafe utility functions.
+
 /// Make the lifetime of a variable `'static` (unsafe).
 ///
 /// Some libraries require `'static` lifetime for function arguments, so we
