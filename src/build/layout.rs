@@ -46,7 +46,7 @@ impl Engine {
                     });
                 }
 
-                for (name, tester) in config.layout_tests.iter() {
+                for (name, tester) in config.layout_testers.iter() {
                     // See <https://github.com/Keats/tera/issues/767>
                     tera.register_tester(name, unsafe {
                         crate::util::r#unsafe::static_lifetime(tester)

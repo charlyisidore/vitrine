@@ -106,14 +106,14 @@ fn main() -> anyhow::Result<()> {
                 .map(|path| path.to_owned())
         }),
 
-        // Filters for layouts
+        // Filters for the layout engine
         layout_filters: config.layout_filters,
 
-        // Functions for layouts
+        // Functions for the layout engine
         layout_functions: config.layout_functions,
 
-        // Test functions for layouts
-        layout_tests: config.layout_tests,
+        // Tester for the layout engine
+        layout_testers: config.layout_testers,
 
         // Prefix for syntax highlight CSS class names
         syntax_highlight_css_prefix: config.syntax_highlight_css_prefix,

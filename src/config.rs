@@ -40,8 +40,8 @@ pub(crate) struct Config {
     /// Custom functions for the layout engine.
     pub(crate) layout_functions: HashMap<String, LayoutFunction>,
 
-    /// Custom test functions for the layout engine.
-    pub(crate) layout_tests: HashMap<String, LayoutTest>,
+    /// Custom testers for the layout engine.
+    pub(crate) layout_testers: HashMap<String, LayoutTester>,
 
     /// Prefix for syntax highlight CSS classes.
     pub(crate) syntax_highlight_css_prefix: String,
@@ -65,7 +65,7 @@ impl std::fmt::Debug for Config {
             .field("layout_dir", &self.layout_dir)
             .field("layout_filters", &self.layout_filters.keys())
             .field("layout_functions", &self.layout_functions.keys())
-            .field("layout_tests", &self.layout_tests.keys())
+            .field("layout_testers", &self.layout_testers.keys())
             .field(
                 "syntax_highlight_css_prefix",
                 &self.syntax_highlight_css_prefix,
@@ -111,9 +111,9 @@ pub(crate) struct PartialConfig {
     #[serde(skip)]
     pub(crate) layout_functions: HashMap<String, LayoutFunction>,
 
-    /// Custom test functions for the layout engine.
+    /// Custom testers for the layout engine.
     #[serde(skip)]
-    pub(crate) layout_tests: HashMap<String, LayoutTest>,
+    pub(crate) layout_testers: HashMap<String, LayoutTester>,
 
     /// Prefix for syntax highlight CSS classes.
     #[serde(default)]
@@ -136,7 +136,7 @@ impl std::fmt::Debug for PartialConfig {
             .field("layout_dir", &self.layout_dir)
             .field("layout_filters", &self.layout_filters.keys())
             .field("layout_functions", &self.layout_functions.keys())
-            .field("layout_tests", &self.layout_tests.keys())
+            .field("layout_testers", &self.layout_testers.keys())
             .field(
                 "syntax_highlight_css_prefix",
                 &self.syntax_highlight_css_prefix,
@@ -154,12 +154,12 @@ pub(crate) type LayoutFilter = Box<
     dyn Fn(&tera::Value, &HashMap<String, tera::Value>) -> tera::Result<tera::Value> + Sync + Send,
 >;
 
-/// Function of the layout engine.
+/// Function for the layout engine.
 pub(crate) type LayoutFunction =
     Box<dyn Fn(&HashMap<String, tera::Value>) -> tera::Result<tera::Value> + Sync + Send>;
 
-/// Test function of the layout engine.
-pub(crate) type LayoutTest =
+/// Tester for the layout engine.
+pub(crate) type LayoutTester =
     Box<dyn Fn(Option<&tera::Value>, &[tera::Value]) -> tera::Result<bool> + Sync + Send>;
 
 /// Syntax highlight CSS stylesheet configuration.
@@ -294,7 +294,7 @@ where
                         // Clone reference of lua context for use in closure
                         let engine = Arc::clone(&engine);
 
-                        let tera_filter =
+                        let layout_filter =
                             move |value: &tera::Value,
                                   args: &HashMap<String, tera::Value>|
                                   -> tera::Result<tera::Value> {
@@ -318,7 +318,7 @@ where
                                 .map_err(|error| error.to_string().into())
                             };
 
-                        Ok((key, Box::new(tera_filter)))
+                        Ok((key, Box::new(layout_filter)))
                     })
                     .collect()
             },
@@ -342,7 +342,7 @@ where
                         // Clone reference of lua context for use in closure
                         let engine = Arc::clone(&engine);
 
-                        let tera_function =
+                        let layout_function =
                             move |args: &HashMap<String, tera::Value>|
                                 -> tera::Result<tera::Value> {
                                 // Wrap closure to avoid repeating `.map_err()`
@@ -364,21 +364,21 @@ where
                                 .map_err(|error| error.to_string().into())
                             };
 
-                        Ok((key, Box::new(tera_function)))
+                        Ok((key, Box::new(layout_function)))
                     })
                     .collect()
             },
         )?;
 
-    // Test functions for the layout engine
-    let layout_tests = config
-        .get::<_, Option<mlua::Table>>("layout_tests")?
+    // Testers for the layout engine
+    let layout_testers = config
+        .get::<_, Option<mlua::Table>>("layout_testers")?
         .map_or_else(
             || Ok(HashMap::new()),
             |table| {
                 table
                     .pairs::<String, mlua::Function>()
-                    .map(|pair| -> Result<(String, LayoutTest), anyhow::Error> {
+                    .map(|pair| -> Result<(String, LayoutTester), anyhow::Error> {
                         let (key, lua_fn) = pair?;
 
                         // Since `mlua::Function` is not `Sync`, we store it in the lua registry
@@ -388,8 +388,8 @@ where
                         // Clone reference of lua context for use in closure
                         let engine = Arc::clone(&engine);
 
-                        let tera_test = move |value: Option<&tera::Value>,
-                                              args: &[tera::Value]|
+                        let layout_tester = move |value: Option<&tera::Value>,
+                                                  args: &[tera::Value]|
                               -> tera::Result<bool> {
                             // Wrap closure to avoid repeating `.map_err()`
                             (|| -> mlua::Result<_> {
@@ -411,7 +411,7 @@ where
                             .map_err(|error| error.to_string().into())
                         };
 
-                        Ok((key, Box::new(tera_test)))
+                        Ok((key, Box::new(layout_tester)))
                     })
                     .collect()
             },
@@ -437,7 +437,7 @@ where
         layout_dir,
         layout_filters,
         layout_functions,
-        layout_tests,
+        layout_testers,
         syntax_highlight_css_prefix,
         syntax_highlight_stylesheets,
         ..Default::default()
@@ -523,7 +523,7 @@ where
                             let engine = Arc::clone(&engine);
                             let ast = Arc::clone(&ast);
 
-                            let tera_filter =
+                            let layout_filter =
                                 move |value: &tera::Value,
                                       args: &HashMap<String, tera::Value>|
                                       -> tera::Result<tera::Value> {
@@ -549,7 +549,7 @@ where
                                     .map_err(|error| error.to_string().into())
                                 };
 
-                            Ok((key, Box::new(tera_filter)))
+                            Ok((key, Box::new(layout_filter)))
                         },
                     )
                     .collect()
@@ -576,7 +576,7 @@ where
                             let engine = Arc::clone(&engine);
                             let ast = Arc::clone(&ast);
 
-                            let tera_function =
+                            let layout_function =
                                 move |args: &HashMap<String, tera::Value>|
                                       -> tera::Result<tera::Value> {
                                     // Wrap closure to avoid repeating `.map_err()`
@@ -597,15 +597,15 @@ where
                                     .map_err(|error| error.to_string().into())
                                 };
 
-                            Ok((key, Box::new(tera_function)))
+                            Ok((key, Box::new(layout_function)))
                         },
                     )
                     .collect()
             },
         )?;
 
-    // Test functions for the layout engine
-    let layout_tests = config
+    // Testers for the layout engine
+    let layout_testers = config
         .get("layout_tests")
         .and_then(|v| v.to_owned().try_cast::<rhai::Map>())
         .map_or_else(
@@ -613,18 +613,18 @@ where
             |map| -> Result<_, _> {
                 map.iter()
                     .map(
-                        |(key, value)| -> Result<(String, LayoutTest), anyhow::Error> {
+                        |(key, value)| -> Result<(String, LayoutTester), anyhow::Error> {
                             let key = key.to_string();
-                            let rhai_fn = value
-                                .to_owned()
-                                .try_cast::<rhai::FnPtr>()
-                                .ok_or_else(|| anyhow::anyhow!("layout_tests must be an object"))?;
+                            let rhai_fn =
+                                value.to_owned().try_cast::<rhai::FnPtr>().ok_or_else(|| {
+                                    anyhow::anyhow!("layout_testers must be an object")
+                                })?;
 
                             // Clone references of rhai context for use in closure
                             let engine = Arc::clone(&engine);
                             let ast = Arc::clone(&ast);
 
-                            let tera_test =
+                            let layout_tester =
                                 move |value: Option<&tera::Value>,
                                       args: &[tera::Value]|
                                       -> tera::Result<bool> {
@@ -649,7 +649,7 @@ where
                                     .map_err(|error| error.to_string().into())
                                 };
 
-                            Ok((key, Box::new(tera_test)))
+                            Ok((key, Box::new(layout_tester)))
                         },
                     )
                     .collect()
@@ -717,7 +717,7 @@ where
         layout_dir,
         layout_filters,
         layout_functions,
-        layout_tests,
+        layout_testers,
         syntax_highlight_css_prefix,
         syntax_highlight_stylesheets,
         ..Default::default()
@@ -883,7 +883,7 @@ mod tests {
             layout_functions = {
                 min = function(args) return math.min(table.unpack(args.values)) end,
             },
-            layout_tests = {
+            layout_testers = {
                 odd = function(value) return value % 2 == 1 end,
             },
             syntax_highlight_css_prefix = "highlight-",
@@ -908,8 +908,8 @@ mod tests {
         assert!(config.layout_filters.contains_key("upper"));
         assert_eq!(config.layout_functions.len(), 1);
         assert!(config.layout_functions.contains_key("min"));
-        assert_eq!(config.layout_tests.len(), 1);
-        assert!(config.layout_tests.contains_key("odd"));
+        assert_eq!(config.layout_testers.len(), 1);
+        assert!(config.layout_testers.contains_key("odd"));
         assert_eq!(config.syntax_highlight_css_prefix, "highlight-");
         assert_eq!(config.syntax_highlight_stylesheets.len(), 1);
         let stylesheet = config.syntax_highlight_stylesheets.get(0).unwrap();
@@ -933,7 +933,7 @@ mod tests {
             layout_functions: #{
                 min: |args| args.values?.reduce(|a, b| min(a, b), 0xffffffff),
             },
-            layout_tests: #{
+            layout_testers: #{
                 odd: |value| value % 2 == 1,
             },
             syntax_highlight_css_prefix: "highlight-",
@@ -958,8 +958,8 @@ mod tests {
         assert!(config.layout_filters.contains_key("upper"));
         assert_eq!(config.layout_functions.len(), 1);
         assert!(config.layout_functions.contains_key("min"));
-        assert_eq!(config.layout_tests.len(), 1);
-        assert!(config.layout_tests.contains_key("odd"));
+        assert_eq!(config.layout_testers.len(), 1);
+        assert!(config.layout_testers.contains_key("odd"));
         assert_eq!(config.syntax_highlight_css_prefix, "highlight-");
         assert_eq!(config.syntax_highlight_stylesheets.len(), 1);
         let stylesheet = config.syntax_highlight_stylesheets.get(0).unwrap();
