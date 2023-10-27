@@ -29,19 +29,28 @@ impl Engine {
                         source: error.into(),
                     })?;
 
+                // Since [`tera`]` requires `'static` lifetime from filters/functions/testers,
+                // we cannot use functions created at runtime. Therefore, we use
+                // `static_lifetime` as a workaround.
+                // See <https://github.com/Keats/tera/issues/767>
                 for (name, filter) in config.layout_filters.iter() {
-                    // See <https://github.com/Keats/tera/issues/767>
-                    tera.register_filter(name, unsafe { static_lifetime(filter) });
+                    tera.register_filter(name, unsafe {
+                        crate::util::r#unsafe::static_lifetime(filter)
+                    });
                 }
 
                 for (name, function) in config.layout_functions.iter() {
                     // See <https://github.com/Keats/tera/issues/767>
-                    tera.register_function(name, unsafe { static_lifetime(function) });
+                    tera.register_function(name, unsafe {
+                        crate::util::r#unsafe::static_lifetime(function)
+                    });
                 }
 
                 for (name, tester) in config.layout_tests.iter() {
                     // See <https://github.com/Keats/tera/issues/767>
-                    tera.register_tester(name, unsafe { static_lifetime(tester) });
+                    tera.register_tester(name, unsafe {
+                        crate::util::r#unsafe::static_lifetime(tester)
+                    });
                 }
 
                 Ok(Self { tera })
@@ -100,15 +109,4 @@ impl Engine {
 
         Ok(output)
     }
-}
-
-/// Make the lifetime of a variable `'static` (unsafe).
-///
-/// Since [`tera`]` requires `'static` lifetime from filters/functions/testers,
-/// we cannot use functions created at runtime. Therefore, we use this function
-/// as a workaround.
-///
-/// See <https://github.com/Keats/tera/issues/767>.
-unsafe fn static_lifetime<T>(value: &T) -> &'static T {
-    std::mem::transmute::<&T, &'static T>(value)
 }
