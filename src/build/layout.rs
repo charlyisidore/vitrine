@@ -60,25 +60,22 @@ impl Engine {
     /// merged into a single context for the layout engine. The rendered output
     /// replaces the `content` property in the build entry.
     pub(super) fn render_entry(&self, entry: Entry) -> Result<Entry, Error> {
-        // The entry must have content
-        if let Some(content) = entry.content.as_ref() {
-            // The entry must have metadata
-            if let Some(data) = entry.data.as_ref() {
-                // The metadata must have a layout property
-                if let Some(layout) = data.layout.as_ref().filter(|v| !v.is_empty()) {
-                    let content = self.render(layout, content, data).map_err(|error| {
-                        Error::RenderLayout {
+        // The entry must have content and metadata
+        if let (Some(content), Some(data)) = (entry.content.as_ref(), entry.data.as_ref()) {
+            // The metadata must have a layout property
+            if let Some(layout) = data.layout.as_ref().filter(|v| !v.is_empty()) {
+                let content =
+                    self.render(layout, content, data)
+                        .map_err(|error| Error::RenderLayout {
                             input_path: entry.input_path_buf(),
                             layout: layout.to_owned(),
                             source: error,
-                        }
-                    })?;
+                        })?;
 
-                    return Ok(Entry {
-                        content: Some(content),
-                        ..entry
-                    });
-                }
+                return Ok(Entry {
+                    content: Some(content),
+                    ..entry
+                });
             }
         }
 
