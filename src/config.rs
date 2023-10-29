@@ -18,7 +18,7 @@ use crate::{error::Error, util::path::PathExt};
 /// Configuration for Vitrine.
 ///
 /// This structure represents the configuration given to the site builder.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub(crate) struct Config {
     /// Path to the configuration file.
     pub(crate) config_path: Option<PathBuf>,
@@ -39,13 +39,13 @@ pub(crate) struct Config {
     pub(crate) layout_dir: Option<PathBuf>,
 
     /// Custom filters for the layout engine.
-    pub(crate) layout_filters: HashMap<String, LayoutFilter>,
+    pub(crate) layout_filters: HashMap<String, Box<dyn LayoutFilterFn>>,
 
     /// Custom functions for the layout engine.
-    pub(crate) layout_functions: HashMap<String, LayoutFunction>,
+    pub(crate) layout_functions: HashMap<String, Box<dyn LayoutFunctionFn>>,
 
     /// Custom testers for the layout engine.
-    pub(crate) layout_testers: HashMap<String, LayoutTester>,
+    pub(crate) layout_testers: HashMap<String, Box<dyn LayoutTesterFn>>,
 
     /// Prefix for syntax highlight CSS classes.
     pub(crate) syntax_highlight_css_prefix: String,
@@ -57,36 +57,10 @@ pub(crate) struct Config {
     pub(crate) dry_run: bool,
 }
 
-// Some fields in `Config`` do not support `#[derive(Debug)]`
-impl std::fmt::Debug for Config {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Config")
-            .field("config_path", &self.config_path)
-            .field("input_dir", &self.input_dir)
-            .field("output_dir", &self.output_dir)
-            .field("base_url", &self.base_url)
-            .field("data_dir", &self.data_dir)
-            .field("layout_dir", &self.layout_dir)
-            .field("layout_filters", &self.layout_filters.keys())
-            .field("layout_functions", &self.layout_functions.keys())
-            .field("layout_testers", &self.layout_testers.keys())
-            .field(
-                "syntax_highlight_css_prefix",
-                &self.syntax_highlight_css_prefix,
-            )
-            .field(
-                "syntax_highlight_stylesheets",
-                &self.syntax_highlight_stylesheets,
-            )
-            .field("dry_run", &self.dry_run)
-            .finish()
-    }
-}
-
 /// Deserializable configuration.
 ///
 /// This structure has all its fields optional.
-#[derive(Default, Deserialize)]
+#[derive(Debug, Default, Deserialize)]
 pub(crate) struct PartialConfig {
     /// Path to the configuration file.
     #[serde(skip)]
@@ -109,15 +83,15 @@ pub(crate) struct PartialConfig {
 
     /// Custom filters for the layout engine.
     #[serde(skip)]
-    pub(crate) layout_filters: HashMap<String, LayoutFilter>,
+    pub(crate) layout_filters: HashMap<String, Box<dyn LayoutFilterFn>>,
 
     /// Custom functions for the layout engine.
     #[serde(skip)]
-    pub(crate) layout_functions: HashMap<String, LayoutFunction>,
+    pub(crate) layout_functions: HashMap<String, Box<dyn LayoutFunctionFn>>,
 
     /// Custom testers for the layout engine.
     #[serde(skip)]
-    pub(crate) layout_testers: HashMap<String, LayoutTester>,
+    pub(crate) layout_testers: HashMap<String, Box<dyn LayoutTesterFn>>,
 
     /// Prefix for syntax highlight CSS classes.
     #[serde(default)]
@@ -128,43 +102,88 @@ pub(crate) struct PartialConfig {
     pub(crate) syntax_highlight_stylesheets: Vec<SyntaxHighlightStylesheet>,
 }
 
-// Some fields in `PartialConfig`` do not support `#[derive(Debug)]`
-impl std::fmt::Debug for PartialConfig {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("PartialConfig")
-            .field("config_path", &self.config_path)
-            .field("input_dir", &self.input_dir)
-            .field("output_dir", &self.output_dir)
-            .field("base_url", &self.base_url)
-            .field("data_dir", &self.data_dir)
-            .field("layout_dir", &self.layout_dir)
-            .field("layout_filters", &self.layout_filters.keys())
-            .field("layout_functions", &self.layout_functions.keys())
-            .field("layout_testers", &self.layout_testers.keys())
-            .field(
-                "syntax_highlight_css_prefix",
-                &self.syntax_highlight_css_prefix,
-            )
-            .field(
-                "syntax_highlight_stylesheets",
-                &self.syntax_highlight_stylesheets,
-            )
-            .finish()
-    }
+/// Generate [`Fn`] traits for layout engine filters/functions/testers.
+///
+/// This macro automatically implements [`Debug`] and [`mlua::FromLua`] for the
+/// generated trait.
+macro_rules! create_layout_fn_trait {
+    ($(#[$($attrs:tt)*])* $name:ident, ($($arg_name:ident: $arg_type:ty),*) -> $ret_type:ty) => {
+        $(#[$($attrs)*])*
+        pub(crate) trait $name: Fn($($arg_type),*) -> $ret_type + Send + Sync {}
+
+        impl<F> $name for F where F: Fn($($arg_type),*) -> $ret_type + Send + Sync {}
+
+        impl std::fmt::Debug for dyn $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, stringify!($name))
+            }
+        }
+
+        impl<'lua> mlua::FromLua<'lua> for Box<dyn $name> {
+            fn from_lua(value: mlua::Value<'lua>, lua: &'lua mlua::Lua) -> mlua::Result<Self> {
+                use mlua::LuaSerdeExt;
+                use std::sync::{Arc, Mutex};
+
+                let function = value
+                    .as_function()
+                    .ok_or_else(|| mlua::Error::external("expected a function"))?
+                    .to_owned();
+
+                let function_key = lua.create_registry_value(function)?;
+
+                let lua_mutex = unsafe {
+                    crate::util::r#unsafe::static_lifetime(
+                        lua.app_data_ref::<Arc<Mutex<mlua::Lua>>>()
+                            .ok_or_else(|| mlua::Error::external("missing lua app data"))?
+                            .as_ref(),
+                    )
+                };
+
+                Ok(Box::new(
+                    move |$($arg_name: $arg_type),*| -> $ret_type {
+                        let lua = lua_mutex
+                            .lock()
+                            .map_err(|error| tera::Error::msg(error.to_string()))?;
+
+                        $(
+                            let $arg_name = lua.to_value(&$arg_name)
+                            .map_err(|error| tera::Error::msg(error.to_string()))?;
+                        )*
+
+                        let function: mlua::Function = lua.registry_value(&function_key)
+                            .map_err(|error| tera::Error::msg(error.to_string()))?;
+
+                        let result = function.call::<_, mlua::Value>(($($arg_name),*))
+                            .map_err(|error| tera::Error::msg(error.to_string()))?;
+
+                        let result = lua.from_value(result)
+                            .map_err(|error| tera::Error::msg(error.to_string()))?;
+
+                        Ok(result)
+                    },
+                ))
+            }
+        }
+    };
 }
 
-/// Filter for the layout engine.
-pub(crate) type LayoutFilter = Box<
-    dyn Fn(&tera::Value, &HashMap<String, tera::Value>) -> tera::Result<tera::Value> + Sync + Send,
->;
+create_layout_fn_trait!(
+    /// Filter for the layout engine.
+    LayoutFilterFn,
+    (value: &tera::Value, args: &HashMap<String, tera::Value>) -> tera::Result<tera::Value>
+);
 
-/// Function for the layout engine.
-pub(crate) type LayoutFunction =
-    Box<dyn Fn(&HashMap<String, tera::Value>) -> tera::Result<tera::Value> + Sync + Send>;
+create_layout_fn_trait!(
+    /// Function for the layout engine.
+    LayoutFunctionFn,
+    (args: &HashMap<String, tera::Value>) -> tera::Result<tera::Value>
+);
 
-/// Tester for the layout engine.
-pub(crate) type LayoutTester =
-    Box<dyn Fn(Option<&tera::Value>, &[tera::Value]) -> tera::Result<bool> + Sync + Send>;
+create_layout_fn_trait!(
+    /// Tester for the layout engine.
+    LayoutTesterFn,
+    (value: Option<&tera::Value>, args: &[tera::Value]) -> tera::Result<bool>
+);
 
 /// Syntax highlight CSS stylesheet configuration.
 #[derive(Debug, Deserialize)]

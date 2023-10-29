@@ -8,7 +8,7 @@ use std::{
 
 use mlua::LuaSerdeExt;
 
-use super::{Error, LayoutFilter, LayoutFunction, LayoutTester, PartialConfig};
+use super::{Error, LayoutFilterFn, LayoutFunctionFn, LayoutTesterFn, PartialConfig};
 
 /// Load configuration from a Lua file.
 pub(super) fn load_config<P>(path: P) -> anyhow::Result<PartialConfig>
@@ -66,24 +66,27 @@ where
         .map(|v| v.into());
 
     // Filters for the layout engine
-    let layout_filters = config
-        .get::<_, Option<mlua::Table>>("layout_filters")?
-        .map_or_else(
-            || Ok(HashMap::new()),
-            |table| {
-                table
-                    .pairs::<String, mlua::Function>()
-                    .map(|pair| -> Result<(String, LayoutFilter), anyhow::Error> {
-                        let (key, lua_fn) = pair?;
+    let layout_filters =
+        config
+            .get::<_, Option<mlua::Table>>("layout_filters")?
+            .map_or_else(
+                || Ok(HashMap::new()),
+                |table| {
+                    table
+                        .pairs::<String, mlua::Function>()
+                        .map(
+                            |pair| -> Result<(String, Box<dyn LayoutFilterFn>), anyhow::Error> {
+                                let (key, lua_fn) = pair?;
 
-                        // Since `mlua::Function` is not `Sync`, we store it in the lua registry
-                        // See <https://github.com/khvzak/mlua/issues/233#issuecomment-1353831597>
-                        let lua_fn_key = lua.create_registry_value(lua_fn)?;
+                                // Since `mlua::Function` is not `Sync`, we store it in the lua
+                                // registry.
+                                // See <https://github.com/khvzak/mlua/issues/233#issuecomment-1353831597>
+                                let lua_fn_key = lua.create_registry_value(lua_fn)?;
 
-                        // Clone reference of lua context for use in closure
-                        let engine = Arc::clone(&engine);
+                                // Clone reference of lua context for use in closure
+                                let engine = Arc::clone(&engine);
 
-                        let layout_filter =
+                                let layout_filter =
                             move |value: &tera::Value,
                                   args: &HashMap<String, tera::Value>|
                                   -> tera::Result<tera::Value> {
@@ -107,11 +110,12 @@ where
                                 .map_err(|error| error.to_string().into())
                             };
 
-                        Ok((key, Box::new(layout_filter)))
-                    })
-                    .collect()
-            },
-        )?;
+                                Ok((key, Box::new(layout_filter)))
+                            },
+                        )
+                        .collect()
+                },
+            )?;
 
     // Functions for the layout engine
     let layout_functions = config
@@ -121,17 +125,18 @@ where
             |table| {
                 table
                     .pairs::<String, mlua::Function>()
-                    .map(|pair| -> Result<(String, LayoutFunction), anyhow::Error> {
-                        let (key, lua_fn) = pair?;
+                    .map(
+                        |pair| -> Result<(String, Box<dyn LayoutFunctionFn>), anyhow::Error> {
+                            let (key, lua_fn) = pair?;
 
-                        // Since `mlua::Function` is not `Sync`, we store it in the lua registry
-                        // See <https://github.com/khvzak/mlua/issues/233#issuecomment-1353831597>
-                        let lua_fn_key = lua.create_registry_value(lua_fn)?;
+                            // Since `mlua::Function` is not `Sync`, we store it in the lua registry
+                            // See <https://github.com/khvzak/mlua/issues/233#issuecomment-1353831597>
+                            let lua_fn_key = lua.create_registry_value(lua_fn)?;
 
-                        // Clone reference of lua context for use in closure
-                        let engine = Arc::clone(&engine);
+                            // Clone reference of lua context for use in closure
+                            let engine = Arc::clone(&engine);
 
-                        let layout_function =
+                            let layout_function =
                             move |args: &HashMap<String, tera::Value>|
                                 -> tera::Result<tera::Value> {
                                 // Wrap closure to avoid repeating `.map_err()`
@@ -153,31 +158,35 @@ where
                                 .map_err(|error| error.to_string().into())
                             };
 
-                        Ok((key, Box::new(layout_function)))
-                    })
+                            Ok((key, Box::new(layout_function)))
+                        },
+                    )
                     .collect()
             },
         )?;
 
     // Testers for the layout engine
-    let layout_testers = config
-        .get::<_, Option<mlua::Table>>("layout_testers")?
-        .map_or_else(
-            || Ok(HashMap::new()),
-            |table| {
-                table
-                    .pairs::<String, mlua::Function>()
-                    .map(|pair| -> Result<(String, LayoutTester), anyhow::Error> {
-                        let (key, lua_fn) = pair?;
+    let layout_testers =
+        config
+            .get::<_, Option<mlua::Table>>("layout_testers")?
+            .map_or_else(
+                || Ok(HashMap::new()),
+                |table| {
+                    table
+                        .pairs::<String, mlua::Function>()
+                        .map(
+                            |pair| -> Result<(String, Box<dyn LayoutTesterFn>), anyhow::Error> {
+                                let (key, lua_fn) = pair?;
 
-                        // Since `mlua::Function` is not `Sync`, we store it in the lua registry
-                        // See <https://github.com/khvzak/mlua/issues/233#issuecomment-1353831597>
-                        let lua_fn_key = lua.create_registry_value(lua_fn)?;
+                                // Since `mlua::Function` is not `Sync`, we store it in the lua
+                                // registry.
+                                // See <https://github.com/khvzak/mlua/issues/233#issuecomment-1353831597>
+                                let lua_fn_key = lua.create_registry_value(lua_fn)?;
 
-                        // Clone reference of lua context for use in closure
-                        let engine = Arc::clone(&engine);
+                                // Clone reference of lua context for use in closure
+                                let engine = Arc::clone(&engine);
 
-                        let layout_tester = move |value: Option<&tera::Value>,
+                                let layout_tester = move |value: Option<&tera::Value>,
                                                   args: &[tera::Value]|
                               -> tera::Result<bool> {
                             // Wrap closure to avoid repeating `.map_err()`
@@ -200,11 +209,12 @@ where
                             .map_err(|error| error.to_string().into())
                         };
 
-                        Ok((key, Box::new(layout_tester)))
-                    })
-                    .collect()
-            },
-        )?;
+                                Ok((key, Box::new(layout_tester)))
+                            },
+                        )
+                        .collect()
+                },
+            )?;
 
     // Prefix for syntax highlight CSS classes
     let syntax_highlight_css_prefix = config

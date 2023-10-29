@@ -11,7 +11,10 @@ pub(crate) trait PathExt {
     fn normalize(&self) -> PathBuf;
 }
 
-impl<T: AsRef<Path>> PathExt for T {
+impl<T> PathExt for T
+where
+    T: AsRef<Path>,
+{
     fn normalize(&self) -> PathBuf {
         self::normalize_path(self)
     }

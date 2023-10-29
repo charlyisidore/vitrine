@@ -3,7 +3,8 @@
 use std::{collections::HashMap, path::Path, sync::Arc};
 
 use super::{
-    Error, LayoutFilter, LayoutFunction, LayoutTester, PartialConfig, SyntaxHighlightStylesheet,
+    Error, LayoutFilterFn, LayoutFunctionFn, LayoutTesterFn, PartialConfig,
+    SyntaxHighlightStylesheet,
 };
 
 /// Load configuration from a Rhai file.
@@ -89,7 +90,7 @@ where
             |map| -> Result<_, _> {
                 map.iter()
                     .map(
-                        |(key, value)| -> Result<(String, LayoutFilter), anyhow::Error> {
+                        |(key, value)| -> Result<(String, Box<dyn LayoutFilterFn>), anyhow::Error> {
                             let key = key.to_string();
                             let rhai_fn =
                                 value.to_owned().try_cast::<rhai::FnPtr>().ok_or_else(|| {
@@ -142,7 +143,7 @@ where
             |map| -> Result<_, _> {
                 map.iter()
                     .map(
-                        |(key, value)| -> Result<(String, LayoutFunction), anyhow::Error> {
+                        |(key, value)| -> Result<(String, Box<dyn LayoutFunctionFn>), anyhow::Error> {
                             let key = key.to_string();
                             let rhai_fn =
                                 value.to_owned().try_cast::<rhai::FnPtr>().ok_or_else(|| {
@@ -190,7 +191,7 @@ where
             |map| -> Result<_, _> {
                 map.iter()
                     .map(
-                        |(key, value)| -> Result<(String, LayoutTester), anyhow::Error> {
+                        |(key, value)| -> Result<(String, Box<dyn LayoutTesterFn>), anyhow::Error> {
                             let key = key.to_string();
                             let rhai_fn =
                                 value.to_owned().try_cast::<rhai::FnPtr>().ok_or_else(|| {
