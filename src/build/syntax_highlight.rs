@@ -72,5 +72,5 @@ fn get_themes() -> Vec<String> {
 ///
 /// See <https://github.com/trishume/syntect/issues/308>.
 fn escape_css(content: String) -> String {
-    content.replace("+", "\\+")
+    content.replace("c++", "c\\+\\+")
 }
