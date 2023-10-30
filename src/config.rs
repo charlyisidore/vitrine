@@ -16,7 +16,7 @@ use serde::Deserialize;
 use crate::{error::Error, util::path::PathExt};
 
 /// Default file names for configuration files
-pub(super) const DEFAULT_CONFIG_FILE_NAMES: [&str; 5] = [
+const DEFAULT_CONFIG_FILE_NAMES: [&str; 5] = [
     "vitrine.config.json",
     "vitrine.config.lua",
     "vitrine.config.rhai",
