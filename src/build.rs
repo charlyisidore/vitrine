@@ -219,7 +219,7 @@ pub(super) fn build(config: &Config) -> Result<(), Error> {
             // Write output files
             entry.and_then(|entry| {
                 tracing::debug!("{:#?}", entry);
-                if !config.dry_run {
+                if config.output_dir.is_some() {
                     self::write_file::write_entry(entry, config)?;
                     num_output_files += 1;
                 }

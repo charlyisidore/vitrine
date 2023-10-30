@@ -15,6 +15,30 @@ use serde::Deserialize;
 
 use crate::{error::Error, util::path::PathExt};
 
+/// Default file names for configuration files
+pub(super) const DEFAULT_CONFIG_FILE_NAMES: [&str; 5] = [
+    "vitrine.config.json",
+    "vitrine.config.lua",
+    "vitrine.config.rhai",
+    "vitrine.config.toml",
+    "vitrine.config.yaml",
+];
+
+/// Default input directory
+const DEFAULT_INPUT_DIR: &str = ".";
+
+/// Default output directory
+const DEFAULT_OUTPUT_DIR: &str = "_site";
+
+/// Default base URL
+const DEFAULT_BASE_URL: &str = "";
+
+/// Default data directory
+const DEFAULT_DATA_DIR: &str = "_data";
+
+/// Default layout directory
+const DEFAULT_LAYOUT_DIR: &str = "_layouts";
+
 /// Configuration for Vitrine.
 ///
 /// This structure represents the configuration given to the site builder.
@@ -27,15 +51,21 @@ pub(crate) struct Config {
     pub(crate) input_dir: PathBuf,
 
     /// Directory of output files.
-    pub(crate) output_dir: PathBuf,
+    ///
+    /// If set to `None`, Vitrine does not write files.
+    pub(crate) output_dir: Option<PathBuf>,
 
     /// Prefix for URLs.
     pub(crate) base_url: String,
 
     /// Directory of data files.
+    ///
+    /// If set to `None`, Vitrine does not search for data files.
     pub(crate) data_dir: Option<PathBuf>,
 
     /// Directory of layout files.
+    ///
+    /// If set to `None`, Vitrine does not use a layout engine.
     pub(crate) layout_dir: Option<PathBuf>,
 
     /// Custom filters for the layout engine.
@@ -52,54 +82,70 @@ pub(crate) struct Config {
 
     /// Syntax highlight CSS stylesheets.
     pub(crate) syntax_highlight_stylesheets: Vec<SyntaxHighlightStylesheet>,
-
-    /// Determine whether Vitrine should write output files or not.
-    pub(crate) dry_run: bool,
 }
 
-/// Deserializable configuration.
+/// Partial configuration.
 ///
-/// This structure has all its fields optional.
+/// This structure can be used for deserialization.
 #[derive(Debug, Default, Deserialize)]
 pub(crate) struct PartialConfig {
-    /// Path to the configuration file.
-    #[serde(skip)]
-    pub(crate) config_path: Option<PathBuf>,
+    /// See [`Config::input_dir`].
+    pub(crate) input_dir: Option<String>,
 
-    /// Directory of input files.
-    pub(crate) input_dir: Option<PathBuf>,
+    /// See [`Config::output_dir`].
+    pub(crate) output_dir: Option<String>,
 
-    /// Directory of output files.
-    pub(crate) output_dir: Option<PathBuf>,
-
-    /// Prefix for URLs.
+    /// See [`Config::base_url`].
     pub(crate) base_url: Option<String>,
 
-    /// Directory of data files.
-    pub(crate) data_dir: Option<PathBuf>,
+    /// See [`Config::data_dir`].
+    pub(crate) data_dir: Option<String>,
 
-    /// Directory of layout files.
-    pub(crate) layout_dir: Option<PathBuf>,
+    /// See [`Config::layout_dir`].
+    pub(crate) layout_dir: Option<String>,
 
-    /// Custom filters for the layout engine.
+    /// See [`Config::layout_filters`].
     #[serde(skip)]
     pub(crate) layout_filters: HashMap<String, Box<dyn LayoutFilterFn>>,
 
-    /// Custom functions for the layout engine.
+    /// See [`Config::layout_functions`].
     #[serde(skip)]
     pub(crate) layout_functions: HashMap<String, Box<dyn LayoutFunctionFn>>,
 
-    /// Custom testers for the layout engine.
+    /// See [`Config::layout_testers`].
     #[serde(skip)]
     pub(crate) layout_testers: HashMap<String, Box<dyn LayoutTesterFn>>,
 
-    /// Prefix for syntax highlight CSS classes.
+    /// See [`Config::syntax_highlight_css_prefix`].
     #[serde(default)]
     pub(crate) syntax_highlight_css_prefix: String,
 
-    /// Syntax highlight CSS stylesheets.
+    /// See [`Config::syntax_highlight_stylesheets`].
     #[serde(default)]
     pub(crate) syntax_highlight_stylesheets: Vec<SyntaxHighlightStylesheet>,
+}
+
+/// Syntax highlight CSS stylesheet configuration.
+#[derive(Debug, Deserialize)]
+pub(crate) struct SyntaxHighlightStylesheet {
+    /// Prefix for class names.
+    #[serde(default)]
+    pub(crate) prefix: String,
+
+    /// Theme name.
+    ///
+    /// See <https://docs.rs/syntect/latest/syntect/highlighting/struct.ThemeSet.html>
+    pub(crate) theme: String,
+
+    /// Output URL of the stylesheet.
+    pub(crate) url: String,
+}
+
+impl<'lua> mlua::FromLua<'lua> for SyntaxHighlightStylesheet {
+    fn from_lua(value: mlua::Value<'lua>, lua: &'lua mlua::Lua) -> mlua::Result<Self> {
+        use mlua::LuaSerdeExt;
+        lua.from_value(value)
+    }
 }
 
 /// Generate [`Fn`] traits for layout engine filters/functions/testers.
@@ -185,24 +231,21 @@ create_layout_fn_trait!(
     (value: Option<&tera::Value>, args: &[tera::Value]) -> tera::Result<bool>
 );
 
-/// Syntax highlight CSS stylesheet configuration.
-#[derive(Debug, Deserialize)]
-pub(crate) struct SyntaxHighlightStylesheet {
-    /// Prefix for class names.
-    #[serde(default)]
-    pub(crate) prefix: String,
-
-    /// Theme name.
-    ///
-    /// See <https://docs.rs/syntect/latest/syntect/highlighting/struct.ThemeSet.html>
-    pub(crate) theme: String,
-
-    /// Output URL of the stylesheet.
-    pub(crate) url: String,
+/// Load configuration from a default file (e.g. `vitrine.config.json`).
+///
+/// Default file names are specified in [`DEFAULT_CONFIG_FILE_NAMES`].
+pub(super) fn load_config_default() -> Result<Config, Error> {
+    Ok(DEFAULT_CONFIG_FILE_NAMES
+        .into_iter()
+        .map(|file_name| Path::new(file_name))
+        .find(|path| path.exists())
+        .map(|path| load_config(path))
+        .transpose()?
+        .unwrap_or_default())
 }
 
-/// Load partial configuration from a file.
-pub(super) fn load_config<P>(config_path: P) -> Result<PartialConfig, Error>
+/// Load configuration from a file.
+pub(super) fn load_config<P>(config_path: P) -> Result<Config, Error>
 where
     P: AsRef<Path>,
 {
@@ -210,6 +253,7 @@ where
 
     tracing::info!("Loading configuration from {:?}", config_path);
 
+    // Load `PartialConfig` structure
     let config = if let Some(extension) = config_path.extension().and_then(|v| v.to_str()) {
         match extension {
             "json" => self::json::load_config(config_path),
@@ -227,9 +271,45 @@ where
         source: error.into(),
     })?;
 
-    Ok(PartialConfig {
+    // Convert `PartialConfig` to `Config`
+    Ok(Config {
         config_path: Some(config_path.to_owned()),
-        ..config
+        input_dir: config
+            .input_dir
+            .unwrap_or_else(|| DEFAULT_INPUT_DIR.to_owned())
+            .into(),
+        output_dir: config
+            .output_dir
+            .map_or_else(|| Some(DEFAULT_OUTPUT_DIR.into()), |path| Some(path.into())),
+        base_url: config
+            .base_url
+            .unwrap_or_else(|| DEFAULT_BASE_URL.to_owned())
+            .into(),
+        data_dir: config.data_dir.map_or_else(
+            || {
+                // Defaults to `DEFAULT_DATA_DIR`, but only if it exists
+                Some(DEFAULT_DATA_DIR)
+                    .map(|dir| Path::new(dir))
+                    .filter(|path| path.exists())
+                    .map(|path| path.to_owned())
+            },
+            |v| Some(v.into()),
+        ),
+        layout_dir: config.layout_dir.map_or_else(
+            || {
+                // Defaults to `DEFAULT_LAYOUT_DIR`, but only if it exists
+                Some(DEFAULT_LAYOUT_DIR)
+                    .map(|dir| Path::new(dir))
+                    .filter(|path| path.exists())
+                    .map(|path| path.to_owned())
+            },
+            |v| Some(v.into()),
+        ),
+        layout_filters: config.layout_filters,
+        layout_functions: config.layout_functions,
+        layout_testers: config.layout_testers,
+        syntax_highlight_css_prefix: config.syntax_highlight_css_prefix,
+        syntax_highlight_stylesheets: config.syntax_highlight_stylesheets,
     })
 }
 
@@ -255,14 +335,15 @@ pub(super) fn normalize_config(config: Config) -> Result<Config, Error> {
         })?;
 
     // Normalize output directory
-    let output_dir = if config.output_dir.is_absolute() {
-        config.output_dir
-    } else {
-        current_dir.join(config.output_dir)
-    };
-
-    // We don't use `canonicalize()` since the output directory might not exist yet
-    let output_dir = output_dir.normalize();
+    let output_dir = config.output_dir.map(|output_dir| {
+        // We don't use `canonicalize()` since the output directory might not exist yet
+        if output_dir.is_absolute() {
+            output_dir
+        } else {
+            current_dir.join(output_dir)
+        }
+        .normalize()
+    });
 
     // Canonicalize data directory
     let data_dir = config
@@ -299,31 +380,33 @@ pub(super) fn normalize_config(config: Config) -> Result<Config, Error> {
 /// This function checks if the input directories are located inside the output
 /// directory.
 pub(super) fn validate_config(config: &Config) -> Result<(), Error> {
-    // Protection against overwriting input files
-    if config.input_dir.starts_with(&config.output_dir) {
-        return Err(Error::LoadConfig {
-            config_path: config.config_path.to_owned(),
-            source: anyhow::anyhow!("input_dir must be located outside output_dir"),
-        });
-    }
-
-    // Protection against overwriting data files
-    if let Some(data_dir) = config.data_dir.as_ref() {
-        if data_dir.starts_with(&config.output_dir) {
+    if let Some(output_dir) = config.output_dir.as_ref() {
+        // Protection against overwriting input files
+        if config.input_dir.starts_with(output_dir) {
             return Err(Error::LoadConfig {
                 config_path: config.config_path.to_owned(),
-                source: anyhow::anyhow!("data_dir must be located outside output_dir"),
+                source: anyhow::anyhow!("input_dir must be located outside output_dir"),
             });
         }
-    }
 
-    // Protection against overwriting layout files
-    if let Some(layout_dir) = config.layout_dir.as_ref() {
-        if layout_dir.starts_with(&config.output_dir) {
-            return Err(Error::LoadConfig {
-                config_path: config.config_path.to_owned(),
-                source: anyhow::anyhow!("layout_dir must be located outside output_dir"),
-            });
+        // Protection against overwriting data files
+        if let Some(data_dir) = config.data_dir.as_ref() {
+            if data_dir.starts_with(output_dir) {
+                return Err(Error::LoadConfig {
+                    config_path: config.config_path.to_owned(),
+                    source: anyhow::anyhow!("data_dir must be located outside output_dir"),
+                });
+            }
+        }
+
+        // Protection against overwriting layout files
+        if let Some(layout_dir) = config.layout_dir.as_ref() {
+            if layout_dir.starts_with(output_dir) {
+                return Err(Error::LoadConfig {
+                    config_path: config.config_path.to_owned(),
+                    source: anyhow::anyhow!("layout_dir must be located outside output_dir"),
+                });
+            }
         }
     }
 

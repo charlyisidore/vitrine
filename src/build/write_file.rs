@@ -13,7 +13,15 @@ pub(super) fn write_entry(entry: Entry, config: &Config) -> Result<Entry, Error>
 
     // All entry URLs should start with `/`
     let url_path = entry.url.strip_prefix("/").unwrap();
-    let mut output_path = config.output_dir.join(url_path);
+
+    let mut output_path = config
+        .output_dir
+        .as_ref()
+        .ok_or_else(|| Error::WriteOutput {
+            output_path: "".into(),
+            source: anyhow::anyhow!("Invalid output path"),
+        })?
+        .join(url_path);
 
     if entry.format == "html" {
         output_path.push("index.html")

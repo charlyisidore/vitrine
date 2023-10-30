@@ -3,8 +3,7 @@
 use std::{collections::HashMap, path::Path, sync::Arc};
 
 use super::{
-    Error, LayoutFilterFn, LayoutFunctionFn, LayoutTesterFn, PartialConfig,
-    SyntaxHighlightStylesheet,
+    LayoutFilterFn, LayoutFunctionFn, LayoutTesterFn, PartialConfig, SyntaxHighlightStylesheet,
 };
 
 /// Load configuration from a Rhai file.
@@ -13,12 +12,7 @@ where
     P: AsRef<Path>,
 {
     let path = path.as_ref();
-
-    let content = std::fs::read_to_string(path).map_err(|error| Error::LoadConfig {
-        config_path: Some(path.to_owned()),
-        source: error.into(),
-    })?;
-
+    let content = std::fs::read_to_string(path)?;
     load_config_str(content)
 }
 
@@ -335,11 +329,11 @@ mod tests {
 
         let config = super::load_config_str(CONTENT).unwrap();
 
-        assert_eq!(config.input_dir.unwrap().to_str().unwrap(), "foo");
-        assert_eq!(config.output_dir.unwrap().to_str().unwrap(), "bar");
+        assert_eq!(config.input_dir.unwrap(), "foo");
+        assert_eq!(config.output_dir.unwrap(), "bar");
         assert_eq!(config.base_url.unwrap(), "/baz");
-        assert_eq!(config.data_dir.unwrap().to_str().unwrap(), "_data");
-        assert_eq!(config.layout_dir.unwrap().to_str().unwrap(), "_layouts");
+        assert_eq!(config.data_dir.unwrap(), "_data");
+        assert_eq!(config.layout_dir.unwrap(), "_layouts");
         assert_eq!(config.layout_filters.len(), 1);
         assert!(config.layout_filters.contains_key("upper"));
         assert_eq!(config.layout_functions.len(), 1);
