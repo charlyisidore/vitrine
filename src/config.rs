@@ -1,7 +1,9 @@
 //! Configuration.
 
 mod json;
+#[macro_use]
 mod lua;
+#[macro_use]
 mod rhai;
 mod toml;
 mod yaml;
@@ -9,7 +11,7 @@ mod yaml;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 
 use serde::Deserialize;
@@ -142,28 +144,11 @@ pub(crate) struct SyntaxHighlightStylesheet {
     pub(crate) url: String,
 }
 
-impl<'lua> mlua::FromLua<'lua> for SyntaxHighlightStylesheet {
-    fn from_lua(value: mlua::Value<'lua>, lua: &'lua mlua::Lua) -> mlua::Result<Self> {
-        use mlua::LuaSerdeExt;
-        lua.from_value(value)
-    }
-}
-
-impl self::rhai::FromRhai for SyntaxHighlightStylesheet {
-    fn from_rhai(
-        value: &::rhai::Dynamic,
-        _: Arc<::rhai::Engine>,
-        _: Arc<::rhai::AST>,
-    ) -> anyhow::Result<Self> {
-        ::rhai::serde::from_dynamic(value).map_err(|error| anyhow::anyhow!(error))
-    }
-}
-
-/// Generate [`Fn`] types for layout engine filters/functions/testers.
+/// Define [`Fn`] types for layout engine filters/functions/testers.
 ///
 /// This macro automatically implements [`Debug`], [`mlua::FromLua`], and
 /// [`rhai::FromRhai`] for the generated type.
-macro_rules! create_layout_fn {
+macro_rules! define_layout_fn {
     (
         $(#[$($attrs:tt)*])* $struct_name:ident:
             ($($arg_name:ident: $arg_type:ty),*) -> $ret_type:ty
@@ -179,106 +164,23 @@ macro_rules! create_layout_fn {
             }
         }
 
-        impl<'lua> mlua::FromLua<'lua> for $struct_name {
-            fn from_lua(value: mlua::Value<'lua>, lua: &'lua mlua::Lua) -> mlua::Result<Self> {
-                use mlua::LuaSerdeExt;
-
-                let function = value
-                    .as_function()
-                    .ok_or_else(|| mlua::Error::external(format!(
-                        "expected {}, received {}",
-                        stringify!(mlua::Function),
-                        value.type_name()
-                    )))?
-                    .to_owned();
-
-                let function_key = lua.create_registry_value(function)?;
-
-                let lua_mutex = unsafe {
-                    crate::util::r#unsafe::static_lifetime(
-                        lua.app_data_ref::<Arc<Mutex<mlua::Lua>>>()
-                            .ok_or_else(|| mlua::Error::external("missing lua app data"))?
-                            .as_ref(),
-                    )
-                };
-
-                Ok($struct_name(Box::new(
-                    move |$($arg_name: $arg_type),*| -> $ret_type {
-                        let lua = lua_mutex
-                            .lock()
-                            .map_err(|error| tera::Error::msg(error.to_string()))?;
-
-                        $(
-                            let $arg_name = lua.to_value(&$arg_name)
-                                .map_err(|error| tera::Error::msg(error.to_string()))?;
-                        )*
-
-                        let function: mlua::Function = lua.registry_value(&function_key)
-                            .map_err(|error| tera::Error::msg(error.to_string()))?;
-
-                        let result = function.call::<_, mlua::Value>(($($arg_name),*))
-                            .map_err(|error| tera::Error::msg(error.to_string()))?;
-
-                        let result = lua.from_value(result)
-                            .map_err(|error| tera::Error::msg(error.to_string()))?;
-
-                        Ok(result)
-                    },
-                )))
-            }
-        }
-
-        impl self::rhai::FromRhai for $struct_name {
-            fn from_rhai(
-                value: &::rhai::Dynamic,
-                engine: Arc<::rhai::Engine>,
-                ast: Arc<::rhai::AST>,
-            ) -> anyhow::Result<Self> {
-                use ::rhai;
-
-                let fn_ptr = value.to_owned().try_cast::<rhai::FnPtr>().ok_or_else(|| {
-                    anyhow::anyhow!(
-                        "expected {}, received {}",
-                        stringify!(rhai::FnPtr),
-                        value.type_name()
-                    )
-                })?;
-
-                Ok($struct_name(Box::new(
-                    move |$($arg_name: $arg_type),*| -> $ret_type {
-                        $(
-                            let $arg_name = rhai::serde::to_dynamic($arg_name)
-                                .map_err(|error| tera::Error::msg(error.to_string()))?
-                                .to_owned();
-                        )*
-
-                        let result = fn_ptr
-                            .call::<rhai::Dynamic>(&engine, &ast, ($($arg_name),*,))
-                            .map_err(|error| tera::Error::msg(error.to_string()))?;
-
-                        let result = rhai::serde::from_dynamic(&result)
-                            .map_err(|error| tera::Error::msg(error.to_string()))?;
-
-                        Ok(result)
-                    },
-                )))
-            }
-        }
+        impl_from_lua_for_layout_fn!{$struct_name: ($($arg_name: $arg_type),*) -> $ret_type}
+        impl_from_rhai_for_layout_fn!{$struct_name: ($($arg_name: $arg_type),*) -> $ret_type}
     };
 }
 
-create_layout_fn!(
+define_layout_fn!(
     /// Filter for the layout engine.
     LayoutFilterFn:
         (value: &tera::Value, args: &HashMap<String, tera::Value>) -> tera::Result<tera::Value>
 );
 
-create_layout_fn!(
+define_layout_fn!(
     /// Function for the layout engine.
     LayoutFunctionFn: (args: &HashMap<String, tera::Value>) -> tera::Result<tera::Value>
 );
 
-create_layout_fn!(
+define_layout_fn!(
     /// Tester for the layout engine.
     LayoutTesterFn: (value: Option<&tera::Value>, args: &[tera::Value]) -> tera::Result<bool>
 );

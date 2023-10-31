@@ -59,6 +59,71 @@ where
     })
 }
 
+impl<'lua> mlua::FromLua<'lua> for super::SyntaxHighlightStylesheet {
+    fn from_lua(value: mlua::Value<'lua>, lua: &'lua mlua::Lua) -> mlua::Result<Self> {
+        use mlua::LuaSerdeExt;
+        lua.from_value(value)
+    }
+}
+
+/// Implement [`mlua::FromLua`] for layout engine filters/functions/testers.
+macro_rules! impl_from_lua_for_layout_fn {
+    (
+        $struct_name:ident:
+            ($($arg_name:ident: $arg_type:ty),*) -> $ret_type:ty
+    ) => {
+        impl<'lua> mlua::FromLua<'lua> for $struct_name {
+            fn from_lua(value: mlua::Value<'lua>, lua: &'lua mlua::Lua) -> mlua::Result<Self> {
+                use std::sync::{Arc, Mutex};
+                use mlua::LuaSerdeExt;
+
+                let function = value
+                    .as_function()
+                    .ok_or_else(|| mlua::Error::external(format!(
+                        "expected {}, received {}",
+                        stringify!(mlua::Function),
+                        value.type_name()
+                    )))?
+                    .to_owned();
+
+                let function_key = lua.create_registry_value(function)?;
+
+                let lua_mutex = unsafe {
+                    crate::util::r#unsafe::static_lifetime(
+                        lua.app_data_ref::<Arc<Mutex<mlua::Lua>>>()
+                            .ok_or_else(|| mlua::Error::external("missing lua app data"))?
+                            .as_ref(),
+                    )
+                };
+
+                Ok($struct_name(Box::new(
+                    move |$($arg_name: $arg_type),*| -> $ret_type {
+                        let lua = lua_mutex
+                            .lock()
+                            .map_err(|error| tera::Error::msg(error.to_string()))?;
+
+                        $(
+                            let $arg_name = lua.to_value(&$arg_name)
+                                .map_err(|error| tera::Error::msg(error.to_string()))?;
+                        )*
+
+                        let function: mlua::Function = lua.registry_value(&function_key)
+                            .map_err(|error| tera::Error::msg(error.to_string()))?;
+
+                        let result = function.call::<_, mlua::Value>(($($arg_name),*))
+                            .map_err(|error| tera::Error::msg(error.to_string()))?;
+
+                        let result = lua.from_value(result)
+                            .map_err(|error| tera::Error::msg(error.to_string()))?;
+
+                        Ok(result)
+                    },
+                )))
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
