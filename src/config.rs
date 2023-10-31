@@ -161,8 +161,8 @@ impl self::rhai::FromRhai for SyntaxHighlightStylesheet {
 
 /// Generate [`Fn`] traits for layout engine filters/functions/testers.
 ///
-/// This macro automatically implements [`Debug`] and [`mlua::FromLua`] for the
-/// generated trait.
+/// This macro automatically implements [`Debug`], [`mlua::FromLua`], and
+/// [`rhai::FromRhai`] for the generated trait.
 macro_rules! create_layout_fn_trait {
     ($(#[$($attrs:tt)*])* $name:ident, ($($arg_name:ident: $arg_type:ty),*) -> $ret_type:ty) => {
         $(#[$($attrs)*])*
