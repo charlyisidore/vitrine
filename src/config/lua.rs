@@ -69,8 +69,7 @@ impl<'lua> mlua::FromLua<'lua> for super::SyntaxHighlightStylesheet {
 /// Implement [`mlua::FromLua`] for layout engine filters/functions/testers.
 macro_rules! impl_from_lua_for_layout_fn {
     (
-        $struct_name:ident:
-            ($($arg_name:ident: $arg_type:ty),*) -> $ret_type:ty
+        $struct_name:ident: ($($arg_name:ident: $arg_type:ty),*) -> $ret_type:ty
     ) => {
         impl<'lua> mlua::FromLua<'lua> for $struct_name {
             fn from_lua(value: mlua::Value<'lua>, lua: &'lua mlua::Lua) -> mlua::Result<Self> {

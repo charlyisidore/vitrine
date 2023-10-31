@@ -150,8 +150,8 @@ pub(crate) struct SyntaxHighlightStylesheet {
 /// [`rhai::FromRhai`] for the generated type.
 macro_rules! define_layout_fn {
     (
-        $(#[$($attrs:tt)*])* $struct_name:ident:
-            ($($arg_name:ident: $arg_type:ty),*) -> $ret_type:ty
+        $(#[$($attrs:tt)*])*
+        $struct_name:ident: ($($arg_name:ident: $arg_type:ty),*) -> $ret_type:ty
     ) => {
         $(#[$($attrs)*])*
         pub(crate) struct $struct_name(

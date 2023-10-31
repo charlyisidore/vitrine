@@ -170,8 +170,7 @@ impl FromRhai for super::SyntaxHighlightStylesheet {
 /// Implement [`FromRhai`] for layout engine filters/functions/testers.
 macro_rules! impl_from_rhai_for_layout_fn {
     (
-        $struct_name:ident:
-            ($($arg_name:ident: $arg_type:ty),*) -> $ret_type:ty
+        $struct_name:ident: ($($arg_name:ident: $arg_type:ty),*) -> $ret_type:ty
     ) => {
         impl self::rhai::FromRhai for $struct_name {
             fn from_rhai(
