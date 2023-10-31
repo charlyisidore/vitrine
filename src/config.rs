@@ -9,6 +9,7 @@ mod yaml;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
+    sync::{Arc, Mutex},
 };
 
 use serde::Deserialize;
@@ -148,6 +149,16 @@ impl<'lua> mlua::FromLua<'lua> for SyntaxHighlightStylesheet {
     }
 }
 
+impl self::rhai::FromRhai for SyntaxHighlightStylesheet {
+    fn from_rhai(
+        value: &::rhai::Dynamic,
+        _: Arc<::rhai::Engine>,
+        _: Arc<::rhai::AST>,
+    ) -> anyhow::Result<Self> {
+        ::rhai::serde::from_dynamic(value).map_err(|error| anyhow::anyhow!(error))
+    }
+}
+
 /// Generate [`Fn`] traits for layout engine filters/functions/testers.
 ///
 /// This macro automatically implements [`Debug`] and [`mlua::FromLua`] for the
@@ -168,11 +179,14 @@ macro_rules! create_layout_fn_trait {
         impl<'lua> mlua::FromLua<'lua> for Box<dyn $name> {
             fn from_lua(value: mlua::Value<'lua>, lua: &'lua mlua::Lua) -> mlua::Result<Self> {
                 use mlua::LuaSerdeExt;
-                use std::sync::{Arc, Mutex};
 
                 let function = value
                     .as_function()
-                    .ok_or_else(|| mlua::Error::external("expected a function"))?
+                    .ok_or_else(|| mlua::Error::external(format!(
+                        "expected {}, received {}",
+                        stringify!(mlua::Function),
+                        value.type_name()
+                    )))?
                     .to_owned();
 
                 let function_key = lua.create_registry_value(function)?;
@@ -193,7 +207,7 @@ macro_rules! create_layout_fn_trait {
 
                         $(
                             let $arg_name = lua.to_value(&$arg_name)
-                            .map_err(|error| tera::Error::msg(error.to_string()))?;
+                                .map_err(|error| tera::Error::msg(error.to_string()))?;
                         )*
 
                         let function: mlua::Function = lua.registry_value(&function_key)
@@ -203,6 +217,43 @@ macro_rules! create_layout_fn_trait {
                             .map_err(|error| tera::Error::msg(error.to_string()))?;
 
                         let result = lua.from_value(result)
+                            .map_err(|error| tera::Error::msg(error.to_string()))?;
+
+                        Ok(result)
+                    },
+                ))
+            }
+        }
+
+        impl self::rhai::FromRhai for Box<dyn $name> {
+            fn from_rhai(
+                value: &::rhai::Dynamic,
+                engine: Arc<::rhai::Engine>,
+                ast: Arc<::rhai::AST>,
+            ) -> anyhow::Result<Self> {
+                use ::rhai;
+
+                let fn_ptr = value.to_owned().try_cast::<rhai::FnPtr>().ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "expected {}, received {}",
+                        stringify!(rhai::FnPtr),
+                        value.type_name()
+                    )
+                })?;
+
+                Ok(Box::new(
+                    move |$($arg_name: $arg_type),*| -> $ret_type {
+                        $(
+                            let $arg_name = rhai::serde::to_dynamic($arg_name)
+                                .map_err(|error| tera::Error::msg(error.to_string()))?
+                                .to_owned();
+                        )*
+
+                        let result = fn_ptr
+                            .call::<rhai::Dynamic>(&engine, &ast, ($($arg_name),*,))
+                            .map_err(|error| tera::Error::msg(error.to_string()))?;
+
+                        let result = rhai::serde::from_dynamic(&result)
                             .map_err(|error| tera::Error::msg(error.to_string()))?;
 
                         Ok(result)

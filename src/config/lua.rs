@@ -5,6 +5,8 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use mlua::{Lua, Table};
+
 use super::PartialConfig;
 
 /// Load configuration from a Lua file.
@@ -24,14 +26,14 @@ where
 {
     let content = content.as_ref();
 
-    // `mlua::Lua` is not `Sync`, so we wrap it in `Arc<Mutex>`
-    let lua_mutex = Arc::new(Mutex::new(mlua::Lua::new()));
+    // `Lua` is not `Sync`, so we wrap it in `Arc<Mutex>`
+    let lua_mutex = Arc::new(Mutex::new(Lua::new()));
     let lua = lua_mutex.lock().unwrap();
 
     // Save the mutex in Lua's context, we can retrieve it with `lua.app_data_ref()`
     lua.set_app_data(Arc::clone(&lua_mutex));
 
-    let result: mlua::Table = lua.load(content).eval()?;
+    let result: Table = lua.load(content).eval()?;
 
     Ok(PartialConfig {
         input_dir: result.get("input_dir")?,
@@ -39,11 +41,21 @@ where
         base_url: result.get("base_url")?,
         data_dir: result.get("data_dir")?,
         layout_dir: result.get("layout_dir")?,
-        layout_filters: result.get("layout_filters")?,
-        layout_functions: result.get("layout_functions")?,
-        layout_testers: result.get("layout_testers")?,
-        syntax_highlight_css_prefix: result.get("syntax_highlight_css_prefix")?,
-        syntax_highlight_stylesheets: result.get("syntax_highlight_stylesheets")?,
+        layout_filters: result
+            .get::<_, Option<_>>("layout_filters")?
+            .unwrap_or_default(),
+        layout_functions: result
+            .get::<_, Option<_>>("layout_functions")?
+            .unwrap_or_default(),
+        layout_testers: result
+            .get::<_, Option<_>>("layout_testers")?
+            .unwrap_or_default(),
+        syntax_highlight_css_prefix: result
+            .get::<_, Option<_>>("syntax_highlight_css_prefix")?
+            .unwrap_or_default(),
+        syntax_highlight_stylesheets: result
+            .get::<_, Option<_>>("syntax_highlight_stylesheets")?
+            .unwrap_or_default(),
         ..Default::default()
     })
 }
@@ -98,5 +110,23 @@ mod tests {
         assert_eq!(stylesheet.prefix, "highlight-");
         assert_eq!(stylesheet.theme, "base16-ocean.dark");
         assert_eq!(stylesheet.url, "/highlight.css");
+    }
+
+    #[test]
+    fn load_config_str_empty() {
+        const CONTENT: &str = "return {}";
+
+        let config = super::load_config_str(CONTENT).unwrap();
+
+        assert!(config.input_dir.is_none());
+        assert!(config.output_dir.is_none());
+        assert!(config.base_url.is_none());
+        assert!(config.data_dir.is_none());
+        assert!(config.layout_dir.is_none());
+        assert!(config.layout_filters.is_empty(),);
+        assert!(config.layout_functions.is_empty());
+        assert!(config.layout_testers.is_empty());
+        assert!(config.syntax_highlight_css_prefix.is_empty());
+        assert!(config.syntax_highlight_stylesheets.is_empty());
     }
 }
