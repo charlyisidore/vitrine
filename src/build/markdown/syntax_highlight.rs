@@ -26,7 +26,6 @@ struct HighlightRule;
 impl CoreRule for HighlightRule {
     fn run(root: &mut Node, md: &MarkdownIt) {
         let context = md.ext.get::<Context>().unwrap();
-        dbg!(&context);
 
         // Since [`syntect`]` requires `'static` lifetime for `prefix` in
         // [`syntect::html::ClassStyle::SpacedPrefixed`], we cannot use a value created
