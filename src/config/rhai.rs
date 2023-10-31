@@ -32,7 +32,7 @@ where
     // Execute the script
     let result = engine.eval_ast::<rhai::Map>(&ast)?;
 
-    Ok(dbg!(PartialConfig {
+    Ok(PartialConfig {
         input_dir: result
             .get("input_dir")
             .map(|v| FromRhai::from_rhai(v, Arc::clone(&engine), Arc::clone(&ast)))
@@ -79,7 +79,7 @@ where
             .transpose()?
             .unwrap_or_default(),
         ..Default::default()
-    }))
+    })
 }
 
 /// Trait for types convertible from [`Dynamic`].
