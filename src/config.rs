@@ -165,8 +165,8 @@ impl self::rhai::FromRhai for SyntaxHighlightStylesheet {
 /// [`rhai::FromRhai`] for the generated type.
 macro_rules! create_layout_fn {
     (
-        $(#[$($attrs:tt)*])* $struct_name:ident,
-        ($($arg_name:ident: $arg_type:ty),*) -> $ret_type:ty
+        $(#[$($attrs:tt)*])* $struct_name:ident:
+            ($($arg_name:ident: $arg_type:ty),*) -> $ret_type:ty
     ) => {
         $(#[$($attrs)*])*
         pub(crate) struct $struct_name(
@@ -269,20 +269,18 @@ macro_rules! create_layout_fn {
 
 create_layout_fn!(
     /// Filter for the layout engine.
-    LayoutFilterFn,
-    (value: &tera::Value, args: &HashMap<String, tera::Value>) -> tera::Result<tera::Value>
+    LayoutFilterFn:
+        (value: &tera::Value, args: &HashMap<String, tera::Value>) -> tera::Result<tera::Value>
 );
 
 create_layout_fn!(
     /// Function for the layout engine.
-    LayoutFunctionFn,
-    (args: &HashMap<String, tera::Value>) -> tera::Result<tera::Value>
+    LayoutFunctionFn: (args: &HashMap<String, tera::Value>) -> tera::Result<tera::Value>
 );
 
 create_layout_fn!(
     /// Tester for the layout engine.
-    LayoutTesterFn,
-    (value: Option<&tera::Value>, args: &[tera::Value]) -> tera::Result<bool>
+    LayoutTesterFn: (value: Option<&tera::Value>, args: &[tera::Value]) -> tera::Result<bool>
 );
 
 /// Load configuration from a default file (e.g. `vitrine.config.json`).
