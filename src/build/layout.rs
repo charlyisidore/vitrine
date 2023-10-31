@@ -35,19 +35,19 @@ impl Engine {
                 // See <https://github.com/Keats/tera/issues/767>
                 for (name, filter) in config.layout_filters.iter() {
                     tera.register_filter(name, unsafe {
-                        crate::util::r#unsafe::static_lifetime(filter)
+                        crate::util::r#unsafe::static_lifetime(&filter.0)
                     });
                 }
 
                 for (name, function) in config.layout_functions.iter() {
                     tera.register_function(name, unsafe {
-                        crate::util::r#unsafe::static_lifetime(function)
+                        crate::util::r#unsafe::static_lifetime(&function.0)
                     });
                 }
 
                 for (name, tester) in config.layout_testers.iter() {
                     tera.register_tester(name, unsafe {
-                        crate::util::r#unsafe::static_lifetime(tester)
+                        crate::util::r#unsafe::static_lifetime(&tester.0)
                     });
                 }
 

@@ -70,13 +70,13 @@ pub(crate) struct Config {
     pub(crate) layout_dir: Option<PathBuf>,
 
     /// Custom filters for the layout engine.
-    pub(crate) layout_filters: HashMap<String, Box<dyn LayoutFilterFn>>,
+    pub(crate) layout_filters: HashMap<String, LayoutFilterFn>,
 
     /// Custom functions for the layout engine.
-    pub(crate) layout_functions: HashMap<String, Box<dyn LayoutFunctionFn>>,
+    pub(crate) layout_functions: HashMap<String, LayoutFunctionFn>,
 
     /// Custom testers for the layout engine.
-    pub(crate) layout_testers: HashMap<String, Box<dyn LayoutTesterFn>>,
+    pub(crate) layout_testers: HashMap<String, LayoutTesterFn>,
 
     /// Prefix for syntax highlight CSS classes.
     pub(crate) syntax_highlight_css_prefix: String,
@@ -107,15 +107,15 @@ pub(crate) struct PartialConfig {
 
     /// See [`Config::layout_filters`].
     #[serde(skip)]
-    pub(crate) layout_filters: HashMap<String, Box<dyn LayoutFilterFn>>,
+    pub(crate) layout_filters: HashMap<String, LayoutFilterFn>,
 
     /// See [`Config::layout_functions`].
     #[serde(skip)]
-    pub(crate) layout_functions: HashMap<String, Box<dyn LayoutFunctionFn>>,
+    pub(crate) layout_functions: HashMap<String, LayoutFunctionFn>,
 
     /// See [`Config::layout_testers`].
     #[serde(skip)]
-    pub(crate) layout_testers: HashMap<String, Box<dyn LayoutTesterFn>>,
+    pub(crate) layout_testers: HashMap<String, LayoutTesterFn>,
 
     /// See [`Config::syntax_highlight_css_prefix`].
     #[serde(default)]
@@ -159,24 +159,27 @@ impl self::rhai::FromRhai for SyntaxHighlightStylesheet {
     }
 }
 
-/// Generate [`Fn`] traits for layout engine filters/functions/testers.
+/// Generate [`Fn`] types for layout engine filters/functions/testers.
 ///
 /// This macro automatically implements [`Debug`], [`mlua::FromLua`], and
-/// [`rhai::FromRhai`] for the generated trait.
-macro_rules! create_layout_fn_trait {
-    ($(#[$($attrs:tt)*])* $name:ident, ($($arg_name:ident: $arg_type:ty),*) -> $ret_type:ty) => {
+/// [`rhai::FromRhai`] for the generated type.
+macro_rules! create_layout_fn {
+    (
+        $(#[$($attrs:tt)*])* $struct_name:ident,
+        ($($arg_name:ident: $arg_type:ty),*) -> $ret_type:ty
+    ) => {
         $(#[$($attrs)*])*
-        pub(crate) trait $name: Fn($($arg_type),*) -> $ret_type + Send + Sync {}
+        pub(crate) struct $struct_name(
+            pub(crate) Box<dyn Fn($($arg_type),*) -> $ret_type + Send + Sync>
+        );
 
-        impl<F> $name for F where F: Fn($($arg_type),*) -> $ret_type + Send + Sync {}
-
-        impl std::fmt::Debug for dyn $name {
+        impl std::fmt::Debug for $struct_name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, stringify!($name))
+                write!(f, stringify!($struct_name))
             }
         }
 
-        impl<'lua> mlua::FromLua<'lua> for Box<dyn $name> {
+        impl<'lua> mlua::FromLua<'lua> for $struct_name {
             fn from_lua(value: mlua::Value<'lua>, lua: &'lua mlua::Lua) -> mlua::Result<Self> {
                 use mlua::LuaSerdeExt;
 
@@ -199,7 +202,7 @@ macro_rules! create_layout_fn_trait {
                     )
                 };
 
-                Ok(Box::new(
+                Ok($struct_name(Box::new(
                     move |$($arg_name: $arg_type),*| -> $ret_type {
                         let lua = lua_mutex
                             .lock()
@@ -221,11 +224,11 @@ macro_rules! create_layout_fn_trait {
 
                         Ok(result)
                     },
-                ))
+                )))
             }
         }
 
-        impl self::rhai::FromRhai for Box<dyn $name> {
+        impl self::rhai::FromRhai for $struct_name {
             fn from_rhai(
                 value: &::rhai::Dynamic,
                 engine: Arc<::rhai::Engine>,
@@ -241,7 +244,7 @@ macro_rules! create_layout_fn_trait {
                     )
                 })?;
 
-                Ok(Box::new(
+                Ok($struct_name(Box::new(
                     move |$($arg_name: $arg_type),*| -> $ret_type {
                         $(
                             let $arg_name = rhai::serde::to_dynamic($arg_name)
@@ -258,25 +261,25 @@ macro_rules! create_layout_fn_trait {
 
                         Ok(result)
                     },
-                ))
+                )))
             }
         }
     };
 }
 
-create_layout_fn_trait!(
+create_layout_fn!(
     /// Filter for the layout engine.
     LayoutFilterFn,
     (value: &tera::Value, args: &HashMap<String, tera::Value>) -> tera::Result<tera::Value>
 );
 
-create_layout_fn_trait!(
+create_layout_fn!(
     /// Function for the layout engine.
     LayoutFunctionFn,
     (args: &HashMap<String, tera::Value>) -> tera::Result<tera::Value>
 );
 
-create_layout_fn_trait!(
+create_layout_fn!(
     /// Tester for the layout engine.
     LayoutTesterFn,
     (value: Option<&tera::Value>, args: &[tera::Value]) -> tera::Result<bool>

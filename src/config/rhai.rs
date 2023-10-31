@@ -78,7 +78,6 @@ where
             .map(|v| FromRhai::from_rhai(v, Arc::clone(&engine), Arc::clone(&ast)))
             .transpose()?
             .unwrap_or_default(),
-        ..Default::default()
     })
 }
 

@@ -56,7 +56,6 @@ where
         syntax_highlight_stylesheets: result
             .get::<_, Option<_>>("syntax_highlight_stylesheets")?
             .unwrap_or_default(),
-        ..Default::default()
     })
 }
 
