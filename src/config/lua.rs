@@ -95,13 +95,10 @@ macro_rules! impl_from_lua_for_layout_fn {
 
                 let function_key = lua.create_registry_value(function)?;
 
-                let lua_mutex = unsafe {
-                    crate::util::r#unsafe::static_lifetime(
-                        lua.app_data_ref::<Arc<Mutex<Lua>>>()
-                            .ok_or_else(|| ::mlua::Error::external("missing lua app data"))?
-                            .as_ref(),
-                    )
-                };
+                let lua_mutex = lua
+                    .app_data_ref::<Arc<Mutex<Lua>>>()
+                    .ok_or_else(|| ::mlua::Error::external("missing lua app data"))?
+                    .to_owned();
 
                 Ok($($struct_name)::*(Box::new(
                     move |$($arg_name: $arg_type),*| -> $ret_type {
@@ -161,13 +158,10 @@ impl<'lua> FromLua<'lua> for super::SyntaxHighlightFormatterFn {
 
         let function_key = lua.create_registry_value(function)?;
 
-        let lua_mutex = unsafe {
-            crate::util::r#unsafe::static_lifetime(
-                lua.app_data_ref::<Arc<Mutex<Lua>>>()
-                    .ok_or_else(|| ::mlua::Error::external("missing lua app data"))?
-                    .as_ref(),
-            )
-        };
+        let lua_mutex = lua
+            .app_data_ref::<Arc<Mutex<Lua>>>()
+            .ok_or_else(|| ::mlua::Error::external("missing lua app data"))?
+            .to_owned();
 
         Ok(super::SyntaxHighlightFormatterFn(Arc::new(
             move |content: &String,
