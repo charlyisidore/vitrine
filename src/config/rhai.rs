@@ -68,8 +68,23 @@ where
             .map(|v| FromRhai::from_rhai(v, Arc::clone(&engine), Arc::clone(&ast)))
             .transpose()?
             .unwrap_or_default(),
+        syntax_highlight_code_attributes: result
+            .get("syntax_highlight_code_attributes")
+            .map(|v| FromRhai::from_rhai(v, Arc::clone(&engine), Arc::clone(&ast)))
+            .transpose()?
+            .unwrap_or_default(),
+        syntax_highlight_pre_attributes: result
+            .get("syntax_highlight_pre_attributes")
+            .map(|v| FromRhai::from_rhai(v, Arc::clone(&engine), Arc::clone(&ast)))
+            .transpose()?
+            .unwrap_or_default(),
         syntax_highlight_css_prefix: result
             .get("syntax_highlight_css_prefix")
+            .map(|v| FromRhai::from_rhai(v, Arc::clone(&engine), Arc::clone(&ast)))
+            .transpose()?
+            .unwrap_or_default(),
+        syntax_highlight_formatter: result
+            .get("syntax_highlight_formatter")
             .map(|v| FromRhai::from_rhai(v, Arc::clone(&engine), Arc::clone(&ast)))
             .transpose()?
             .unwrap_or_default(),
@@ -157,6 +172,95 @@ where
     }
 }
 
+/// Implement [`FromRhai`] for layout engine filters/functions/testers.
+macro_rules! impl_from_rhai_for_layout_fn {
+    (
+        $($struct_name:ident)::*: ($($arg_name:ident: $arg_type:ty),*) -> $ret_type:ty
+    ) => {
+        impl FromRhai for $($struct_name)::* {
+            fn from_rhai(
+                value: &::rhai::Dynamic,
+                engine: Arc<::rhai::Engine>,
+                ast: Arc<::rhai::AST>,
+            ) -> anyhow::Result<Self> {
+                let fn_ptr = value.to_owned().try_cast::<::rhai::FnPtr>().ok_or_else(|| {
+                    ::anyhow::anyhow!(
+                        "expected {}, received {}",
+                        stringify!(::rhai::FnPtr),
+                        value.type_name()
+                    )
+                })?;
+
+                Ok($($struct_name)::*(Box::new(
+                    move |$($arg_name: $arg_type),*| -> $ret_type {
+                        $(
+                            let $arg_name = ::rhai::serde::to_dynamic($arg_name)
+                                .map_err(|error| ::tera::Error::msg(error.to_string()))?
+                                .to_owned();
+                        )*
+
+                        let result = fn_ptr
+                            .call::<::rhai::Dynamic>(&engine, &ast, ($($arg_name),*,))
+                            .map_err(|error| ::tera::Error::msg(error.to_string()))?;
+
+                        let result = ::rhai::serde::from_dynamic(&result)
+                            .map_err(|error| ::tera::Error::msg(error.to_string()))?;
+
+                        Ok(result)
+                    },
+                )))
+            }
+        }
+    }
+}
+
+impl_from_rhai_for_layout_fn!(
+    super::LayoutFilterFn:
+        (value: &tera::Value, args: &HashMap<String, tera::Value>) -> tera::Result<tera::Value>
+);
+
+impl_from_rhai_for_layout_fn!(
+    super::LayoutFunctionFn: (args: &HashMap<String, tera::Value>) -> tera::Result<tera::Value>
+);
+
+impl_from_rhai_for_layout_fn!(
+    super::LayoutTesterFn: (value: Option<&tera::Value>, args: &[tera::Value]) -> tera::Result<bool>
+);
+
+impl FromRhai for super::SyntaxHighlightFormatterFn {
+    fn from_rhai(
+        value: &::rhai::Dynamic,
+        engine: Arc<::rhai::Engine>,
+        ast: Arc<::rhai::AST>,
+    ) -> anyhow::Result<Self> {
+        use super::SyntaxHighlightFormatterFn;
+
+        let fn_ptr = value.to_owned().try_cast::<rhai::FnPtr>().ok_or_else(|| {
+            anyhow::anyhow!(
+                "expected {}, received {}",
+                stringify!(rhai::FnPtr),
+                value.type_name()
+            )
+        })?;
+
+        Ok(SyntaxHighlightFormatterFn(Arc::new(
+            move |content: &String,
+                  attributes: &HashMap<String, String>|
+                  -> anyhow::Result<Option<String>> {
+                let content = rhai::serde::to_dynamic(content)?.to_owned();
+
+                let attributes = rhai::serde::to_dynamic(attributes)?.to_owned();
+
+                let result = fn_ptr.call::<rhai::Dynamic>(&engine, &ast, (content, attributes))?;
+
+                let result = rhai::serde::from_dynamic(&result)?;
+
+                Ok(result)
+            },
+        )))
+    }
+}
+
 impl FromRhai for super::SyntaxHighlightStylesheet {
     fn from_rhai(
         value: &::rhai::Dynamic,
@@ -164,50 +268,6 @@ impl FromRhai for super::SyntaxHighlightStylesheet {
         _: Arc<::rhai::AST>,
     ) -> anyhow::Result<Self> {
         ::rhai::serde::from_dynamic(value).map_err(|error| anyhow::anyhow!(error))
-    }
-}
-
-/// Implement [`FromRhai`] for layout engine filters/functions/testers.
-macro_rules! impl_from_rhai_for_layout_fn {
-    (
-        $struct_name:ident: ($($arg_name:ident: $arg_type:ty),*) -> $ret_type:ty
-    ) => {
-        impl self::rhai::FromRhai for $struct_name {
-            fn from_rhai(
-                value: &::rhai::Dynamic,
-                engine: Arc<::rhai::Engine>,
-                ast: Arc<::rhai::AST>,
-            ) -> anyhow::Result<Self> {
-                use ::rhai;
-
-                let fn_ptr = value.to_owned().try_cast::<rhai::FnPtr>().ok_or_else(|| {
-                    anyhow::anyhow!(
-                        "expected {}, received {}",
-                        stringify!(rhai::FnPtr),
-                        value.type_name()
-                    )
-                })?;
-
-                Ok($struct_name(Box::new(
-                    move |$($arg_name: $arg_type),*| -> $ret_type {
-                        $(
-                            let $arg_name = rhai::serde::to_dynamic($arg_name)
-                                .map_err(|error| tera::Error::msg(error.to_string()))?
-                                .to_owned();
-                        )*
-
-                        let result = fn_ptr
-                            .call::<rhai::Dynamic>(&engine, &ast, ($($arg_name),*,))
-                            .map_err(|error| tera::Error::msg(error.to_string()))?;
-
-                        let result = rhai::serde::from_dynamic(&result)
-                            .map_err(|error| tera::Error::msg(error.to_string()))?;
-
-                        Ok(result)
-                    },
-                )))
-            }
-        }
     }
 }
 

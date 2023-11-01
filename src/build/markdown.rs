@@ -4,15 +4,27 @@
 
 mod syntax_highlight;
 
+use std::collections::HashMap;
+
 use markdown_it::{parser::extset::MarkdownItExt, MarkdownIt};
 
 use super::{Config, Entry, Error};
+use crate::config::SyntaxHighlightFormatterFn;
 
 /// Context stored in [`MarkdownIt`].
 #[derive(Debug)]
 pub(self) struct Context {
-    /// Prefix for syntax highlight CSS classes.
+    /// HTML attributes for syntax highlight `<code>` element
+    pub(self) syntax_highlight_code_attributes: HashMap<String, String>,
+
+    /// HTML attributes for syntax highlight `<pre>` element
+    pub(self) syntax_highlight_pre_attributes: HashMap<String, String>,
+
+    /// Prefix for syntax highlight CSS classes
     pub(self) syntax_highlight_css_prefix: String,
+
+    /// Syntax highlight HTML formatter
+    pub(self) syntax_highlight_formatter: Option<SyntaxHighlightFormatterFn>,
 }
 
 impl MarkdownItExt for Context {}
@@ -40,7 +52,13 @@ impl Parser {
 
         // Context to be used in Markdown rules
         parser.ext.insert(Context {
+            syntax_highlight_code_attributes: config.syntax_highlight_code_attributes.to_owned(),
+            syntax_highlight_pre_attributes: config.syntax_highlight_pre_attributes.to_owned(),
             syntax_highlight_css_prefix: config.syntax_highlight_css_prefix.to_owned(),
+            syntax_highlight_formatter: config
+                .syntax_highlight_formatter
+                .as_ref()
+                .map(|v| v.clone()),
         });
 
         Self { parser }

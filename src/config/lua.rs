@@ -1,11 +1,12 @@
 //! Load configuration from Lua scripts.
 
 use std::{
+    collections::HashMap,
     path::Path,
     sync::{Arc, Mutex},
 };
 
-use mlua::{Lua, Table};
+use mlua::{FromLua, Lua};
 
 use super::PartialConfig;
 
@@ -26,14 +27,17 @@ where
 {
     let content = content.as_ref();
 
+    // Call `unsafe_new()` to allow loading C modules
+    let lua = unsafe { Lua::unsafe_new() };
+
     // `Lua` is not `Sync`, so we wrap it in `Arc<Mutex>`
-    let lua_mutex = Arc::new(Mutex::new(Lua::new()));
+    let lua_mutex = Arc::new(Mutex::new(lua));
     let lua = lua_mutex.lock().unwrap();
 
     // Save the mutex in Lua's context, we can retrieve it with `lua.app_data_ref()`
     lua.set_app_data(Arc::clone(&lua_mutex));
 
-    let result: Table = lua.load(content).eval()?;
+    let result: mlua::Table = lua.load(content).eval()?;
 
     Ok(PartialConfig {
         input_dir: result.get("input_dir")?,
@@ -50,8 +54,17 @@ where
         layout_testers: result
             .get::<_, Option<_>>("layout_testers")?
             .unwrap_or_default(),
+        syntax_highlight_code_attributes: result
+            .get::<_, Option<_>>("syntax_highlight_code_attributes")?
+            .unwrap_or_default(),
+        syntax_highlight_pre_attributes: result
+            .get::<_, Option<_>>("syntax_highlight_pre_attributes")?
+            .unwrap_or_default(),
         syntax_highlight_css_prefix: result
             .get::<_, Option<_>>("syntax_highlight_css_prefix")?
+            .unwrap_or_default(),
+        syntax_highlight_formatter: result
+            .get::<_, Option<_>>("syntax_highlight_formatter")?
             .unwrap_or_default(),
         syntax_highlight_stylesheets: result
             .get::<_, Option<_>>("syntax_highlight_stylesheets")?
@@ -59,28 +72,23 @@ where
     })
 }
 
-impl<'lua> mlua::FromLua<'lua> for super::SyntaxHighlightStylesheet {
-    fn from_lua(value: mlua::Value<'lua>, lua: &'lua mlua::Lua) -> mlua::Result<Self> {
-        use mlua::LuaSerdeExt;
-        lua.from_value(value)
-    }
-}
-
-/// Implement [`mlua::FromLua`] for layout engine filters/functions/testers.
+/// Implement [`FromLua`] for layout engine filters/functions/testers.
 macro_rules! impl_from_lua_for_layout_fn {
     (
-        $struct_name:ident: ($($arg_name:ident: $arg_type:ty),*) -> $ret_type:ty
+        $($struct_name:ident)::*: ($($arg_name:ident: $arg_type:ty),*) -> $ret_type:ty
     ) => {
-        impl<'lua> mlua::FromLua<'lua> for $struct_name {
-            fn from_lua(value: mlua::Value<'lua>, lua: &'lua mlua::Lua) -> mlua::Result<Self> {
-                use std::sync::{Arc, Mutex};
-                use mlua::LuaSerdeExt;
+        impl<'lua> ::mlua::FromLua<'lua> for $($struct_name)::* {
+            fn from_lua(
+                value: ::mlua::Value<'lua>, lua: &'lua ::mlua::Lua
+            ) -> ::mlua::Result<Self> {
+                use ::std::sync::{Arc, Mutex};
+                use ::mlua::{Lua, LuaSerdeExt};
 
                 let function = value
                     .as_function()
-                    .ok_or_else(|| mlua::Error::external(format!(
+                    .ok_or_else(|| ::mlua::Error::external(format!(
                         "expected {}, received {}",
-                        stringify!(mlua::Function),
+                        stringify!(::mlua::Function),
                         value.type_name()
                     )))?
                     .to_owned();
@@ -89,37 +97,106 @@ macro_rules! impl_from_lua_for_layout_fn {
 
                 let lua_mutex = unsafe {
                     crate::util::r#unsafe::static_lifetime(
-                        lua.app_data_ref::<Arc<Mutex<mlua::Lua>>>()
-                            .ok_or_else(|| mlua::Error::external("missing lua app data"))?
+                        lua.app_data_ref::<Arc<Mutex<Lua>>>()
+                            .ok_or_else(|| ::mlua::Error::external("missing lua app data"))?
                             .as_ref(),
                     )
                 };
 
-                Ok($struct_name(Box::new(
+                Ok($($struct_name)::*(Box::new(
                     move |$($arg_name: $arg_type),*| -> $ret_type {
                         let lua = lua_mutex
                             .lock()
-                            .map_err(|error| tera::Error::msg(error.to_string()))?;
+                            .map_err(|error| ::tera::Error::msg(error.to_string()))?;
 
                         $(
                             let $arg_name = lua.to_value(&$arg_name)
-                                .map_err(|error| tera::Error::msg(error.to_string()))?;
+                                .map_err(|error| ::tera::Error::msg(error.to_string()))?;
                         )*
 
-                        let function: mlua::Function = lua.registry_value(&function_key)
-                            .map_err(|error| tera::Error::msg(error.to_string()))?;
+                        let function: ::mlua::Function = lua.registry_value(&function_key)
+                            .map_err(|error| ::tera::Error::msg(error.to_string()))?;
 
-                        let result = function.call::<_, mlua::Value>(($($arg_name),*))
-                            .map_err(|error| tera::Error::msg(error.to_string()))?;
+                        let result = function.call::<_, ::mlua::Value>(($($arg_name),*))
+                            .map_err(|error| ::tera::Error::msg(error.to_string()))?;
 
                         let result = lua.from_value(result)
-                            .map_err(|error| tera::Error::msg(error.to_string()))?;
+                            .map_err(|error| ::tera::Error::msg(error.to_string()))?;
 
                         Ok(result)
                     },
                 )))
             }
         }
+    }
+}
+
+impl_from_lua_for_layout_fn!(
+    super::LayoutFilterFn:
+        (value: &tera::Value, args: &HashMap<String, tera::Value>) -> tera::Result<tera::Value>
+);
+
+impl_from_lua_for_layout_fn!(
+    super::LayoutFunctionFn: (args: &HashMap<String, tera::Value>) -> tera::Result<tera::Value>
+);
+
+impl_from_lua_for_layout_fn!(
+    super::LayoutTesterFn: (value: Option<&tera::Value>, args: &[tera::Value]) -> tera::Result<bool>
+);
+
+impl<'lua> FromLua<'lua> for super::SyntaxHighlightFormatterFn {
+    fn from_lua(value: ::mlua::Value<'lua>, lua: &'lua ::mlua::Lua) -> ::mlua::Result<Self> {
+        use ::mlua::LuaSerdeExt;
+
+        let function = value
+            .as_function()
+            .ok_or_else(|| {
+                ::mlua::Error::external(format!(
+                    "expected {}, received {}",
+                    stringify!(::mlua::Function),
+                    value.type_name()
+                ))
+            })?
+            .to_owned();
+
+        let function_key = lua.create_registry_value(function)?;
+
+        let lua_mutex = unsafe {
+            crate::util::r#unsafe::static_lifetime(
+                lua.app_data_ref::<Arc<Mutex<Lua>>>()
+                    .ok_or_else(|| ::mlua::Error::external("missing lua app data"))?
+                    .as_ref(),
+            )
+        };
+
+        Ok(super::SyntaxHighlightFormatterFn(Arc::new(
+            move |content: &String,
+                  attributes: &HashMap<String, String>|
+                  -> ::anyhow::Result<Option<String>> {
+                let lua = lua_mutex
+                    .lock()
+                    .map_err(|error| ::anyhow::anyhow!(error.to_string()))?;
+
+                let content = lua.to_value(&content)?;
+
+                let attributes = lua.to_value(&attributes)?;
+
+                let function: ::mlua::Function = lua.registry_value(&function_key)?;
+
+                let result = function.call::<_, ::mlua::Value>((content, attributes))?;
+
+                let result = lua.from_value(result)?;
+
+                Ok(result)
+            },
+        )))
+    }
+}
+
+impl<'lua> FromLua<'lua> for super::SyntaxHighlightStylesheet {
+    fn from_lua(value: mlua::Value<'lua>, lua: &'lua Lua) -> mlua::Result<Self> {
+        use mlua::LuaSerdeExt;
+        lua.from_value(value)
     }
 }
 

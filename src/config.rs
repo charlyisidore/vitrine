@@ -1,9 +1,7 @@
 //! Configuration.
 
 mod json;
-#[macro_use]
 mod lua;
-#[macro_use]
 mod rhai;
 mod toml;
 mod yaml;
@@ -80,8 +78,17 @@ pub(crate) struct Config {
     /// Custom testers for the layout engine.
     pub(crate) layout_testers: HashMap<String, LayoutTesterFn>,
 
+    /// HTML attributes for syntax highlight `<code>` element.
+    pub(crate) syntax_highlight_code_attributes: HashMap<String, String>,
+
+    /// HTML attributes for syntax highlight `<pre>` element.
+    pub(crate) syntax_highlight_pre_attributes: HashMap<String, String>,
+
     /// Prefix for syntax highlight CSS classes.
     pub(crate) syntax_highlight_css_prefix: String,
+
+    /// Formatters for syntax highlight.
+    pub(crate) syntax_highlight_formatter: Option<SyntaxHighlightFormatterFn>,
 
     /// Syntax highlight CSS stylesheets.
     pub(crate) syntax_highlight_stylesheets: Vec<SyntaxHighlightStylesheet>,
@@ -119,9 +126,21 @@ pub(crate) struct PartialConfig {
     #[serde(skip)]
     pub(crate) layout_testers: HashMap<String, LayoutTesterFn>,
 
+    /// See [`Config::syntax_highlight_code_attributes`].
+    #[serde(default)]
+    pub(crate) syntax_highlight_code_attributes: HashMap<String, String>,
+
+    /// See [`Config::syntax_highlight_pre_attributes`].
+    #[serde(default)]
+    pub(crate) syntax_highlight_pre_attributes: HashMap<String, String>,
+
     /// See [`Config::syntax_highlight_css_prefix`].
     #[serde(default)]
     pub(crate) syntax_highlight_css_prefix: String,
+
+    /// See [`Config::syntax_highlight_formatter`].
+    #[serde(skip)]
+    pub(crate) syntax_highlight_formatter: Option<SyntaxHighlightFormatterFn>,
 
     /// See [`Config::syntax_highlight_stylesheets`].
     #[serde(default)]
@@ -163,9 +182,6 @@ macro_rules! define_layout_fn {
                 write!(f, stringify!($struct_name))
             }
         }
-
-        impl_from_lua_for_layout_fn!{$struct_name: ($($arg_name: $arg_type),*) -> $ret_type}
-        impl_from_rhai_for_layout_fn!{$struct_name: ($($arg_name: $arg_type),*) -> $ret_type}
     };
 }
 
@@ -184,6 +200,20 @@ define_layout_fn!(
     /// Tester for the layout engine.
     LayoutTesterFn: (value: Option<&tera::Value>, args: &[tera::Value]) -> tera::Result<bool>
 );
+
+/// Syntax highlight formatter.
+#[derive(Clone)]
+pub(crate) struct SyntaxHighlightFormatterFn(
+    pub(crate)  Arc<
+        dyn Fn(&String, &HashMap<String, String>) -> anyhow::Result<Option<String>> + Send + Sync,
+    >,
+);
+
+impl std::fmt::Debug for SyntaxHighlightFormatterFn {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, stringify!(SyntaxHighlightFormatterFn))
+    }
+}
 
 /// Load configuration from a default file (e.g. `vitrine.config.json`).
 ///
@@ -262,7 +292,10 @@ where
         layout_filters: config.layout_filters,
         layout_functions: config.layout_functions,
         layout_testers: config.layout_testers,
+        syntax_highlight_code_attributes: config.syntax_highlight_code_attributes,
+        syntax_highlight_pre_attributes: config.syntax_highlight_pre_attributes,
         syntax_highlight_css_prefix: config.syntax_highlight_css_prefix,
+        syntax_highlight_formatter: config.syntax_highlight_formatter,
         syntax_highlight_stylesheets: config.syntax_highlight_stylesheets,
     })
 }

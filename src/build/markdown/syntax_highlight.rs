@@ -2,6 +2,8 @@
 //!
 //! This module uses [`syntect`] under the hood.
 
+use std::collections::HashMap;
+
 use markdown_it::{
     parser::core::CoreRule,
     plugins::cmark::block::{code::CodeBlock, fence::CodeFence},
@@ -49,6 +51,28 @@ impl CoreRule for HighlightRule {
             };
 
             if let Some(content) = content {
+                let result = context
+                    .syntax_highlight_formatter
+                    .as_ref()
+                    .and_then(|f| {
+                        let mut attributes = HashMap::new();
+                        if let Some(language) = language {
+                            attributes.insert("language".to_owned(), language.to_owned());
+                        }
+                        (f.0)(content, &attributes).transpose()
+                    })
+                    .transpose();
+
+                if let Some(error) = result.as_ref().err() {
+                    tracing::error!("markdown::syntax_highlight: {}", error);
+                    return;
+                }
+
+                if let Some(content) = result.unwrap() {
+                    node.replace(CustomSyntaxHighlight { content });
+                    return;
+                }
+
                 let syntax = language
                     .and_then(|language| syntax_set.find_syntax_by_token(language))
                     .unwrap_or_else(|| syntax_set.find_syntax_plain_text());
@@ -69,42 +93,76 @@ impl CoreRule for HighlightRule {
 
                 let content = html_generator.finalize();
 
-                node.replace(Highlight {
+                node.replace(BuiltinSyntaxHighlight {
                     content,
                     language: language.map(|s| s.to_owned()),
                     prefix: prefix.to_owned(),
+                    code_attributes: context.syntax_highlight_code_attributes.to_owned(),
+                    pre_attributes: context.syntax_highlight_pre_attributes.to_owned(),
                 });
             }
         });
     }
 }
 
-/// AST node for the syntax highlight Markdown rule.
+/// AST node for builtin syntax highlight.
 #[derive(Debug)]
-struct Highlight {
+struct BuiltinSyntaxHighlight {
     content: String,
     language: Option<String>,
     prefix: String,
+    code_attributes: HashMap<String, String>,
+    pre_attributes: HashMap<String, String>,
 }
 
-impl NodeValue for Highlight {
+impl NodeValue for BuiltinSyntaxHighlight {
     fn render(&self, _: &Node, fmt: &mut dyn Renderer) {
         const PRE: &str = "pre";
         const CODE: &str = "code";
-        if let Some(language) = self.language.as_ref().filter(|v| !v.is_empty()) {
-            let attrs = [(
-                "class",
-                format!("{}code language-{}", self.prefix, &language),
-            )];
-            fmt.open(PRE, &attrs);
-            fmt.open(CODE, &attrs);
+
+        let mut code_attributes = self.code_attributes.clone();
+        let mut pre_attributes = self.pre_attributes.clone();
+
+        let class = if let Some(language) = self.language.as_ref().filter(|v| !v.is_empty()) {
+            format!("{}code language-{}", self.prefix, &language)
         } else {
-            let attrs = [("class", format!("{}code", self.prefix))];
-            fmt.open(PRE, &attrs);
-            fmt.open(CODE, &attrs);
-        }
+            format!("{}code", self.prefix)
+        };
+
+        code_attributes
+            .entry("class".to_owned())
+            .or_insert_with(|| class.to_owned());
+
+        pre_attributes
+            .entry("class".to_owned())
+            .or_insert_with(|| class.to_owned());
+
+        let code_attributes: Vec<_> = code_attributes
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.to_owned()))
+            .collect();
+
+        let pre_attributes: Vec<_> = pre_attributes
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.to_owned()))
+            .collect();
+
+        fmt.open(PRE, &pre_attributes);
+        fmt.open(CODE, &code_attributes);
         fmt.text_raw(&self.content);
         fmt.close(CODE);
         fmt.close(PRE);
+    }
+}
+
+/// AST node for custom syntax highlight.
+#[derive(Debug)]
+struct CustomSyntaxHighlight {
+    content: String,
+}
+
+impl NodeValue for CustomSyntaxHighlight {
+    fn render(&self, _: &Node, fmt: &mut dyn Renderer) {
+        fmt.text_raw(&self.content);
     }
 }
