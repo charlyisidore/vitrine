@@ -2,6 +2,8 @@
 //!
 //! This module uses [`tera`] under the hood.
 
+use std::collections::HashMap;
+
 use tera::Tera;
 
 use super::{Config, Entry, Error};
@@ -29,26 +31,39 @@ impl Engine {
                         source: error.into(),
                     })?;
 
-                // Since [`tera`]` requires `'static` lifetime from filters/functions/testers,
-                // we cannot use functions created at runtime. Therefore, we use
-                // `static_lifetime` as a workaround.
-                // See <https://github.com/Keats/tera/issues/767>
                 for (name, filter) in config.layout_filters.iter() {
-                    tera.register_filter(name, unsafe {
-                        crate::util::r#unsafe::static_lifetime(&filter.0)
-                    });
+                    let filter = filter.to_owned();
+                    let filter = move |value: &tera::Value,
+                                       args: &HashMap<String, tera::Value>|
+                          -> tera::Result<tera::Value> {
+                        filter
+                            .call_2(value, args)
+                            .map_err(|error| tera::Error::msg(error.to_string()))
+                    };
+                    tera.register_filter(name, filter);
                 }
 
                 for (name, function) in config.layout_functions.iter() {
-                    tera.register_function(name, unsafe {
-                        crate::util::r#unsafe::static_lifetime(&function.0)
-                    });
+                    let function = function.to_owned();
+                    let function =
+                        move |args: &HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
+                            function
+                                .call_1(args)
+                                .map_err(|error| tera::Error::msg(error.to_string()))
+                        };
+                    tera.register_function(name, function);
                 }
 
                 for (name, tester) in config.layout_testers.iter() {
-                    tera.register_tester(name, unsafe {
-                        crate::util::r#unsafe::static_lifetime(&tester.0)
-                    });
+                    let tester = tester.to_owned();
+                    let tester = move |value: Option<&tera::Value>,
+                                       args: &[tera::Value]|
+                          -> tera::Result<bool> {
+                        tester
+                            .call_2(&value, args)
+                            .map_err(|error| tera::Error::msg(error.to_string()))
+                    };
+                    tera.register_tester(name, tester);
                 }
 
                 Ok(Self { tera })

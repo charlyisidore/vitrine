@@ -70,13 +70,13 @@ pub(crate) struct Config {
     pub(crate) layout_dir: Option<PathBuf>,
 
     /// Custom filters for the layout engine.
-    pub(crate) layout_filters: HashMap<String, LayoutFilterFn>,
+    pub(crate) layout_filters: HashMap<String, Function>,
 
     /// Custom functions for the layout engine.
-    pub(crate) layout_functions: HashMap<String, LayoutFunctionFn>,
+    pub(crate) layout_functions: HashMap<String, Function>,
 
     /// Custom testers for the layout engine.
-    pub(crate) layout_testers: HashMap<String, LayoutTesterFn>,
+    pub(crate) layout_testers: HashMap<String, Function>,
 
     /// HTML attributes for syntax highlight `<code>` element.
     pub(crate) syntax_highlight_code_attributes: HashMap<String, String>,
@@ -88,16 +88,31 @@ pub(crate) struct Config {
     pub(crate) syntax_highlight_css_prefix: String,
 
     /// Formatters for syntax highlight.
-    pub(crate) syntax_highlight_formatter: Option<SyntaxHighlightFormatterFn>,
+    pub(crate) syntax_highlight_formatter: Option<Function>,
 
     /// Syntax highlight CSS stylesheets.
     pub(crate) syntax_highlight_stylesheets: Vec<SyntaxHighlightStylesheet>,
 }
 
+/// Syntax highlight CSS stylesheet configuration.
+#[derive(Debug)]
+pub(crate) struct SyntaxHighlightStylesheet {
+    /// Prefix for class names.
+    pub(crate) prefix: String,
+
+    /// Theme name.
+    ///
+    /// See <https://docs.rs/syntect/latest/syntect/highlighting/struct.ThemeSet.html>
+    pub(crate) theme: String,
+
+    /// Output URL of the stylesheet.
+    pub(crate) url: String,
+}
+
 /// Partial configuration.
 ///
 /// This structure can be used for deserialization.
-#[derive(Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize)]
 pub(crate) struct PartialConfig {
     /// See [`Config::input_dir`].
     pub(crate) input_dir: Option<String>,
@@ -116,102 +131,172 @@ pub(crate) struct PartialConfig {
 
     /// See [`Config::layout_filters`].
     #[serde(skip)]
-    pub(crate) layout_filters: HashMap<String, LayoutFilterFn>,
+    pub(crate) layout_filters: Option<HashMap<String, Function>>,
 
     /// See [`Config::layout_functions`].
     #[serde(skip)]
-    pub(crate) layout_functions: HashMap<String, LayoutFunctionFn>,
+    pub(crate) layout_functions: Option<HashMap<String, Function>>,
 
     /// See [`Config::layout_testers`].
     #[serde(skip)]
-    pub(crate) layout_testers: HashMap<String, LayoutTesterFn>,
+    pub(crate) layout_testers: Option<HashMap<String, Function>>,
 
     /// See [`Config::syntax_highlight_code_attributes`].
-    #[serde(default)]
-    pub(crate) syntax_highlight_code_attributes: HashMap<String, String>,
+    pub(crate) syntax_highlight_code_attributes: Option<HashMap<String, String>>,
 
     /// See [`Config::syntax_highlight_pre_attributes`].
-    #[serde(default)]
-    pub(crate) syntax_highlight_pre_attributes: HashMap<String, String>,
+    pub(crate) syntax_highlight_pre_attributes: Option<HashMap<String, String>>,
 
     /// See [`Config::syntax_highlight_css_prefix`].
-    #[serde(default)]
-    pub(crate) syntax_highlight_css_prefix: String,
+    pub(crate) syntax_highlight_css_prefix: Option<String>,
 
     /// See [`Config::syntax_highlight_formatter`].
     #[serde(skip)]
-    pub(crate) syntax_highlight_formatter: Option<SyntaxHighlightFormatterFn>,
+    pub(crate) syntax_highlight_formatter: Option<Function>,
 
     /// See [`Config::syntax_highlight_stylesheets`].
-    #[serde(default)]
-    pub(crate) syntax_highlight_stylesheets: Vec<SyntaxHighlightStylesheet>,
+    pub(crate) syntax_highlight_stylesheets: Option<Vec<PartialSyntaxHighlightStylesheet>>,
 }
 
-/// Syntax highlight CSS stylesheet configuration.
-#[derive(Debug, Deserialize)]
-pub(crate) struct SyntaxHighlightStylesheet {
-    /// Prefix for class names.
-    #[serde(default)]
-    pub(crate) prefix: String,
+// Convert `PartialConfig` to `Config`
+impl Into<Config> for PartialConfig {
+    fn into(self) -> Config {
+        Config {
+            config_path: None,
+            input_dir: self
+                .input_dir
+                .unwrap_or_else(|| DEFAULT_INPUT_DIR.to_owned())
+                .into(),
+            output_dir: self
+                .output_dir
+                .map_or_else(|| Some(DEFAULT_OUTPUT_DIR.into()), |path| Some(path.into())),
+            base_url: self
+                .base_url
+                .unwrap_or_else(|| DEFAULT_BASE_URL.to_owned())
+                .into(),
+            data_dir: self.data_dir.map_or_else(
+                || {
+                    // Defaults to `DEFAULT_DATA_DIR`, but only if it exists
+                    Some(DEFAULT_DATA_DIR)
+                        .map(|dir| Path::new(dir))
+                        .filter(|path| path.exists())
+                        .map(|path| path.to_owned())
+                },
+                |v| Some(v.into()),
+            ),
+            layout_dir: self.layout_dir.map_or_else(
+                || {
+                    // Defaults to `DEFAULT_LAYOUT_DIR`, but only if it exists
+                    Some(DEFAULT_LAYOUT_DIR)
+                        .map(|dir| Path::new(dir))
+                        .filter(|path| path.exists())
+                        .map(|path| path.to_owned())
+                },
+                |v| Some(v.into()),
+            ),
+            layout_filters: self.layout_filters.unwrap_or_default(),
+            layout_functions: self.layout_functions.unwrap_or_default(),
+            layout_testers: self.layout_testers.unwrap_or_default(),
+            syntax_highlight_code_attributes: self
+                .syntax_highlight_code_attributes
+                .unwrap_or_default(),
+            syntax_highlight_pre_attributes: self
+                .syntax_highlight_pre_attributes
+                .unwrap_or_default(),
+            syntax_highlight_css_prefix: self.syntax_highlight_css_prefix.unwrap_or_default(),
+            syntax_highlight_formatter: self.syntax_highlight_formatter,
+            syntax_highlight_stylesheets: self
+                .syntax_highlight_stylesheets
+                .unwrap_or_default()
+                .into_iter()
+                .map(|stylesheet| stylesheet.into())
+                .collect(),
+        }
+    }
+}
 
-    /// Theme name.
-    ///
-    /// See <https://docs.rs/syntect/latest/syntect/highlighting/struct.ThemeSet.html>
+/// See [`SyntaxHighlightStylesheet`].
+#[derive(Clone, Debug, Deserialize)]
+pub(crate) struct PartialSyntaxHighlightStylesheet {
+    /// See [`SyntaxHighlightStylesheet::prefix`].
+    pub(crate) prefix: Option<String>,
+
+    /// See [`SyntaxHighlightStylesheet::theme`].
     pub(crate) theme: String,
 
-    /// Output URL of the stylesheet.
+    /// See [`SyntaxHighlightStylesheet::url`].
     pub(crate) url: String,
 }
 
-/// Define [`Fn`] types for layout engine filters/functions/testers.
-///
-/// This macro automatically implements [`Debug`], [`mlua::FromLua`], and
-/// [`rhai::FromRhai`] for the generated type.
-macro_rules! define_layout_fn {
-    (
-        $(#[$($attrs:tt)*])*
-        $struct_name:ident: ($($arg_name:ident: $arg_type:ty),*) -> $ret_type:ty
-    ) => {
-        $(#[$($attrs)*])*
-        pub(crate) struct $struct_name(
-            pub(crate) Box<dyn Fn($($arg_type),*) -> $ret_type + Send + Sync>
-        );
-
-        impl std::fmt::Debug for $struct_name {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, stringify!($struct_name))
-            }
+// Convert `PartialSyntaxHighlightStylesheet` to `SyntaxHighlightStylesheet`
+impl Into<SyntaxHighlightStylesheet> for PartialSyntaxHighlightStylesheet {
+    fn into(self) -> SyntaxHighlightStylesheet {
+        SyntaxHighlightStylesheet {
+            prefix: self.prefix.unwrap_or_default(),
+            theme: self.theme,
+            url: self.url,
         }
-    };
+    }
 }
 
-define_layout_fn!(
-    /// Filter for the layout engine.
-    LayoutFilterFn:
-        (value: &tera::Value, args: &HashMap<String, tera::Value>) -> tera::Result<tera::Value>
-);
-
-define_layout_fn!(
-    /// Function for the layout engine.
-    LayoutFunctionFn: (args: &HashMap<String, tera::Value>) -> tera::Result<tera::Value>
-);
-
-define_layout_fn!(
-    /// Tester for the layout engine.
-    LayoutTesterFn: (value: Option<&tera::Value>, args: &[tera::Value]) -> tera::Result<bool>
-);
-
-/// Syntax highlight formatter.
+/// Generic function handler.
 #[derive(Clone)]
-pub(crate) struct SyntaxHighlightFormatterFn(
-    pub(crate)  Arc<
-        dyn Fn(&String, &HashMap<String, String>) -> anyhow::Result<Option<String>> + Send + Sync,
-    >,
-);
+pub(crate) enum Function {
+    Lua(lua::Function),
+    Rhai(rhai::Function),
+}
 
-impl std::fmt::Debug for SyntaxHighlightFormatterFn {
+impl std::fmt::Debug for Function {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, stringify!(SyntaxHighlightFormatterFn))
+        match self {
+            Self::Lua(function) => function.fmt(f),
+            Self::Rhai(function) => function.fmt(f),
+        }
+    }
+}
+
+/// Generate a `call_N(...)` method for [`Function`].
+macro_rules! impl_function_call {
+    (
+        $method_name:ident($($arg_name:ident: $arg_type:tt),*)
+    ) => {
+        pub(crate) fn $method_name<$($arg_type,)* R>(&self, $($arg_name: &$arg_type),*)
+            -> anyhow::Result<R>
+        where
+            $(
+                $arg_type: serde::Serialize + ?Sized,
+            )*
+            R: serde::de::DeserializeOwned,
+        {
+            match self {
+                Self::Lua(function) => function.$method_name($($arg_name),*),
+                Self::Rhai(function) => function.$method_name($($arg_name),*),
+            }
+        }
+    }
+}
+
+impl Function {
+    impl_function_call!(call_1(a1: A1));
+
+    impl_function_call!(call_2(a1: A1, a2: A2));
+}
+
+impl<'lua> mlua::FromLua<'lua> for Function {
+    fn from_lua(value: mlua::Value<'lua>, lua: &'lua mlua::Lua) -> mlua::Result<Self> {
+        Ok(Function::Lua(lua::Function::from_lua(value, lua)?))
+    }
+}
+
+impl rhai::FromRhai for Function {
+    fn from_rhai(
+        value: &::rhai::Dynamic,
+        engine: Arc<::rhai::Engine>,
+        ast: Arc<::rhai::AST>,
+    ) -> anyhow::Result<Self> {
+        Ok(Function::Rhai(rhai::Function::from_rhai(
+            value, engine, ast,
+        )?))
     }
 }
 
@@ -258,45 +343,7 @@ where
     // Convert `PartialConfig` to `Config`
     Ok(Config {
         config_path: Some(config_path.to_owned()),
-        input_dir: config
-            .input_dir
-            .unwrap_or_else(|| DEFAULT_INPUT_DIR.to_owned())
-            .into(),
-        output_dir: config
-            .output_dir
-            .map_or_else(|| Some(DEFAULT_OUTPUT_DIR.into()), |path| Some(path.into())),
-        base_url: config
-            .base_url
-            .unwrap_or_else(|| DEFAULT_BASE_URL.to_owned())
-            .into(),
-        data_dir: config.data_dir.map_or_else(
-            || {
-                // Defaults to `DEFAULT_DATA_DIR`, but only if it exists
-                Some(DEFAULT_DATA_DIR)
-                    .map(|dir| Path::new(dir))
-                    .filter(|path| path.exists())
-                    .map(|path| path.to_owned())
-            },
-            |v| Some(v.into()),
-        ),
-        layout_dir: config.layout_dir.map_or_else(
-            || {
-                // Defaults to `DEFAULT_LAYOUT_DIR`, but only if it exists
-                Some(DEFAULT_LAYOUT_DIR)
-                    .map(|dir| Path::new(dir))
-                    .filter(|path| path.exists())
-                    .map(|path| path.to_owned())
-            },
-            |v| Some(v.into()),
-        ),
-        layout_filters: config.layout_filters,
-        layout_functions: config.layout_functions,
-        layout_testers: config.layout_testers,
-        syntax_highlight_code_attributes: config.syntax_highlight_code_attributes,
-        syntax_highlight_pre_attributes: config.syntax_highlight_pre_attributes,
-        syntax_highlight_css_prefix: config.syntax_highlight_css_prefix,
-        syntax_highlight_formatter: config.syntax_highlight_formatter,
-        syntax_highlight_stylesheets: config.syntax_highlight_stylesheets,
+        ..config.into()
     })
 }
 

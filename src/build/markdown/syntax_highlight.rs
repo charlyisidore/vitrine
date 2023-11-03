@@ -19,13 +19,13 @@ use super::Context;
 
 /// Add a Markdown rule for syntax highlighting.
 pub(super) fn add(md: &mut MarkdownIt) {
-    md.add_rule::<HighlightRule>();
+    md.add_rule::<SyntaxHighlightRule>();
 }
 
 /// Syntax highlight rule for Markdown.
-struct HighlightRule;
+struct SyntaxHighlightRule;
 
-impl CoreRule for HighlightRule {
+impl CoreRule for SyntaxHighlightRule {
     fn run(root: &mut Node, md: &MarkdownIt) {
         let context = md.ext.get::<Context>().unwrap();
 
@@ -54,12 +54,12 @@ impl CoreRule for HighlightRule {
                 let result = context
                     .syntax_highlight_formatter
                     .as_ref()
-                    .and_then(|f| {
+                    .and_then(|function| {
                         let mut attributes = HashMap::new();
                         if let Some(language) = language {
                             attributes.insert("language".to_owned(), language.to_owned());
                         }
-                        (f.0)(content, &attributes).transpose()
+                        function.call_2(content, &attributes).transpose()
                     })
                     .transpose();
 

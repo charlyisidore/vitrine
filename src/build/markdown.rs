@@ -9,7 +9,6 @@ use std::collections::HashMap;
 use markdown_it::{parser::extset::MarkdownItExt, MarkdownIt};
 
 use super::{Config, Entry, Error};
-use crate::config::SyntaxHighlightFormatterFn;
 
 /// Context stored in [`MarkdownIt`].
 #[derive(Debug)]
@@ -24,7 +23,7 @@ pub(self) struct Context {
     pub(self) syntax_highlight_css_prefix: String,
 
     /// Syntax highlight HTML formatter
-    pub(self) syntax_highlight_formatter: Option<SyntaxHighlightFormatterFn>,
+    pub(self) syntax_highlight_formatter: Option<crate::config::Function>,
 }
 
 impl MarkdownItExt for Context {}
@@ -55,10 +54,7 @@ impl Parser {
             syntax_highlight_code_attributes: config.syntax_highlight_code_attributes.to_owned(),
             syntax_highlight_pre_attributes: config.syntax_highlight_pre_attributes.to_owned(),
             syntax_highlight_css_prefix: config.syntax_highlight_css_prefix.to_owned(),
-            syntax_highlight_formatter: config
-                .syntax_highlight_formatter
-                .as_ref()
-                .map(|v| v.clone()),
+            syntax_highlight_formatter: config.syntax_highlight_formatter.as_ref().cloned(),
         });
 
         Self { parser }
