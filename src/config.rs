@@ -43,7 +43,7 @@ const DEFAULT_LAYOUT_DIR: &str = "_layouts";
 /// Configuration for Vitrine.
 ///
 /// This structure represents the configuration given to the site builder.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub(crate) struct Config {
     /// Path to the configuration file.
     pub(crate) config_path: Option<PathBuf>,
@@ -310,7 +310,7 @@ pub(super) fn load_config_default() -> Result<Config, Error> {
         .find(|path| path.exists())
         .map(|path| load_config(path))
         .transpose()?
-        .unwrap_or_default())
+        .unwrap_or_else(|| PartialConfig::default().into()))
 }
 
 /// Load configuration from a file.
