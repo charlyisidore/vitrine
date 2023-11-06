@@ -94,6 +94,13 @@ pub(crate) struct Config {
     pub(crate) syntax_highlight_stylesheets: Vec<SyntaxHighlightStylesheet>,
 }
 
+impl Default for Config {
+    fn default() -> Self {
+        // When calling `.into()`, set default values such as `DEFAULT_INPUT_DIR`, ...
+        PartialConfig::default().into()
+    }
+}
+
 /// Syntax highlight CSS stylesheet configuration.
 #[derive(Debug)]
 pub(crate) struct SyntaxHighlightStylesheet {
@@ -207,10 +214,8 @@ impl Into<Config> for PartialConfig {
             syntax_highlight_formatter: self.syntax_highlight_formatter,
             syntax_highlight_stylesheets: self
                 .syntax_highlight_stylesheets
-                .unwrap_or_default()
-                .into_iter()
-                .map(|stylesheet| stylesheet.into())
-                .collect(),
+                .map(|v| v.into_iter().map(|stylesheet| stylesheet.into()).collect())
+                .unwrap_or_default(),
         }
     }
 }
@@ -310,7 +315,7 @@ pub(super) fn load_config_default() -> Result<Config, Error> {
         .find(|path| path.exists())
         .map(|path| load_config(path))
         .transpose()?
-        .unwrap_or_else(|| PartialConfig::default().into()))
+        .unwrap_or_default())
 }
 
 /// Load configuration from a file.
