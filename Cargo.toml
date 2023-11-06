@@ -1,6 +1,6 @@
 [package]
 name = "vitrine"
-version = "0.1.5"
+version = "0.1.6"
 authors = ["Charly Lersteau"]
 edition = "2021"
 description = "A scriptable static site generator"
