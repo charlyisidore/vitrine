@@ -2692,7 +2692,16 @@ dependencies = [
  "toml",
  "tracing",
  "tracing-subscriber",
+ "vitrine_derive",
  "walkdir",
+]
+
+[[package]]
+name = "vitrine_derive"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn 2.0.38",
 ]
 
 [[package]]

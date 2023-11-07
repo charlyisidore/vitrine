@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use markdown_it::{parser::extset::MarkdownItExt, MarkdownIt};
 
 use super::{Config, Entry, Error};
+use crate::util::function::Function;
 
 /// Context stored in [`MarkdownIt`].
 #[derive(Debug)]
@@ -23,7 +24,7 @@ pub(self) struct Context {
     pub(self) syntax_highlight_css_prefix: String,
 
     /// Syntax highlight HTML formatter
-    pub(self) syntax_highlight_formatter: Option<crate::config::Function>,
+    pub(self) syntax_highlight_formatter: Option<Function>,
 }
 
 impl MarkdownItExt for Context {}

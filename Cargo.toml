@@ -14,6 +14,9 @@ categories = [
     "web-programming",
 ]
 
+[workspace]
+members = ["vitrine_derive"]
+
 [dependencies]
 anyhow = "1.0.75"
 clap = { version = "4.4.7", features = ["derive"] }
@@ -35,4 +38,5 @@ thiserror = "1.0.50"
 toml = "0.8.4"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
+vitrine_derive = { path = "vitrine_derive" }
 walkdir = "2.4.0"
