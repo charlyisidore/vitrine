@@ -26,18 +26,24 @@ pub fn impl_from_lua_macro(ast: &syn::DeriveInput) -> TokenStream {
         let field_ident_str = field_ident.to_string();
 
         quote!(
-            #field_ident: table.get(#field_ident_str)?
+            #field_ident: crate::util::from_lua::FromLua::from_lua(
+                table.get(#field_ident_str)
+                    .map_err(|error| ::anyhow::anyhow!(error)
+                        .context(format!("In field {}", #field_ident_str)))?,
+                lua
+            )
+            .map_err(|error| error.context(format!("In field {}", #field_ident_str)))?
         )
     });
 
     return quote!(
-        impl crate::util::from_lua::FromLua<'_> for #struct_ident {
-            fn from_lua(value: ::mlua::Value, lua: &::mlua::Lua) -> ::mlua::Result<Self> {
+        impl crate::util::from_lua::FromLua for #struct_ident {
+            fn from_lua(value: ::mlua::Value, lua: &::mlua::Lua) -> ::anyhow::Result<Self> {
                 let table = value.as_table().ok_or_else(|| {
-                    mlua::Error::external(format!(
-                        "Expected Table, received {}",
+                    ::anyhow::anyhow!(
+                        "Expected table, received {}",
                         value.type_name()
-                    ))
+                    )
                 })?;
 
                 Ok(Self {

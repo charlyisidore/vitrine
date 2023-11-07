@@ -50,8 +50,8 @@ impl Function {
     impl_function_call!(call_2(a1: A1, a2: A2));
 }
 
-impl FromLua<'_> for Function {
-    fn from_lua(value: mlua::Value, lua: &mlua::Lua) -> mlua::Result<Self> {
+impl FromLua for Function {
+    fn from_lua(value: mlua::Value, lua: &mlua::Lua) -> anyhow::Result<Self> {
         Ok(Function::Lua(self::lua::Function::from_lua(value, lua)?))
     }
 }

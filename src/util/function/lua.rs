@@ -61,24 +61,18 @@ impl Function {
     impl_lua_function_call!(call_2(a1: A1, a2: A2));
 }
 
-impl FromLua<'_> for Function {
-    fn from_lua(value: mlua::Value, lua: &mlua::Lua) -> mlua::Result<Self> {
+impl FromLua for Function {
+    fn from_lua(value: mlua::Value, lua: &mlua::Lua) -> anyhow::Result<Self> {
         let function = value
             .as_function()
-            .ok_or_else(|| {
-                mlua::Error::external(format!(
-                    "expected {}, received {}",
-                    stringify!(mlua::Function),
-                    value.type_name()
-                ))
-            })?
+            .ok_or_else(|| anyhow::anyhow!("Expected function, received {}", value.type_name()))?
             .to_owned();
 
         let key = Arc::new(lua.create_registry_value(function)?);
 
         let lua = lua
             .app_data_ref::<Arc<Mutex<mlua::Lua>>>()
-            .ok_or_else(|| mlua::Error::external("missing lua app data"))?
+            .ok_or_else(|| anyhow::anyhow!("Missing lua app data"))?
             .to_owned();
 
         Ok(Function { lua, key })

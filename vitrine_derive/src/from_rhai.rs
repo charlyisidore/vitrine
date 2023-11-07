@@ -41,7 +41,7 @@ pub fn impl_from_rhai_macro(ast: &syn::DeriveInput) -> TokenStream {
             fn from_rhai(
                 value: &::rhai::Dynamic,
                 engine: ::std::sync::Arc<::rhai::Engine>,
-                ast: std::sync::Arc<::rhai::AST>,
+                ast: ::std::sync::Arc<::rhai::AST>,
             ) -> ::anyhow::Result<Self> {
                 let map = value.to_owned().try_cast::<::rhai::Map>().ok_or_else(|| {
                     ::anyhow::anyhow!(
