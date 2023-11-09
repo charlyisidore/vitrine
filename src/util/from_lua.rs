@@ -3,6 +3,7 @@
 use std::{
     collections::HashMap,
     hash::{BuildHasher, Hash},
+    path::PathBuf,
 };
 
 /// Trait for types convertible from [`mlua::Value`].
@@ -17,6 +18,16 @@ impl FromLua for String {
             .ok_or_else(|| anyhow::anyhow!("Expected string, received {}", value.type_name()))?
             .to_str()?
             .to_owned())
+    }
+}
+
+impl FromLua for PathBuf {
+    fn from_lua(value: mlua::Value, _: &mlua::Lua) -> anyhow::Result<Self> {
+        Ok(value
+            .as_string()
+            .ok_or_else(|| anyhow::anyhow!("Expected string, received {}", value.type_name()))?
+            .to_str()?
+            .into())
     }
 }
 
@@ -38,6 +49,10 @@ where
     T: FromLua,
 {
     fn from_lua(value: mlua::Value, lua: &mlua::Lua) -> anyhow::Result<Self> {
+        if value.is_nil() {
+            return Ok(Vec::default());
+        };
+
         value
             .as_table()
             .ok_or_else(|| anyhow::anyhow!("Expected table, received {}", value.type_name()))?
@@ -55,6 +70,10 @@ where
     S: BuildHasher + Default,
 {
     fn from_lua(value: mlua::Value, lua: &mlua::Lua) -> anyhow::Result<Self> {
+        if value.is_nil() {
+            return Ok(HashMap::default());
+        };
+
         value
             .as_table()
             .ok_or_else(|| anyhow::anyhow!("Expected table, received {}", value.type_name()))?

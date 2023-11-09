@@ -3,7 +3,11 @@
 use proc_macro::TokenStream;
 use quote::quote;
 
+use super::VitrineAttribute;
+
 pub fn impl_from_rhai_macro(ast: &syn::DeriveInput) -> TokenStream {
+    let from_rhai_trait = quote!(crate::util::from_rhai::FromRhai);
+
     let struct_ident = &ast.ident;
 
     let syn::Data::Struct(ref data) = ast.data else {
@@ -21,20 +25,64 @@ pub fn impl_from_rhai_macro(ast: &syn::DeriveInput) -> TokenStream {
         .into();
     };
 
-    let fields = fields.named.iter().map(|field| {
-        let field_ident = field.ident.as_ref().unwrap();
-        let field_ident_str = field_ident.to_string();
+    let fields =
+        fields.named.iter().map(|field| {
+            let field_ident = field.ident.as_ref().unwrap();
+            let field_ident_str = field_ident.to_string();
 
-        quote!(
-            #field_ident: crate::util::from_rhai::FromRhai::from_rhai(
-                map.get(#field_ident_str).unwrap_or_else(|| &::rhai::Dynamic::UNIT),
-                ::std::sync::Arc::clone(&engine),
-                ::std::sync::Arc::clone(&ast)
-            ).map_err(|error| error.context(
-                format!("In field {}", #field_ident_str))
-            )?
-        )
-    });
+            // Get supported attributes
+            let field_attrs: Vec<VitrineAttribute> = field
+                .attrs
+                .iter()
+                .filter(|attr| attr.path().is_ident("vitrine"))
+                .map(|attr| attr.parse_args())
+                .collect::<syn::Result<_>>()
+                .unwrap_or_default();
+
+            field_attrs
+                .iter()
+                .find_map(|attr| match attr {
+                    VitrineAttribute::Default(function) => {
+                    let unwrap_fn = match function {
+                            // `vitrine(default = "path")`
+                            Some(function) => quote!(.unwrap_or_else(|| #function())),
+                            // `vitrine(default)`
+                            None => quote!(.unwrap_or_default()),
+                        };
+
+                        Some(quote!(
+                            #field_ident: map
+                                .get(#field_ident_str)
+                                .map(|v| #from_rhai_trait::from_rhai(
+                                    v,
+                                    ::std::sync::Arc::clone(&engine),
+                                    ::std::sync::Arc::clone(&ast),
+                                ))
+                                .transpose()
+                                .map_err(
+                                    |error| error.context(format!("In field {}", #field_ident_str))
+                                )?
+                                #unwrap_fn
+                        ))
+                    },
+                    VitrineAttribute::Skip => {
+                        // `vitrine(skip)`
+                        Some(quote!(
+                            #field_ident: ::std::default::Default::default()
+                        ))
+                    },
+                })
+                .unwrap_or_else(|| quote!(
+                    #field_ident: #from_rhai_trait::from_rhai(
+                        map
+                            .get(#field_ident_str)
+                            .unwrap_or_else(|| &::rhai::Dynamic::UNIT),
+                        ::std::sync::Arc::clone(&engine),
+                        ::std::sync::Arc::clone(&ast),
+                    )
+                        .map_err(|error| error.context(format!("In field {}", #field_ident_str)))?
+                ))
+        });
 
     return quote!(
         impl crate::util::from_rhai::FromRhai for #struct_ident {

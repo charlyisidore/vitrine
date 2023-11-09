@@ -3,6 +3,7 @@
 use std::{
     collections::HashMap,
     hash::{BuildHasher, Hash},
+    path::PathBuf,
     sync::Arc,
 };
 
@@ -19,6 +20,16 @@ impl FromRhai for String {
             .to_owned()
             .into_string()
             .map_err(|error| anyhow::anyhow!("Expected String, received {}", error))
+    }
+}
+
+impl FromRhai for PathBuf {
+    fn from_rhai(value: &Dynamic, _: Arc<Engine>, _: Arc<AST>) -> anyhow::Result<Self> {
+        Ok(value
+            .to_owned()
+            .into_string()
+            .map_err(|error| anyhow::anyhow!("Expected String, received {}", error))?
+            .into())
     }
 }
 

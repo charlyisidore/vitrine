@@ -38,5 +38,5 @@ thiserror = "1.0.50"
 toml = "0.8.4"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
-vitrine_derive = { path = "vitrine_derive" }
+vitrine_derive = { version = "=0.1.0", path = "vitrine_derive" }
 walkdir = "2.4.0"

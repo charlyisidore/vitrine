@@ -19,7 +19,7 @@ use crate::{
     util::{function::Function, path::PathExt},
 };
 
-/// Default file names for configuration files
+/// Default file names for configuration files.
 const DEFAULT_CONFIG_FILE_NAMES: [&str; 5] = [
     "vitrine.config.json",
     "vitrine.config.lua",
@@ -28,86 +28,142 @@ const DEFAULT_CONFIG_FILE_NAMES: [&str; 5] = [
     "vitrine.config.yaml",
 ];
 
-/// Default input directory
-const DEFAULT_INPUT_DIR: &str = ".";
+/// Return the default input directory.
+fn default_input_dir() -> PathBuf {
+    PathBuf::from(".")
+}
 
-/// Default output directory
-const DEFAULT_OUTPUT_DIR: &str = "_site";
+/// Return the default output directory.
+fn default_output_dir() -> Option<PathBuf> {
+    Some(PathBuf::from("_site"))
+}
 
-/// Default base URL
-const DEFAULT_BASE_URL: &str = "";
+/// Return the default base URL.
+fn default_base_url() -> String {
+    String::from("")
+}
 
-/// Default data directory
-const DEFAULT_DATA_DIR: &str = "_data";
+/// Return the default data directory.
+fn default_data_dir() -> Option<PathBuf> {
+    // Returns the path only if it exists
+    Some(PathBuf::from("_data")).filter(|path| path.exists())
+}
 
-/// Default layout directory
-const DEFAULT_LAYOUT_DIR: &str = "_layouts";
+/// Return the default layout directory.
+fn default_layout_dir() -> Option<PathBuf> {
+    // Returns the path only if it exists
+    Some(PathBuf::from("_layouts")).filter(|path| path.exists())
+}
 
 /// Configuration for Vitrine.
 ///
 /// This structure represents the configuration given to the site builder.
-#[derive(Debug)]
+#[derive(Debug, Deserialize, FromLua, FromRhai)]
 pub(crate) struct Config {
     /// Path to the configuration file.
+    #[serde(skip)]
+    #[vitrine(skip)]
     pub(crate) config_path: Option<PathBuf>,
 
     /// Directory of input files.
+    #[serde(default = "default_input_dir")]
+    #[vitrine(default = "default_input_dir")]
     pub(crate) input_dir: PathBuf,
 
     /// Directory of output files.
     ///
     /// If set to `None`, Vitrine does not write files.
+    #[serde(default = "default_output_dir")]
+    #[vitrine(default = "default_output_dir")]
     pub(crate) output_dir: Option<PathBuf>,
 
     /// Prefix for URLs.
+    #[serde(default = "default_base_url")]
+    #[vitrine(default = "default_base_url")]
     pub(crate) base_url: String,
 
     /// Directory of data files.
     ///
     /// If set to `None`, Vitrine does not search for data files.
+    #[serde(default = "default_data_dir")]
+    #[vitrine(default = "default_data_dir")]
     pub(crate) data_dir: Option<PathBuf>,
 
     /// Directory of layout files.
     ///
     /// If set to `None`, Vitrine does not use a layout engine.
+    #[serde(default = "default_layout_dir")]
+    #[vitrine(default = "default_layout_dir")]
     pub(crate) layout_dir: Option<PathBuf>,
 
     /// Custom filters for the layout engine.
+    #[serde(skip)]
+    #[vitrine(default)]
     pub(crate) layout_filters: HashMap<String, Function>,
 
     /// Custom functions for the layout engine.
+    #[serde(skip)]
+    #[vitrine(default)]
     pub(crate) layout_functions: HashMap<String, Function>,
 
     /// Custom testers for the layout engine.
+    #[serde(skip)]
+    #[vitrine(default)]
     pub(crate) layout_testers: HashMap<String, Function>,
 
     /// HTML attributes for syntax highlight `<code>` element.
+    #[serde(default)]
+    #[vitrine(default)]
     pub(crate) syntax_highlight_code_attributes: HashMap<String, String>,
 
     /// HTML attributes for syntax highlight `<pre>` element.
+    #[serde(default)]
+    #[vitrine(default)]
     pub(crate) syntax_highlight_pre_attributes: HashMap<String, String>,
 
     /// Prefix for syntax highlight CSS classes.
+    #[serde(default)]
+    #[vitrine(default)]
     pub(crate) syntax_highlight_css_prefix: String,
 
     /// Formatters for syntax highlight.
+    #[serde(skip)]
+    #[vitrine(default)]
     pub(crate) syntax_highlight_formatter: Option<Function>,
 
     /// Syntax highlight CSS stylesheets.
+    #[serde(default)]
+    #[vitrine(default)]
     pub(crate) syntax_highlight_stylesheets: Vec<SyntaxHighlightStylesheet>,
 }
 
 impl Default for Config {
     fn default() -> Self {
-        // When calling `.into()`, set default values such as `DEFAULT_INPUT_DIR`, ...
-        PartialConfig::default().into()
+        Config {
+            config_path: Default::default(),
+            input_dir: default_input_dir(),
+            output_dir: default_output_dir(),
+            base_url: default_base_url(),
+            data_dir: default_data_dir(),
+            layout_dir: default_layout_dir(),
+            layout_filters: Default::default(),
+            layout_functions: Default::default(),
+            layout_testers: Default::default(),
+            syntax_highlight_code_attributes: Default::default(),
+            syntax_highlight_pre_attributes: Default::default(),
+            syntax_highlight_css_prefix: Default::default(),
+            syntax_highlight_formatter: Default::default(),
+            syntax_highlight_stylesheets: Default::default(),
+        }
     }
 }
 
 /// Syntax highlight CSS stylesheet configuration.
-#[derive(Debug)]
+#[derive(Debug, Deserialize, FromLua, FromRhai)]
 pub(crate) struct SyntaxHighlightStylesheet {
     /// Prefix for class names.
+    #[serde(default)]
+    #[vitrine(default)]
     pub(crate) prefix: String,
 
     /// Theme name.
@@ -117,134 +173,6 @@ pub(crate) struct SyntaxHighlightStylesheet {
 
     /// Output URL of the stylesheet.
     pub(crate) url: String,
-}
-
-/// Partial configuration.
-///
-/// This structure can be used for deserialization.
-#[derive(Clone, Debug, Default, Deserialize, FromLua, FromRhai)]
-pub(crate) struct PartialConfig {
-    /// See [`Config::input_dir`].
-    pub(crate) input_dir: Option<String>,
-
-    /// See [`Config::output_dir`].
-    pub(crate) output_dir: Option<String>,
-
-    /// See [`Config::base_url`].
-    pub(crate) base_url: Option<String>,
-
-    /// See [`Config::data_dir`].
-    pub(crate) data_dir: Option<String>,
-
-    /// See [`Config::layout_dir`].
-    pub(crate) layout_dir: Option<String>,
-
-    /// See [`Config::layout_filters`].
-    #[serde(skip)]
-    pub(crate) layout_filters: Option<HashMap<String, Function>>,
-
-    /// See [`Config::layout_functions`].
-    #[serde(skip)]
-    pub(crate) layout_functions: Option<HashMap<String, Function>>,
-
-    /// See [`Config::layout_testers`].
-    #[serde(skip)]
-    pub(crate) layout_testers: Option<HashMap<String, Function>>,
-
-    /// See [`Config::syntax_highlight_code_attributes`].
-    pub(crate) syntax_highlight_code_attributes: Option<HashMap<String, String>>,
-
-    /// See [`Config::syntax_highlight_pre_attributes`].
-    pub(crate) syntax_highlight_pre_attributes: Option<HashMap<String, String>>,
-
-    /// See [`Config::syntax_highlight_css_prefix`].
-    pub(crate) syntax_highlight_css_prefix: Option<String>,
-
-    /// See [`Config::syntax_highlight_formatter`].
-    #[serde(skip)]
-    pub(crate) syntax_highlight_formatter: Option<Function>,
-
-    /// See [`Config::syntax_highlight_stylesheets`].
-    pub(crate) syntax_highlight_stylesheets: Option<Vec<PartialSyntaxHighlightStylesheet>>,
-}
-
-// Convert `PartialConfig` to `Config`
-impl Into<Config> for PartialConfig {
-    fn into(self) -> Config {
-        Config {
-            config_path: None,
-            input_dir: self
-                .input_dir
-                .unwrap_or_else(|| DEFAULT_INPUT_DIR.to_owned())
-                .into(),
-            output_dir: self
-                .output_dir
-                .map_or_else(|| Some(DEFAULT_OUTPUT_DIR.into()), |path| Some(path.into())),
-            base_url: self
-                .base_url
-                .unwrap_or_else(|| DEFAULT_BASE_URL.to_owned())
-                .into(),
-            data_dir: self.data_dir.map_or_else(
-                || {
-                    // Defaults to `DEFAULT_DATA_DIR`, but only if it exists
-                    Some(DEFAULT_DATA_DIR)
-                        .map(|dir| Path::new(dir))
-                        .filter(|path| path.exists())
-                        .map(|path| path.to_owned())
-                },
-                |v| Some(v.into()),
-            ),
-            layout_dir: self.layout_dir.map_or_else(
-                || {
-                    // Defaults to `DEFAULT_LAYOUT_DIR`, but only if it exists
-                    Some(DEFAULT_LAYOUT_DIR)
-                        .map(|dir| Path::new(dir))
-                        .filter(|path| path.exists())
-                        .map(|path| path.to_owned())
-                },
-                |v| Some(v.into()),
-            ),
-            layout_filters: self.layout_filters.unwrap_or_default(),
-            layout_functions: self.layout_functions.unwrap_or_default(),
-            layout_testers: self.layout_testers.unwrap_or_default(),
-            syntax_highlight_code_attributes: self
-                .syntax_highlight_code_attributes
-                .unwrap_or_default(),
-            syntax_highlight_pre_attributes: self
-                .syntax_highlight_pre_attributes
-                .unwrap_or_default(),
-            syntax_highlight_css_prefix: self.syntax_highlight_css_prefix.unwrap_or_default(),
-            syntax_highlight_formatter: self.syntax_highlight_formatter,
-            syntax_highlight_stylesheets: self
-                .syntax_highlight_stylesheets
-                .map(|v| v.into_iter().map(|stylesheet| stylesheet.into()).collect())
-                .unwrap_or_default(),
-        }
-    }
-}
-
-/// See [`SyntaxHighlightStylesheet`].
-#[derive(Clone, Debug, Deserialize, FromLua, FromRhai)]
-pub(crate) struct PartialSyntaxHighlightStylesheet {
-    /// See [`SyntaxHighlightStylesheet::prefix`].
-    pub(crate) prefix: Option<String>,
-
-    /// See [`SyntaxHighlightStylesheet::theme`].
-    pub(crate) theme: String,
-
-    /// See [`SyntaxHighlightStylesheet::url`].
-    pub(crate) url: String,
-}
-
-// Convert `PartialSyntaxHighlightStylesheet` to `SyntaxHighlightStylesheet`
-impl Into<SyntaxHighlightStylesheet> for PartialSyntaxHighlightStylesheet {
-    fn into(self) -> SyntaxHighlightStylesheet {
-        SyntaxHighlightStylesheet {
-            prefix: self.prefix.unwrap_or_default(),
-            theme: self.theme,
-            url: self.url,
-        }
-    }
 }
 
 /// Load configuration from a default file (e.g. `vitrine.config.json`).
@@ -269,7 +197,6 @@ where
 
     tracing::info!("Loading configuration from {:?}", config_path);
 
-    // Load `PartialConfig` structure
     let config = if let Some(extension) = config_path.extension().and_then(|v| v.to_str()) {
         match extension {
             "json" => self::json::load_config(config_path),
@@ -287,10 +214,9 @@ where
         source: error.into(),
     })?;
 
-    // Convert `PartialConfig` to `Config`
     Ok(Config {
         config_path: Some(config_path.to_owned()),
-        ..config.into()
+        ..config
     })
 }
 
