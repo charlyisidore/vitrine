@@ -32,7 +32,12 @@ mod tests {
             "output_dir": "bar",
             "base_url": "/blog",
             "data_dir": "_data",
-            "layout_dir": "_layouts"
+            "layout_dir": "_layouts",
+            "syntax_highlight": {
+                "pre_attributes": {
+                    "class": "syntax-highlight"
+                }
+            }
         }
         "#;
 
@@ -43,6 +48,10 @@ mod tests {
         assert_eq!(config.base_url, "/blog");
         assert_eq!(config.data_dir.unwrap().to_str().unwrap(), "_data");
         assert_eq!(config.layout_dir.unwrap().to_str().unwrap(), "_layouts");
+        assert_eq!(
+            config.syntax_highlight.pre_attributes.get("class").unwrap(),
+            "syntax-highlight"
+        );
     }
 
     #[test]
