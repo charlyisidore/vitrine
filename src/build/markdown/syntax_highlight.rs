@@ -27,13 +27,12 @@ struct SyntaxHighlightRule;
 
 impl CoreRule for SyntaxHighlightRule {
     fn run(root: &mut Node, md: &MarkdownIt) {
-        let context = md.ext.get::<Context>().unwrap();
+        let context = &md.ext.get::<Context>().unwrap().syntax_highlight;
 
         // Since [`syntect`]` requires `'static` lifetime for `prefix` in
         // [`syntect::html::ClassStyle::SpacedPrefixed`], we cannot use a value created
         // at runtime. Therefore, we use `static_lifetime()` as a workaround.
-        let prefix =
-            unsafe { crate::util::r#unsafe::static_lifetime(&context.syntax_highlight_css_prefix) };
+        let prefix = unsafe { crate::util::r#unsafe::static_lifetime(&context.css_prefix) };
 
         let syntax_set = SyntaxSet::load_defaults_newlines();
 
@@ -52,7 +51,7 @@ impl CoreRule for SyntaxHighlightRule {
 
             if let Some(content) = content {
                 let result = context
-                    .syntax_highlight_formatter
+                    .formatter
                     .as_ref()
                     .and_then(|function| {
                         let mut attributes = HashMap::new();
@@ -97,8 +96,8 @@ impl CoreRule for SyntaxHighlightRule {
                     content,
                     language: language.map(|s| s.to_owned()),
                     prefix: prefix.to_owned(),
-                    code_attributes: context.syntax_highlight_code_attributes.to_owned(),
-                    pre_attributes: context.syntax_highlight_pre_attributes.to_owned(),
+                    code_attributes: context.code_attributes.to_owned(),
+                    pre_attributes: context.pre_attributes.to_owned(),
                 });
             }
         });

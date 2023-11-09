@@ -96,45 +96,15 @@ pub(crate) struct Config {
     #[vitrine(default = "default_layout_dir")]
     pub(crate) layout_dir: Option<PathBuf>,
 
-    /// Custom filters for the layout engine.
-    #[serde(skip)]
-    #[vitrine(default)]
-    pub(crate) layout_filters: HashMap<String, Function>,
-
-    /// Custom functions for the layout engine.
-    #[serde(skip)]
-    #[vitrine(default)]
-    pub(crate) layout_functions: HashMap<String, Function>,
-
-    /// Custom testers for the layout engine.
-    #[serde(skip)]
-    #[vitrine(default)]
-    pub(crate) layout_testers: HashMap<String, Function>,
-
-    /// HTML attributes for syntax highlight `<code>` element.
+    /// Layout engine configuration.
     #[serde(default)]
     #[vitrine(default)]
-    pub(crate) syntax_highlight_code_attributes: HashMap<String, String>,
+    pub(crate) layout: LayoutConfig,
 
-    /// HTML attributes for syntax highlight `<pre>` element.
+    /// Syntax highlight configuration.
     #[serde(default)]
     #[vitrine(default)]
-    pub(crate) syntax_highlight_pre_attributes: HashMap<String, String>,
-
-    /// Prefix for syntax highlight CSS classes.
-    #[serde(default)]
-    #[vitrine(default)]
-    pub(crate) syntax_highlight_css_prefix: String,
-
-    /// Formatters for syntax highlight.
-    #[serde(skip)]
-    #[vitrine(default)]
-    pub(crate) syntax_highlight_formatter: Option<Function>,
-
-    /// Syntax highlight CSS stylesheets.
-    #[serde(default)]
-    #[vitrine(default)]
-    pub(crate) syntax_highlight_stylesheets: Vec<SyntaxHighlightStylesheet>,
+    pub(crate) syntax_highlight: SyntaxHighlightConfig,
 }
 
 impl Default for Config {
@@ -146,21 +116,63 @@ impl Default for Config {
             base_url: default_base_url(),
             data_dir: default_data_dir(),
             layout_dir: default_layout_dir(),
-            layout_filters: Default::default(),
-            layout_functions: Default::default(),
-            layout_testers: Default::default(),
-            syntax_highlight_code_attributes: Default::default(),
-            syntax_highlight_pre_attributes: Default::default(),
-            syntax_highlight_css_prefix: Default::default(),
-            syntax_highlight_formatter: Default::default(),
-            syntax_highlight_stylesheets: Default::default(),
+            layout: Default::default(),
+            syntax_highlight: Default::default(),
         }
     }
 }
 
-/// Syntax highlight CSS stylesheet configuration.
+/// Configuration for the layout engine.
+#[derive(Debug, Default, Deserialize, FromLua, FromRhai)]
+pub(crate) struct LayoutConfig {
+    /// Custom filters for the layout engine.
+    #[serde(skip)]
+    #[vitrine(default)]
+    pub(crate) filters: HashMap<String, Function>,
+
+    /// Custom functions for the layout engine.
+    #[serde(skip)]
+    #[vitrine(default)]
+    pub(crate) functions: HashMap<String, Function>,
+
+    /// Custom testers for the layout engine.
+    #[serde(skip)]
+    #[vitrine(default)]
+    pub(crate) testers: HashMap<String, Function>,
+}
+
+/// Configuration for syntax highlight.
+#[derive(Debug, Default, Deserialize, FromLua, FromRhai)]
+pub(crate) struct SyntaxHighlightConfig {
+    /// HTML attributes for syntax highlight `<code>` element.
+    #[serde(default)]
+    #[vitrine(default)]
+    pub(crate) code_attributes: HashMap<String, String>,
+
+    /// HTML attributes for syntax highlight `<pre>` element.
+    #[serde(default)]
+    #[vitrine(default)]
+    pub(crate) pre_attributes: HashMap<String, String>,
+
+    /// Prefix for syntax highlight CSS classes.
+    #[serde(default)]
+    #[vitrine(default)]
+    pub(crate) css_prefix: String,
+
+    /// Formatters for syntax highlight.
+    #[serde(skip)]
+    #[vitrine(default)]
+    pub(crate) formatter: Option<Function>,
+
+    /// Syntax highlight CSS stylesheets.
+    #[serde(default)]
+    #[vitrine(default)]
+    pub(crate) stylesheets: Vec<SyntaxHighlightStylesheetConfig>,
+}
+
+/// Configuration for a syntax highlight CSS stylesheet.
 #[derive(Debug, Deserialize, FromLua, FromRhai)]
-pub(crate) struct SyntaxHighlightStylesheet {
+pub(crate) struct SyntaxHighlightStylesheetConfig {
     /// Prefix for class names.
     #[serde(default)]
     #[vitrine(default)]

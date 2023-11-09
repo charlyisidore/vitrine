@@ -127,21 +127,25 @@ mod tests {
             base_url = "/blog",
             data_dir = "_data",
             layout_dir = "_layouts",
-            layout_filters = {
-                upper = function(value, args) return string.upper(value) end,
+            layout = {
+                filters = {
+                    upper = function(value, args) return string.upper(value) end,
+                },
+                functions = {
+                    min = function(args) return math.min(unpack(args.values)) end,
+                },
+                testers = {
+                    odd = function(value, args) return value % 2 == 1 end,
+                },
             },
-            layout_functions = {
-                min = function(args) return math.min(table.unpack(args.values)) end,
-            },
-            layout_testers = {
-                odd = function(value, args) return value % 2 == 1 end,
-            },
-            syntax_highlight_css_prefix = "highlight-",
-            syntax_highlight_stylesheets = {
-                {
-                    prefix = "highlight-",
-                    theme = "base16-ocean.dark",
-                    url = "/highlight.css",
+            syntax_highlight = {
+                css_prefix = "highlight-",
+                stylesheets = {
+                    {
+                        prefix = "highlight-",
+                        theme = "base16-ocean.dark",
+                        url = "/highlight.css",
+                    },
                 },
             },
         }
@@ -154,15 +158,55 @@ mod tests {
         assert_eq!(config.base_url, "/blog");
         assert_eq!(config.data_dir.unwrap().to_str().unwrap(), "_data");
         assert_eq!(config.layout_dir.unwrap().to_str().unwrap(), "_layouts");
-        assert_eq!(config.layout_filters.len(), 1);
-        assert!(config.layout_filters.contains_key("upper"));
-        assert_eq!(config.layout_functions.len(), 1);
-        assert!(config.layout_functions.contains_key("min"));
-        assert_eq!(config.layout_testers.len(), 1);
-        assert!(config.layout_testers.contains_key("odd"));
-        assert_eq!(config.syntax_highlight_css_prefix, "highlight-");
-        assert_eq!(config.syntax_highlight_stylesheets.len(), 1);
-        let stylesheet = config.syntax_highlight_stylesheets.get(0).unwrap();
+        assert_eq!(config.layout.filters.len(), 1);
+        assert!(config.layout.filters.contains_key("upper"));
+        assert_eq!(
+            config
+                .layout
+                .filters
+                .get("upper")
+                .unwrap()
+                .call_2::<_, _, tera::Value>(
+                    &tera::Value::from("Hello"),
+                    &tera::Value::from(tera::Map::new())
+                )
+                .unwrap()
+                .as_str()
+                .unwrap(),
+            "HELLO"
+        );
+        assert_eq!(config.layout.functions.len(), 1);
+        assert!(config.layout.functions.contains_key("min"));
+        assert_eq!(
+            config
+                .layout
+                .functions
+                .get("min")
+                .unwrap()
+                .call_1::<_, tera::Value>(&tera::Value::from(tera::Map::from_iter([(
+                    String::from("values"),
+                    tera::Value::from(Vec::from([12, 6, 24]))
+                )])))
+                .unwrap()
+                .as_i64()
+                .unwrap(),
+            6
+        );
+        assert_eq!(config.layout.testers.len(), 1);
+        assert!(config.layout.testers.contains_key("odd"));
+        assert_eq!(
+            config
+                .layout
+                .testers
+                .get("odd")
+                .unwrap()
+                .call_2::<_, _, bool>(&tera::Value::from(1), &tera::Value::from(tera::Map::new()))
+                .unwrap(),
+            true
+        );
+        assert_eq!(config.syntax_highlight.css_prefix, "highlight-");
+        assert_eq!(config.syntax_highlight.stylesheets.len(), 1);
+        let stylesheet = config.syntax_highlight.stylesheets.get(0).unwrap();
         assert_eq!(stylesheet.prefix, "highlight-");
         assert_eq!(stylesheet.theme, "base16-ocean.dark");
         assert_eq!(stylesheet.url, "/highlight.css");

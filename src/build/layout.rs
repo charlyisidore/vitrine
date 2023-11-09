@@ -31,7 +31,7 @@ impl Engine {
                         source: error.into(),
                     })?;
 
-                for (name, filter) in config.layout_filters.iter() {
+                for (name, filter) in config.layout.filters.iter() {
                     let filter = filter.to_owned();
                     let filter = move |value: &tera::Value,
                                        args: &HashMap<String, tera::Value>|
@@ -43,7 +43,7 @@ impl Engine {
                     tera.register_filter(name, filter);
                 }
 
-                for (name, function) in config.layout_functions.iter() {
+                for (name, function) in config.layout.functions.iter() {
                     let function = function.to_owned();
                     let function =
                         move |args: &HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
@@ -54,7 +54,7 @@ impl Engine {
                     tera.register_function(name, function);
                 }
 
-                for (name, tester) in config.layout_testers.iter() {
+                for (name, tester) in config.layout.testers.iter() {
                     let tester = tester.to_owned();
                     let tester = move |value: Option<&tera::Value>,
                                        args: &[tera::Value]|

@@ -14,17 +14,24 @@ use crate::util::function::Function;
 /// Context stored in [`MarkdownIt`].
 #[derive(Debug)]
 pub(self) struct Context {
+    /// Syntax highlight configuration
+    pub(self) syntax_highlight: SyntaxHighlightContext,
+}
+
+/// Syntax highlight configuration for Markdown.
+#[derive(Debug)]
+pub(self) struct SyntaxHighlightContext {
     /// HTML attributes for syntax highlight `<code>` element
-    pub(self) syntax_highlight_code_attributes: HashMap<String, String>,
+    pub(self) code_attributes: HashMap<String, String>,
 
     /// HTML attributes for syntax highlight `<pre>` element
-    pub(self) syntax_highlight_pre_attributes: HashMap<String, String>,
+    pub(self) pre_attributes: HashMap<String, String>,
 
     /// Prefix for syntax highlight CSS classes
-    pub(self) syntax_highlight_css_prefix: String,
+    pub(self) css_prefix: String,
 
     /// Syntax highlight HTML formatter
-    pub(self) syntax_highlight_formatter: Option<Function>,
+    pub(self) formatter: Option<Function>,
 }
 
 impl MarkdownItExt for Context {}
@@ -52,10 +59,12 @@ impl Parser {
 
         // Context to be used in Markdown rules
         parser.ext.insert(Context {
-            syntax_highlight_code_attributes: config.syntax_highlight_code_attributes.to_owned(),
-            syntax_highlight_pre_attributes: config.syntax_highlight_pre_attributes.to_owned(),
-            syntax_highlight_css_prefix: config.syntax_highlight_css_prefix.to_owned(),
-            syntax_highlight_formatter: config.syntax_highlight_formatter.as_ref().cloned(),
+            syntax_highlight: SyntaxHighlightContext {
+                code_attributes: config.syntax_highlight.code_attributes.to_owned(),
+                pre_attributes: config.syntax_highlight.pre_attributes.to_owned(),
+                css_prefix: config.syntax_highlight.css_prefix.to_owned(),
+                formatter: config.syntax_highlight.formatter.as_ref().cloned(),
+            },
         });
 
         Self { parser }

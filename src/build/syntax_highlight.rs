@@ -14,7 +14,7 @@ use super::{Config, Entry, Error};
 pub(super) fn create_stylesheet_entries<'config>(
     config: &'config Config,
 ) -> impl Iterator<Item = Result<Entry, Error>> + 'config {
-    config.syntax_highlight_stylesheets.iter().map(|entry| {
+    config.syntax_highlight.stylesheets.iter().map(|entry| {
         create_css(&entry.theme, &entry.prefix)
             .map_err(|error| Error::CreateSyntaxHighlightStylesheet {
                 source: anyhow::anyhow!(error),
