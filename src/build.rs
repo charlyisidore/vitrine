@@ -3,6 +3,7 @@
 //! Each submodule implements functions that represent a build task.
 
 mod front_matter;
+mod global_data;
 mod layout;
 mod markdown;
 mod minify_css;
@@ -81,9 +82,6 @@ struct EntryData {
     /// Override the entry URL.
     url: Option<String>,
 
-    /// Layout name for the layout engine.
-    layout: Option<String>,
-
     /// Additional fields.
     #[serde(flatten)]
     extra: serde_json::Value,
@@ -104,6 +102,8 @@ pub(super) fn build(config: &Config) -> Result<(), Error> {
         .transpose()?;
 
     let html_minifier = self::minify_html::Minifier::new();
+
+    let global_data = global_data::read(config)?;
 
     let mut num_output_files: usize = 0;
 
@@ -195,7 +195,7 @@ pub(super) fn build(config: &Config) -> Result<(), Error> {
             // Render layouts
             if let Some(layout_engine) = layout_engine.as_ref() {
                 entry.and_then(|entry| match entry.format.as_str() {
-                    "html" => layout_engine.render_entry(entry),
+                    "html" => layout_engine.render_entry(entry, &global_data),
                     _ => Ok(entry),
                 })
             } else {

@@ -83,3 +83,9 @@ where
             .collect()
     }
 }
+
+impl FromRhai for serde_json::Value {
+    fn from_rhai(value: &Dynamic, _: Arc<Engine>, _: Arc<AST>) -> anyhow::Result<Self> {
+        Ok(rhai::serde::from_dynamic(value)?)
+    }
+}

@@ -55,6 +55,16 @@ fn default_layout_dir() -> Option<PathBuf> {
     Some(PathBuf::from("_layouts")).filter(|path| path.exists())
 }
 
+/// Return the default name of the content variable in layouts.
+fn default_layout_content_key() -> String {
+    "content".to_owned()
+}
+
+/// Return the default name of the layout key in front matter data.
+fn default_layout_layout_key() -> String {
+    "layout".to_owned()
+}
+
 /// Configuration for Vitrine.
 ///
 /// This structure represents the configuration given to the site builder.
@@ -89,6 +99,14 @@ pub(crate) struct Config {
     #[vitrine(default = "default_data_dir")]
     pub(crate) data_dir: Option<PathBuf>,
 
+    /// Global data.
+    ///
+    /// This data is merged with the data loaded from the directory specified in
+    /// [`Config::data_dir`].
+    #[serde(default)]
+    #[vitrine(default)]
+    pub(crate) global_data: serde_json::Value,
+
     /// Directory of layout files.
     ///
     /// If set to `None`, Vitrine does not use a layout engine.
@@ -115,6 +133,7 @@ impl Default for Config {
             output_dir: default_output_dir(),
             base_url: default_base_url(),
             data_dir: default_data_dir(),
+            global_data: Default::default(),
             layout_dir: default_layout_dir(),
             layout: Default::default(),
             syntax_highlight: Default::default(),
@@ -125,6 +144,16 @@ impl Default for Config {
 /// Configuration for the layout engine.
 #[derive(Debug, Default, Deserialize, FromLua, FromRhai)]
 pub(crate) struct LayoutConfig {
+    /// Name of the template variable representing the content.
+    #[serde(default = "default_layout_content_key")]
+    #[vitrine(default = "default_layout_content_key")]
+    pub(crate) content_key: String,
+
+    /// Name of the metadata key containing the layout name.
+    #[serde(default = "default_layout_layout_key")]
+    #[vitrine(default = "default_layout_layout_key")]
+    pub(crate) layout_key: String,
+
     /// Custom filters for the layout engine.
     #[serde(skip)]
     #[vitrine(default)]
@@ -250,7 +279,10 @@ pub(super) fn normalize_config(config: Config) -> Result<Config, Error> {
         .canonicalize()
         .map_err(|error| Error::LoadConfig {
             config_path: config_path.to_owned(),
-            source: anyhow::anyhow!(error).context("while normalizing input_dir"),
+            source: anyhow::anyhow!(error).context(format!(
+                "While normalizing input_dir: {:?}",
+                config.input_dir
+            )),
         })?;
 
     // Normalize output directory
@@ -267,21 +299,27 @@ pub(super) fn normalize_config(config: Config) -> Result<Config, Error> {
     // Canonicalize data directory
     let data_dir = config
         .data_dir
+        .as_ref()
         .map(|dir| dir.canonicalize())
         .transpose()
         .map_err(|error| Error::LoadConfig {
             config_path: config_path.to_owned(),
-            source: anyhow::anyhow!(error).context("while normalizing data_dir"),
+            source: anyhow::anyhow!(error)
+                .context(format!("While normalizing data_dir: {:?}", config.data_dir)),
         })?;
 
     // Canonicalize layout directory
     let layout_dir = config
         .layout_dir
+        .as_ref()
         .map(|dir| dir.canonicalize())
         .transpose()
         .map_err(|error| Error::LoadConfig {
             config_path: config_path.to_owned(),
-            source: anyhow::anyhow!(error).context("while normalizing layout_dir"),
+            source: anyhow::anyhow!(error).context(format!(
+                "While normalizing layout_dir: {:?}",
+                config.layout_dir
+            )),
         })?;
 
     Ok(Config {

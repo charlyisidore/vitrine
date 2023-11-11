@@ -12,6 +12,11 @@ pub(crate) enum Error {
     },
     #[error("While initializing the layout engine")]
     NewLayoutEngine { source: anyhow::Error },
+    #[error("While reading global data file {input_path:?}")]
+    ReadGlobalDataInput {
+        input_path: Option<PathBuf>,
+        source: anyhow::Error,
+    },
     #[error("While reading file {input_path:?}")]
     ReadInput {
         input_path: Option<PathBuf>,
@@ -37,7 +42,7 @@ pub(crate) enum Error {
     #[error("In {input_path:?} while rendering layout {layout:?}")]
     RenderLayout {
         input_path: Option<PathBuf>,
-        layout: String,
+        layout: Option<String>,
         source: anyhow::Error,
     },
     #[error("In {input_path:?} while rewriting URL")]

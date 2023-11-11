@@ -91,3 +91,10 @@ where
             .collect()
     }
 }
+
+impl FromLua for serde_json::Value {
+    fn from_lua(value: mlua::Value, lua: &mlua::Lua) -> anyhow::Result<Self> {
+        use mlua::LuaSerdeExt;
+        Ok(lua.from_value(value)?)
+    }
+}
