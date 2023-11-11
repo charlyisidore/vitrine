@@ -127,7 +127,7 @@ pub(crate) struct Config {
 
 impl Default for Config {
     fn default() -> Self {
-        Config {
+        Self {
             config_path: Default::default(),
             input_dir: default_input_dir(),
             output_dir: default_output_dir(),
@@ -142,7 +142,7 @@ impl Default for Config {
 }
 
 /// Configuration for the layout engine.
-#[derive(Debug, Default, Deserialize, FromLua, FromRhai)]
+#[derive(Debug, Deserialize, FromLua, FromRhai)]
 pub(crate) struct LayoutConfig {
     /// Name of the template variable representing the content.
     #[serde(default = "default_layout_content_key")]
@@ -168,6 +168,18 @@ pub(crate) struct LayoutConfig {
     #[serde(skip)]
     #[vitrine(default)]
     pub(crate) testers: HashMap<String, Function>,
+}
+
+impl Default for LayoutConfig {
+    fn default() -> Self {
+        Self {
+            content_key: default_layout_content_key(),
+            layout_key: default_layout_layout_key(),
+            filters: Default::default(),
+            functions: Default::default(),
+            testers: Default::default(),
+        }
+    }
 }
 
 /// Configuration for syntax highlight.
