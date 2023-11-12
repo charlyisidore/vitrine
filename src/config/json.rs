@@ -19,7 +19,7 @@ fn load_config_str<S>(content: S) -> anyhow::Result<Config>
 where
     S: AsRef<str>,
 {
-    Ok(serde_json::from_str(content.as_ref())?)
+    crate::util::data::json::read_str(content)
 }
 
 #[cfg(test)]
