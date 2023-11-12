@@ -254,8 +254,8 @@ where
         if let Some(extension) = config_path.extension().and_then(|v| v.to_str()) {
             match extension {
                 "json" => crate::util::data::json::read_file(config_path),
-                "lua" => self::lua::load_config(config_path),
-                "rhai" => self::rhai::load_config(config_path),
+                "lua" => crate::util::data::lua::read_file(config_path),
+                "rhai" => crate::util::data::rhai::read_file(config_path),
                 "toml" => crate::util::data::toml::read_file(config_path),
                 "yaml" => crate::util::data::yaml::read_file(config_path),
                 _ => Err(anyhow::anyhow!("Unknown configuration file extension")),

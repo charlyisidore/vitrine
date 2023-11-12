@@ -1,59 +1,5 @@
 //! Load configuration from Lua scripts.
 
-use std::{
-    path::Path,
-    sync::{Arc, Mutex},
-};
-
-use mlua::Lua;
-
-use super::Config;
-use crate::util::from_lua::FromLua;
-
-/// Load configuration from a Lua file.
-pub(super) fn load_config<P>(path: P) -> anyhow::Result<Config>
-where
-    P: AsRef<Path>,
-{
-    let path = path.as_ref();
-    let content = std::fs::read_to_string(path)?;
-    load_config_str(content)
-}
-
-/// Load configuration from a Lua string.
-fn load_config_str<S>(content: S) -> anyhow::Result<Config>
-where
-    S: AsRef<str>,
-{
-    load_str(content)
-}
-
-/// Load a structure from a Lua string.
-fn load_str<T, S>(content: S) -> anyhow::Result<T>
-where
-    T: FromLua,
-    S: AsRef<str>,
-{
-    let content = content.as_ref();
-
-    // Call `unsafe_new()` to allow loading C modules
-    let lua = unsafe { Lua::unsafe_new() };
-
-    // `Lua` is not `Sync`, so we wrap it in `Arc<Mutex>`
-    let lua_mutex = Arc::new(Mutex::new(lua));
-    let lua = lua_mutex.lock().unwrap();
-
-    // Save the mutex in Lua's context, we can retrieve it with `lua.app_data_ref()`
-    lua.set_app_data(Arc::clone(&lua_mutex));
-
-    // Execute the script
-    let result: mlua::Value = lua.load(content).eval()?;
-
-    let result = T::from_lua(result, &lua)?;
-
-    Ok(result)
-}
-
 #[cfg(test)]
 mod tests {
     #[test]
@@ -84,7 +30,7 @@ mod tests {
         }
         "#;
 
-        let config: Config = super::load_str(CONTENT).unwrap();
+        let config: Config = crate::util::data::lua::read_str(CONTENT).unwrap();
 
         assert_eq!(config.skip_value, "");
         assert_eq!(config.default_value, "bar");
@@ -111,7 +57,7 @@ mod tests {
             "baz".to_owned()
         }
 
-        let config: Config = super::load_str("return {}").unwrap();
+        let config: Config = crate::util::data::lua::read_str("return {}").unwrap();
 
         assert_eq!(config.skip_value, "");
         assert_eq!(config.default_value, "");
@@ -120,6 +66,8 @@ mod tests {
 
     #[test]
     fn load_config_str() {
+        use super::super::super::Config;
+
         const CONTENT: &str = r#"
         return {
             input_dir = "foo",
@@ -151,7 +99,7 @@ mod tests {
         }
         "#;
 
-        let config = super::load_config_str(CONTENT).unwrap();
+        let config: Config = crate::util::data::lua::read_str(CONTENT).unwrap();
 
         assert_eq!(config.input_dir.to_str().unwrap(), "foo");
         assert_eq!(config.output_dir.unwrap().to_str().unwrap(), "bar");
@@ -214,7 +162,9 @@ mod tests {
 
     #[test]
     fn load_config_empty() {
-        let config = super::load_config_str("return {}").unwrap();
+        use super::super::super::Config;
+
+        let config: Config = crate::util::data::lua::read_str("return {}").unwrap();
 
         assert_eq!(config.input_dir, super::super::default_input_dir());
         assert_eq!(config.output_dir, super::super::default_output_dir());

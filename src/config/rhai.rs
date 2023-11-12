@@ -1,50 +1,5 @@
 //! Load configuration from Rhai scripts.
 
-use std::{path::Path, sync::Arc};
-
-use super::Config;
-use crate::util::from_rhai::FromRhai;
-
-/// Load configuration from a Rhai file.
-pub(super) fn load_config<P>(path: P) -> anyhow::Result<Config>
-where
-    P: AsRef<Path>,
-{
-    let path = path.as_ref();
-    let content = std::fs::read_to_string(path)?;
-    load_config_str(content)
-}
-
-/// Load configuration from a Rhai string.
-fn load_config_str<S>(content: S) -> anyhow::Result<Config>
-where
-    S: AsRef<str>,
-{
-    load_str(content)
-}
-
-/// Load a structure from a Rhai string.
-fn load_str<T, S>(content: S) -> anyhow::Result<T>
-where
-    T: FromRhai,
-    S: AsRef<str>,
-{
-    let content = content.as_ref();
-
-    // Initialize the rhai engine
-    let engine = Arc::new(rhai::Engine::new());
-
-    // Compile the script
-    let ast = Arc::new(engine.compile(content)?);
-
-    // Execute the script
-    let result: rhai::Dynamic = engine.eval_ast(&ast)?;
-
-    let result = T::from_rhai(&result, engine, ast)?;
-
-    Ok(result)
-}
-
 #[cfg(test)]
 mod tests {
     #[test]
@@ -75,7 +30,7 @@ mod tests {
         }
         "#;
 
-        let config: Config = super::load_str(CONTENT).unwrap();
+        let config: Config = crate::util::data::rhai::read_str(CONTENT).unwrap();
 
         assert_eq!(config.skip_value, "");
         assert_eq!(config.default_value, "bar");
@@ -102,7 +57,7 @@ mod tests {
             "baz".to_owned()
         }
 
-        let config: Config = super::load_str("#{}").unwrap();
+        let config: Config = crate::util::data::rhai::read_str("#{}").unwrap();
 
         assert_eq!(config.skip_value, "");
         assert_eq!(config.default_value, "");
@@ -111,6 +66,8 @@ mod tests {
 
     #[test]
     fn load_config_str() {
+        use super::super::super::Config;
+
         const CONTENT: &str = r#"
         #{
             input_dir: "foo",
@@ -142,7 +99,7 @@ mod tests {
         }
         "#;
 
-        let config = super::load_config_str(CONTENT).unwrap();
+        let config: Config = crate::util::data::rhai::read_str(CONTENT).unwrap();
 
         assert_eq!(config.input_dir.to_str().unwrap(), "foo");
         assert_eq!(config.output_dir.unwrap().to_str().unwrap(), "bar");
@@ -205,7 +162,9 @@ mod tests {
 
     #[test]
     fn load_config_empty() {
-        let config = super::load_config_str("#{}").unwrap();
+        use super::super::super::Config;
+
+        let config: Config = crate::util::data::rhai::read_str("#{}").unwrap();
 
         assert_eq!(config.input_dir, super::super::default_input_dir());
         assert_eq!(config.output_dir, super::super::default_output_dir());
