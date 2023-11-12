@@ -250,22 +250,23 @@ where
 
     tracing::info!("Loading configuration from {:?}", config_path);
 
-    let config = if let Some(extension) = config_path.extension().and_then(|v| v.to_str()) {
-        match extension {
-            "json" => self::json::load_config(config_path),
-            "lua" => self::lua::load_config(config_path),
-            "rhai" => self::rhai::load_config(config_path),
-            "toml" => self::toml::load_config(config_path),
-            "yaml" => self::yaml::load_config(config_path),
-            _ => Err(anyhow::anyhow!("Unknown configuration file extension")),
+    let config: Config =
+        if let Some(extension) = config_path.extension().and_then(|v| v.to_str()) {
+            match extension {
+                "json" => crate::util::data::json::read_file(config_path),
+                "lua" => self::lua::load_config(config_path),
+                "rhai" => self::rhai::load_config(config_path),
+                "toml" => crate::util::data::toml::read_file(config_path),
+                "yaml" => crate::util::data::yaml::read_file(config_path),
+                _ => Err(anyhow::anyhow!("Unknown configuration file extension")),
+            }
+        } else {
+            Err(anyhow::anyhow!("Missing configuration file extension"))
         }
-    } else {
-        Err(anyhow::anyhow!("Missing configuration file extension"))
-    }
-    .map_err(|error| Error::LoadConfig {
-        config_path: Some(config_path.to_owned()),
-        source: error.into(),
-    })?;
+        .map_err(|error| Error::LoadConfig {
+            config_path: Some(config_path.to_owned()),
+            source: error.into(),
+        })?;
 
     Ok(Config {
         config_path: Some(config_path.to_owned()),

@@ -1,29 +1,9 @@
 //! Load configuration from JSON files.
 
-use std::path::Path;
-
-use super::Config;
-
-/// Load configuration from a JSON file.
-pub(super) fn load_config<P>(path: P) -> anyhow::Result<Config>
-where
-    P: AsRef<Path>,
-{
-    let path = path.as_ref();
-    let content = std::fs::read_to_string(path)?;
-    load_config_str(content)
-}
-
-/// Load configuration from a JSON string.
-fn load_config_str<S>(content: S) -> anyhow::Result<Config>
-where
-    S: AsRef<str>,
-{
-    crate::util::data::json::read_str(content)
-}
-
 #[cfg(test)]
 mod tests {
+    use super::super::Config;
+
     #[test]
     fn load_config_str() {
         const CONTENT: &str = r#"
@@ -41,7 +21,7 @@ mod tests {
         }
         "#;
 
-        let config = super::load_config_str(CONTENT).unwrap();
+        let config: Config = crate::util::data::json::read_str(CONTENT).unwrap();
 
         assert_eq!(config.input_dir.to_str().unwrap(), "foo");
         assert_eq!(config.output_dir.unwrap().to_str().unwrap(), "bar");
@@ -56,7 +36,7 @@ mod tests {
 
     #[test]
     fn load_config_empty() {
-        let config = super::load_config_str("{}").unwrap();
+        let config: Config = crate::util::data::json::read_str("{}").unwrap();
 
         assert_eq!(config.input_dir, super::super::default_input_dir());
         assert_eq!(config.output_dir, super::super::default_output_dir());
