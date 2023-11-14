@@ -39,6 +39,8 @@ pub(crate) enum Error {
     },
     #[error("While creating syntax highlight CSS stylesheet")]
     CreateSyntaxHighlightStylesheet { source: anyhow::Error },
+    #[error("While grouping entries using taxonomies")]
+    GroupTaxonomies { source: anyhow::Error },
     #[error("In {input_path:?} while rendering layout {layout:?}")]
     RenderLayout {
         input_path: Option<PathBuf>,

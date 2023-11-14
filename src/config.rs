@@ -123,6 +123,11 @@ pub(crate) struct Config {
     #[serde(default)]
     #[vitrine(default)]
     pub(crate) syntax_highlight: SyntaxHighlightConfig,
+
+    /// Taxonomies configuration.
+    #[serde(default)]
+    #[vitrine(default)]
+    pub(crate) taxonomies: Vec<String>,
 }
 
 impl Default for Config {
@@ -137,6 +142,7 @@ impl Default for Config {
             layout_dir: default_layout_dir(),
             layout: Default::default(),
             syntax_highlight: Default::default(),
+            taxonomies: Default::default(),
         }
     }
 }

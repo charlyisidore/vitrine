@@ -12,6 +12,7 @@ mod minify_js;
 mod read_file;
 mod scss;
 mod syntax_highlight;
+mod taxonomies;
 mod url;
 mod write_file;
 
@@ -190,7 +191,12 @@ pub(super) fn build(config: &Config) -> Result<(), Error> {
                 "scss" => scss_compiler.compile_entry(entry),
                 _ => Ok(entry),
             })
-        })
+        });
+
+    // Group entries using taxonomies
+    let (entries, global_data) = self::taxonomies::group_entries(entries, config, global_data)?;
+
+    let entries = entries
         .map(|entry| {
             // Render layouts
             if let Some(layout_engine) = layout_engine.as_ref() {
