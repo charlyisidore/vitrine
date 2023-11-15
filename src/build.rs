@@ -2,6 +2,7 @@
 //!
 //! Each submodule implements functions that represent a build task.
 
+mod contents;
 mod front_matter;
 mod global_data;
 mod layout;
@@ -16,7 +17,10 @@ mod taxonomies;
 mod url;
 mod write_file;
 
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
 use serde::{Deserialize, Serialize};
 use walkdir::{DirEntry, WalkDir};
@@ -82,6 +86,10 @@ impl Entry {
 struct EntryData {
     /// Override the entry URL.
     url: Option<String>,
+
+    /// Associated contents.
+    #[serde(default)]
+    contents: HashMap<String, String>,
 
     /// Additional fields.
     #[serde(flatten)]
@@ -192,6 +200,9 @@ pub(super) fn build(config: &Config) -> Result<(), Error> {
                 _ => Ok(entry),
             })
         });
+
+    // Bundle entries
+    let entries = self::contents::bundle_entries(entries)?;
 
     // Group entries using taxonomies
     let (entries, global_data) = self::taxonomies::group_entries(entries, config, global_data)?;
