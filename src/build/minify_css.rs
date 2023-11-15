@@ -26,7 +26,7 @@ pub(super) fn minify_entry(entry: Entry) -> Result<Entry, Error> {
 }
 
 /// Minify a CSS string.
-fn minify<S>(input: S) -> Result<String, anyhow::Error>
+pub(super) fn minify<S>(input: S) -> anyhow::Result<String>
 where
     S: AsRef<str>,
 {

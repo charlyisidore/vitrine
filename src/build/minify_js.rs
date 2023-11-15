@@ -26,7 +26,7 @@ pub(super) fn minify_entry(entry: Entry) -> Result<Entry, Error> {
 }
 
 /// Minify a string containing JavaScript code.
-fn minify<S>(input: S) -> Result<String, anyhow::Error>
+pub(super) fn minify<S>(input: S) -> anyhow::Result<String>
 where
     S: AsRef<str>,
 {

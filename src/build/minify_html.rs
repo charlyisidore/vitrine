@@ -8,6 +8,7 @@ use super::{Entry, Error};
 
 /// HTML minifier.
 pub(super) struct Minifier {
+    /// [`minify_html`] configuration.
     cfg: Cfg,
 }
 
@@ -15,12 +16,7 @@ impl Minifier {
     /// Create and configure a HTML minifier.
     pub(super) fn new() -> Self {
         Self {
-            cfg: Cfg {
-                minify_css: true,
-                minify_css_level_1: true,
-                minify_js: true,
-                ..Cfg::spec_compliant()
-            },
+            cfg: Cfg::spec_compliant(),
         }
     }
 
@@ -44,7 +40,7 @@ impl Minifier {
     }
 
     /// Minify a HTML string.
-    fn minify<S>(&self, input: S) -> Result<String, anyhow::Error>
+    fn minify<S>(&self, input: S) -> anyhow::Result<String>
     where
         S: AsRef<str>,
     {
@@ -56,8 +52,58 @@ impl Minifier {
         // Convert `Vec<u8>` to `String`
         let output = String::from_utf8(output)?;
 
+        // Minify `<script>` and `<style>` content
+        let output = minify_inline(output)?;
+
         Ok(output)
     }
+}
+
+/// Minify inline JavaScript and CSS code inside `<script>` and `<style>` tags.
+fn minify_inline<S>(input: S) -> anyhow::Result<String>
+where
+    S: AsRef<str>,
+{
+    let input = input.as_ref();
+    let mut script_buffer = String::new();
+    let mut style_buffer = String::new();
+
+    lol_html::rewrite_str(input, lol_html::RewriteStrSettings {
+        element_content_handlers: vec![
+            lol_html::text!("script", |element| {
+                script_buffer.push_str(element.as_str());
+
+                if element.last_in_text_node() {
+                    let content = super::minify_js::minify(&script_buffer)
+                        .map_err(|error| error.context("While minifying <script>"))?;
+
+                    element.set_str(content);
+                    script_buffer.clear();
+                } else {
+                    element.remove();
+                }
+
+                Ok(())
+            }),
+            lol_html::text!("style", |element| {
+                style_buffer.push_str(element.as_str());
+
+                if element.last_in_text_node() {
+                    let content = super::minify_css::minify(&style_buffer)
+                        .map_err(|error| error.context("While minifying <style>"))?;
+
+                    element.set_str(content);
+                    style_buffer.clear();
+                } else {
+                    element.remove();
+                }
+
+                Ok(())
+            }),
+        ],
+        ..lol_html::RewriteStrSettings::default()
+    })
+    .map_err(|error| error.into())
 }
 
 #[cfg(test)]
@@ -66,12 +112,17 @@ mod tests {
     fn minify() {
         const CASES: [(&str, &str); 1] = [(
             concat!(
-                "<html>\n",          //
-                "  <head></head>\n", //
-                "  <body></body>\n", //
+                "<html>\n",                                    //
+                "  <head>\n",                                  //
+                "    <style>body { color: black; }</style>\n", //
+                "    <script>\n",                              //
+                "      console.log('Hello, world!');\n",       //
+                "    </script>\n",                             //
+                "  </head>\n",                                 //
+                "  <body></body>\n",                           //
                 "</html>\n"
             ),
-            "<body>",
+            "<style>body{color:#000}</style><script>console.log(`Hello, world!`)</script><body>",
         )];
 
         let minifier = super::Minifier::new();
