@@ -5,8 +5,6 @@ use std::{
     path::PathBuf,
 };
 
-use lol_html::{element, rewrite_str, RewriteStrSettings};
-
 use super::{Config, Entry, Error};
 
 /// List of elements and their attributes containing URLs.
@@ -123,8 +121,8 @@ pub(super) fn rewrite_url_entries(
 
         let dir = input_path.parent().unwrap();
 
-        let content = rewrite_str(&content, RewriteStrSettings {
-            element_content_handlers: vec![element!(selector, |element| {
+        let content = lol_html::rewrite_str(&content, lol_html::RewriteStrSettings {
+            element_content_handlers: vec![lol_html::element!(selector, |element| {
                 let Some(attributes) = elements_url_attributes.get(element.tag_name().as_str())
                 else {
                     return Ok(());
@@ -146,7 +144,7 @@ pub(super) fn rewrite_url_entries(
                 }
                 Ok(())
             })],
-            ..RewriteStrSettings::default()
+            ..lol_html::RewriteStrSettings::default()
         })
         .map_err(|error| Error::RewriteUrl {
             input_path: Some(input_path.to_owned()),
