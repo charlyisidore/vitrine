@@ -15,7 +15,12 @@ impl Minifier {
     /// Create and configure a HTML minifier.
     pub(super) fn new() -> Self {
         Self {
-            cfg: Cfg::spec_compliant(),
+            cfg: Cfg {
+                minify_css: true,
+                minify_css_level_1: true,
+                minify_js: true,
+                ..Cfg::spec_compliant()
+            },
         }
     }
 
