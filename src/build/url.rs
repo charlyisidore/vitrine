@@ -1,10 +1,37 @@
 //! Normalize URLs.
 
-use std::{collections::HashMap, path::PathBuf};
+use std::{
+    collections::{HashMap, HashSet},
+    path::PathBuf,
+};
 
 use lol_html::{element, rewrite_str, RewriteStrSettings};
 
 use super::{Config, Entry, Error};
+
+/// List of elements and their attributes containing URLs.
+///
+/// See <https://html.spec.whatwg.org/multipage/indices.html#attributes-3>.
+const ELEMENTS_URL_ATTRIBUTES: [(&str, &str); 18] = [
+    ("blockquote", "cite"),
+    ("del", "cite"),
+    ("ins", "cite"),
+    ("q", "cite"),
+    ("object", "data"),
+    ("a", "href"),
+    ("area", "href"),
+    ("link", "href"),
+    ("video", "poster"),
+    ("audio", "src"),
+    ("embed", "src"),
+    ("iframe", "src"),
+    ("img", "src"),
+    ("input", "src"),
+    ("script", "src"),
+    ("source", "src"),
+    ("track", "src"),
+    ("video", "src"),
+];
 
 /// Normalize the URL of a [`Entry`].
 ///
@@ -44,13 +71,30 @@ pub(super) fn normalize_entry(entry: Entry) -> Result<Entry, Error> {
 ///
 /// Source files can link to other files using local paths (e.g.
 /// `./other-page.md`). This function replaces these paths by web URLs (e.g.
-/// `/path/to/other-page`) in the HTML code.
+/// `/path/to/other-page`) in the HTML code. Supported attributes are specified
+/// in [`ELEMENTS_URL_ATTRIBUTES`].
 pub(super) fn rewrite_url_entries(
     entries: impl Iterator<Item = Result<Entry, Error>>,
     config: &Config,
 ) -> Result<impl Iterator<Item = Result<Entry, Error>>, Error> {
     let base_url = config.base_url.to_owned();
     let entries: Vec<_> = entries.collect::<Result<_, _>>()?;
+
+    // Mapping from element tag names to their attributes containing URLs
+    let elements_url_attributes: HashMap<&str, HashSet<&str>> = ELEMENTS_URL_ATTRIBUTES
+        .iter()
+        .fold(HashMap::new(), |mut map, (tag_name, attribute)| {
+            let attributes = map.entry(tag_name).or_default();
+            attributes.insert(attribute);
+            map
+        });
+
+    // Create a selector to match all elements from `ELEMENTS_URL_ATTRIBUTES`
+    let selector = ELEMENTS_URL_ATTRIBUTES
+        .iter()
+        .map(|(tag_name, attribute)| format!("{tag_name}[{attribute}]"))
+        .collect::<Vec<_>>()
+        .join(",");
 
     // Create a mapping from absolute input paths to output URLs
     let urls: HashMap<PathBuf, String> = entries
@@ -69,43 +113,50 @@ pub(super) fn rewrite_url_entries(
             return Ok(entry);
         }
 
-        if let Some(input_path) = entry.input_path() {
-            if let Some(content) = entry.content.as_ref() {
-                let dir = input_path.parent().unwrap();
+        let Some(input_path) = entry.input_path() else {
+            return Ok(entry);
+        };
 
-                let content = rewrite_str(&content, RewriteStrSettings {
-                    element_content_handlers: vec![element!("a[href]", |element| {
-                        // TODO: accurate URL parsing (e.g. `ftp://`, etc.)
-                        // TODO: consider paths starting with `/` (relative to config.input_dir)
-                        if let Some(url) = element
-                            .get_attribute("href")
-                            .filter(|href| {
-                                !href.starts_with("https://")
-                                    && !href.starts_with("http://")
-                                    && !href.starts_with("/")
-                            })
-                            .and_then(|href| dir.join(href).canonicalize().ok())
-                            .and_then(|path| urls.get(&path))
-                        {
-                            element.set_attribute("href", &url)?;
-                        }
-                        Ok(())
-                    })],
-                    ..RewriteStrSettings::default()
-                })
-                .map_err(|error| Error::RewriteUrl {
-                    input_path: Some(input_path.to_owned()),
-                    source: error.into(),
-                })?;
+        let Some(content) = entry.content.as_ref() else {
+            return Ok(entry);
+        };
 
-                return Ok(Entry {
-                    content: Some(content),
-                    ..entry
-                });
-            }
-        }
+        let dir = input_path.parent().unwrap();
 
-        Ok(entry)
+        let content = rewrite_str(&content, RewriteStrSettings {
+            element_content_handlers: vec![element!(selector, |element| {
+                let Some(attributes) = elements_url_attributes.get(element.tag_name().as_str())
+                else {
+                    return Ok(());
+                };
+
+                for attribute in attributes {
+                    if let Some(url) = element
+                        .get_attribute(attribute)
+                        .and_then(|href| {
+                            let href = href.trim();
+                            (!href.starts_with("/") && !href.contains("://"))
+                                .then(|| dir.join(href))
+                        })
+                        .and_then(|path| path.canonicalize().ok())
+                        .and_then(|path| urls.get(&path))
+                    {
+                        element.set_attribute(attribute, &url)?;
+                    }
+                }
+                Ok(())
+            })],
+            ..RewriteStrSettings::default()
+        })
+        .map_err(|error| Error::RewriteUrl {
+            input_path: Some(input_path.to_owned()),
+            source: error.into(),
+        })?;
+
+        Ok(Entry {
+            content: Some(content),
+            ..entry
+        })
     });
 
     Ok(entries)
