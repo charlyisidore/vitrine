@@ -71,11 +71,12 @@ where
     lol_html::rewrite_str(input, lol_html::RewriteStrSettings {
         element_content_handlers: vec![
             lol_html::text!("script", |element| {
+                // Minify `<script>` elements
                 script_buffer.push_str(element.as_str());
 
                 if element.last_in_text_node() {
                     let content = super::minify_js::minify(&script_buffer)
-                        .map_err(|error| error.context("While minifying <script>"))?;
+                        .map_err(|error| error.context("While minifying `<script>` element"))?;
 
                     element.set_str(content);
                     script_buffer.clear();
@@ -86,16 +87,41 @@ where
                 Ok(())
             }),
             lol_html::text!("style", |element| {
+                // Minify `<style>` elements
                 style_buffer.push_str(element.as_str());
 
                 if element.last_in_text_node() {
                     let content = super::minify_css::minify(&style_buffer)
-                        .map_err(|error| error.context("While minifying <style>"))?;
+                        .map_err(|error| error.context("While minifying `<style>` element"))?;
 
                     element.set_str(content);
                     style_buffer.clear();
                 } else {
                     element.remove();
+                }
+
+                Ok(())
+            }),
+            lol_html::element!("*[style]", |element| {
+                // Minify `style`` attributes
+                let Some(content) = element.get_attribute("style") else {
+                    return Ok(());
+                };
+
+                const PREFIX: &str = "_{";
+                const SUFFIX: &str = "}";
+
+                // Wrap CSS rules in a fake selector to make a valid CSS stylesheet
+                let content = format!("{PREFIX}{content}{SUFFIX}");
+
+                let content = super::minify_css::minify(content)
+                    .map_err(|error| error.context("While minifying `style` attribute"))?;
+
+                if content.starts_with(PREFIX) && content.ends_with(SUFFIX) {
+                    element.set_attribute(
+                        "style",
+                        &content[PREFIX.len()..content.len() - SUFFIX.len()],
+                    )?;
                 }
 
                 Ok(())
@@ -112,17 +138,20 @@ mod tests {
     fn minify() {
         const CASES: [(&str, &str); 1] = [(
             concat!(
-                "<html>\n",                                    //
-                "  <head>\n",                                  //
-                "    <style>body { color: black; }</style>\n", //
-                "    <script>\n",                              //
-                "      console.log('Hello, world!');\n",       //
-                "    </script>\n",                             //
-                "  </head>\n",                                 //
-                "  <body></body>\n",                           //
+                "<html>\n",                                       //
+                "  <head>\n",                                     //
+                "    <style>body { color: black; }</style>\n",    //
+                "    <script>\n",                                 //
+                "      function hello() {\n",                     //
+                "        return 'Hello, world!';\n",              //
+                "      }\n",                                      //
+                "    </script>\n",                                //
+                "  </head>\n",                                    //
+                "  <body style=\"background: white;\"></body>\n", //
                 "</html>\n"
             ),
-            "<style>body{color:#000}</style><script>console.log(`Hello, world!`)</script><body>",
+            "<style>body{color:#000}</style><script>var hello=(()=>`Hello, world!`)</script><body \
+             style=\"background:#fff\">",
         )];
 
         let minifier = super::Minifier::new();
