@@ -16,6 +16,9 @@ pub(super) struct Engine {
     /// Name of the metadata key containing the layout name.
     layout_key: String,
 
+    /// Name of the template variable representing the page.
+    page_key: String,
+
     /// Tera template engine.
     tera: Tera,
 }
@@ -75,6 +78,7 @@ impl Engine {
                 Ok(Self {
                     content_key: config.layout.content_key.to_owned(),
                     layout_key: config.layout.layout_key.to_owned(),
+                    page_key: config.layout.page_key.to_owned(),
                     tera,
                 })
             })
@@ -127,6 +131,16 @@ impl Engine {
                 data.as_object_mut()
                     .map(|map| map.insert(self.content_key.to_owned(), content.to_owned().into()));
             }
+        }
+
+        if !self.page_key.is_empty() {
+            // Add page data
+            data.as_object_mut().map(|map| {
+                map.insert(
+                    self.page_key.to_owned(),
+                    tera::Map::from_iter([("url".to_owned(), entry.url.to_owned().into())]).into(),
+                )
+            });
         }
 
         let content = self

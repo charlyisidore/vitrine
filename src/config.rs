@@ -65,6 +65,11 @@ fn default_layout_layout_key() -> String {
     "layout".to_owned()
 }
 
+/// Return the default name of the page variable in layouts.
+fn default_layout_page_key() -> String {
+    "page".to_owned()
+}
+
 /// Configuration for Vitrine.
 ///
 /// This structure represents the configuration given to the site builder.
@@ -160,6 +165,11 @@ pub(crate) struct LayoutConfig {
     #[vitrine(default = "default_layout_layout_key")]
     pub(crate) layout_key: String,
 
+    /// Name of the metadata key containing the page data.
+    #[serde(default = "default_layout_page_key")]
+    #[vitrine(default = "default_layout_page_key")]
+    pub(crate) page_key: String,
+
     /// Custom filters for the layout engine.
     #[serde(skip)]
     #[vitrine(default)]
@@ -181,6 +191,7 @@ impl Default for LayoutConfig {
         Self {
             content_key: default_layout_content_key(),
             layout_key: default_layout_layout_key(),
+            page_key: default_layout_page_key(),
             filters: Default::default(),
             functions: Default::default(),
             testers: Default::default(),
