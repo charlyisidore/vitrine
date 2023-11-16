@@ -3,6 +3,7 @@
 //! Each submodule implements functions that represent a build task.
 
 mod contents;
+mod data_cascade;
 mod front_matter;
 mod global_data;
 mod layout;
@@ -182,9 +183,15 @@ pub(super) fn build(config: &Config) -> Result<(), Error> {
             // Parse metadata
             entry.and_then(|entry| match entry.format.as_str() {
                 "html" | "md" => self::front_matter::parse_entry(entry),
+                "json" | "toml" | "yaml" => self::data_cascade::parse_entry(entry),
                 _ => Ok(entry),
             })
-        })
+        });
+
+    // Apply data cascade
+    let entries = self::data_cascade::cascade_entries(entries)?;
+
+    let entries = entries
         .map(|entry| {
             // Normalize URLs
             entry.and_then(|entry| match entry.format.as_str() {

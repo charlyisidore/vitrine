@@ -27,6 +27,11 @@ pub(crate) enum Error {
         input_path: Option<PathBuf>,
         source: anyhow::Error,
     },
+    #[error("In {input_path:?} while parsing data")]
+    ParseCascadeData {
+        input_path: Option<PathBuf>,
+        source: anyhow::Error,
+    },
     #[error("In {input_path:?} while normalizing URL")]
     NormalizeUrl {
         input_path: Option<PathBuf>,
