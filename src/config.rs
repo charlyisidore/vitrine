@@ -70,6 +70,11 @@ fn default_layout_page_key() -> String {
     "page".to_owned()
 }
 
+/// Return the default value for the `minify` option.
+fn default_minify() -> bool {
+    true
+}
+
 /// Configuration for Vitrine.
 ///
 /// This structure represents the configuration given to the site builder.
@@ -133,6 +138,11 @@ pub(crate) struct Config {
     #[serde(default)]
     #[vitrine(default)]
     pub(crate) taxonomies: Vec<String>,
+
+    /// Determine whether CSS, HTML and JS should be minified.
+    #[serde(default = "default_minify")]
+    #[vitrine(default = "default_minify")]
+    pub(crate) minify: bool,
 }
 
 impl Default for Config {
@@ -148,6 +158,7 @@ impl Default for Config {
             layout: Default::default(),
             syntax_highlight: Default::default(),
             taxonomies: Default::default(),
+            minify: default_minify(),
         }
     }
 }

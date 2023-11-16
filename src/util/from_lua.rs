@@ -11,6 +11,14 @@ pub(crate) trait FromLua: Sized {
     fn from_lua(value: mlua::Value, lua: &mlua::Lua) -> anyhow::Result<Self>;
 }
 
+impl FromLua for bool {
+    fn from_lua(value: mlua::Value, _: &mlua::Lua) -> anyhow::Result<Self> {
+        Ok(value
+            .as_boolean()
+            .ok_or_else(|| anyhow::anyhow!("Expected boolean, received {}", value.type_name()))?)
+    }
+}
+
 impl FromLua for String {
     fn from_lua(value: mlua::Value, _: &mlua::Lua) -> anyhow::Result<Self> {
         Ok(value

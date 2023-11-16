@@ -14,6 +14,15 @@ pub(crate) trait FromRhai: Sized {
     fn from_rhai(value: &Dynamic, engine: Arc<Engine>, ast: Arc<AST>) -> anyhow::Result<Self>;
 }
 
+impl FromRhai for bool {
+    fn from_rhai(value: &Dynamic, _: Arc<Engine>, _: Arc<AST>) -> anyhow::Result<Self> {
+        value
+            .to_owned()
+            .as_bool()
+            .map_err(|error| anyhow::anyhow!("Expected bool, received {}", error))
+    }
+}
+
 impl FromRhai for String {
     fn from_rhai(value: &Dynamic, _: Arc<Engine>, _: Arc<AST>) -> anyhow::Result<Self> {
         value

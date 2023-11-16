@@ -231,6 +231,9 @@ pub(super) fn build(config: &Config) -> Result<(), Error> {
     // Rewrite URLs
     self::url::rewrite_url_entries(entries, config)?
         .map(|entry| {
+            if !config.minify {
+                return entry;
+            }
             // Minify CSS/HTML/JS
             entry.and_then(|entry| match entry.format.as_str() {
                 "css" => self::minify_css::minify_entry(entry),
