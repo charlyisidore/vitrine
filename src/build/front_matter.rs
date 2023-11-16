@@ -20,20 +20,20 @@ const YAML_DELIMITER: &str = "---";
 /// store it in the `data` property. The front matter is removed from the
 /// `content` property. When no front matter is found, `data` is `None`.
 pub(super) fn parse_entry(entry: Entry) -> Result<Entry, Error> {
-    if let Some(content) = entry.content.as_ref() {
-        let (content, data) = parse(content).map_err(|error| Error::ParseFrontMatter {
-            input_path: entry.input_path_buf(),
-            source: error,
-        })?;
+    let Some(content) = entry.content.as_ref() else {
+        return Ok(entry);
+    };
 
-        return Ok(Entry {
-            content: Some(content),
-            data,
-            ..entry
-        });
-    }
+    let (content, data) = parse(content).map_err(|error| Error::ParseFrontMatter {
+        input_path: entry.input_path_buf(),
+        source: error,
+    })?;
 
-    Ok(entry)
+    Ok(Entry {
+        content: Some(content),
+        data,
+        ..entry
+    })
 }
 
 /// Extract and deserialize front matter data from a string.
