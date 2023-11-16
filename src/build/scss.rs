@@ -50,7 +50,7 @@ impl Compiler<'_> {
     }
 
     /// Compile a string from SCSS to CSS.
-    fn compile<S>(&self, input: S) -> Result<String, anyhow::Error>
+    fn compile<S>(&self, input: S) -> anyhow::Result<String>
     where
         S: AsRef<str>,
     {

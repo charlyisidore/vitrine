@@ -41,7 +41,7 @@ pub(super) fn parse_entry(entry: Entry) -> Result<Entry, Error> {
 /// Returns a tuple (`content`, `data`), where `content` is the content without
 /// the front matter, and `data` is the deserialized front matter data (or
 /// `None` if no front matter has been found).
-fn parse<T, S>(content: S) -> Result<(String, Option<T>), anyhow::Error>
+fn parse<T, S>(content: S) -> anyhow::Result<(String, Option<T>)>
 where
     T: DeserializeOwned,
     S: AsRef<str>,

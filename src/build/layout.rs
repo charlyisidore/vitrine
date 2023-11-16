@@ -158,7 +158,7 @@ impl Engine {
     }
 
     /// Render a layout given data.
-    fn render<L, D>(&self, layout: L, data: D) -> Result<String, anyhow::Error>
+    fn render<L, D>(&self, layout: L, data: D) -> anyhow::Result<String>
     where
         L: AsRef<str>,
         D: serde::Serialize,
