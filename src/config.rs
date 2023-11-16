@@ -75,6 +75,11 @@ fn default_minify() -> bool {
     true
 }
 
+/// Return the default server port.
+fn default_serve_port() -> u16 {
+    8000
+}
+
 /// Configuration for Vitrine.
 ///
 /// This structure represents the configuration given to the site builder.
@@ -143,6 +148,11 @@ pub(crate) struct Config {
     #[serde(default = "default_minify")]
     #[vitrine(default = "default_minify")]
     pub(crate) minify: bool,
+
+    /// Server port.
+    #[serde(default = "default_serve_port")]
+    #[vitrine(default = "default_serve_port")]
+    pub(crate) serve_port: u16,
 }
 
 impl Default for Config {
@@ -159,6 +169,7 @@ impl Default for Config {
             syntax_highlight: Default::default(),
             taxonomies: Default::default(),
             minify: default_minify(),
+            serve_port: default_serve_port(),
         }
     }
 }

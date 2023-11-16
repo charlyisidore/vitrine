@@ -4,19 +4,20 @@ mod build;
 mod cli;
 mod config;
 mod error;
+mod serve;
 mod util;
 
 use clap::Parser;
 use tracing_subscriber::prelude::*;
 
 use crate::{
-    build::build,
     cli::Cli,
     config::{load_config, load_config_default, normalize_config, validate_config, Config},
 };
 
 /// Entry point of the program.
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     // Display log messages on the console
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::layer())
@@ -46,6 +47,8 @@ fn main() -> anyhow::Result<()> {
         base_url: cli.base_url.unwrap_or(config.base_url),
         data_dir: cli.data_dir.or(config.data_dir),
         layout_dir: cli.layout_dir.or(config.layout_dir),
+        minify: !cli.serve && config.minify,
+        serve_port: cli.port.unwrap_or(config.serve_port),
         ..config
     };
 
@@ -58,7 +61,11 @@ fn main() -> anyhow::Result<()> {
     tracing::debug!("{:#?}", config);
 
     // Build the site
-    build(&config)?;
+    build::build(&config)?;
+
+    if cli.serve {
+        serve::serve(&config).await?;
+    }
 
     Ok(())
 }

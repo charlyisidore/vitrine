@@ -31,6 +31,14 @@ pub(super) struct Cli {
     #[arg(long)]
     pub(super) layout_dir: Option<PathBuf>,
 
+    /// Serve the site
+    #[arg(long)]
+    pub(super) serve: bool,
+
+    /// Server port
+    #[arg(long)]
+    pub(super) port: Option<u16>,
+
     /// Do not write output files
     #[arg(long)]
     pub(super) dry_run: bool,

@@ -79,4 +79,6 @@ pub(crate) enum Error {
         output_path: PathBuf,
         source: anyhow::Error,
     },
+    #[error("While serving files")]
+    Serve { source: anyhow::Error },
 }
