@@ -19,6 +19,15 @@ impl FromLua for bool {
     }
 }
 
+impl FromLua for u16 {
+    fn from_lua(value: mlua::Value, _: &mlua::Lua) -> anyhow::Result<Self> {
+        Ok(value
+            .as_u32()
+            .ok_or_else(|| anyhow::anyhow!("Expected u32, received {}", value.type_name()))?
+            as u16)
+    }
+}
+
 impl FromLua for String {
     fn from_lua(value: mlua::Value, _: &mlua::Lua) -> anyhow::Result<Self> {
         Ok(value
