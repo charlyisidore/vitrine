@@ -6,6 +6,7 @@ mod config;
 mod error;
 mod serve;
 mod util;
+mod watch;
 
 use clap::Parser;
 use tracing_subscriber::prelude::*;
@@ -48,7 +49,7 @@ async fn main() -> anyhow::Result<()> {
         data_dir: cli.data_dir.or(config.data_dir),
         layout_dir: cli.layout_dir.or(config.layout_dir),
         minify: !cli.serve && config.minify,
-        serve_port: cli.port.unwrap_or(config.serve_port),
+        serve_port: cli.port,
         ..config
     };
 
@@ -64,7 +65,10 @@ async fn main() -> anyhow::Result<()> {
     build::build(&config)?;
 
     if cli.serve {
-        serve::serve(&config).await?;
+        let serve = serve::serve(&config);
+        let watch = watch::watch(&config, || build::build(&config));
+
+        futures::try_join!(serve, watch)?;
     }
 
     Ok(())

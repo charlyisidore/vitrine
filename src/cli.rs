@@ -36,8 +36,8 @@ pub(super) struct Cli {
     pub(super) serve: bool,
 
     /// Server port
-    #[arg(long)]
-    pub(super) port: Option<u16>,
+    #[arg(long, default_value_t = 8000)]
+    pub(super) port: u16,
 
     /// Do not write output files
     #[arg(long)]

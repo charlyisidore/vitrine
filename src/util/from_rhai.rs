@@ -23,16 +23,6 @@ impl FromRhai for bool {
     }
 }
 
-impl FromRhai for u16 {
-    fn from_rhai(value: &Dynamic, _: Arc<Engine>, _: Arc<AST>) -> anyhow::Result<Self> {
-        Ok(value
-            .to_owned()
-            .as_int()
-            .map_err(|error| anyhow::anyhow!("Expected int, received {}", error))?
-            as u16)
-    }
-}
-
 impl FromRhai for String {
     fn from_rhai(value: &Dynamic, _: Arc<Engine>, _: Arc<AST>) -> anyhow::Result<Self> {
         value

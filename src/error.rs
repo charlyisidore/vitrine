@@ -81,4 +81,6 @@ pub(crate) enum Error {
     },
     #[error("While serving files")]
     Serve { source: anyhow::Error },
+    #[error("While watching files")]
+    Watch { source: anyhow::Error },
 }

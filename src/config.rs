@@ -75,11 +75,6 @@ fn default_minify() -> bool {
     true
 }
 
-/// Return the default server port.
-fn default_serve_port() -> u16 {
-    8000
-}
-
 /// Configuration for Vitrine.
 ///
 /// This structure represents the configuration given to the site builder.
@@ -144,14 +139,19 @@ pub(crate) struct Config {
     #[vitrine(default)]
     pub(crate) taxonomies: Vec<String>,
 
+    /// Paths to ignore from input files.
+    #[serde(skip)]
+    #[vitrine(skip)]
+    pub(crate) ignore_paths: Vec<PathBuf>,
+
     /// Determine whether CSS, HTML and JS should be minified.
     #[serde(default = "default_minify")]
     #[vitrine(default = "default_minify")]
     pub(crate) minify: bool,
 
     /// Server port.
-    #[serde(default = "default_serve_port")]
-    #[vitrine(default = "default_serve_port")]
+    #[serde(skip)]
+    #[vitrine(skip)]
     pub(crate) serve_port: u16,
 }
 
@@ -168,8 +168,9 @@ impl Default for Config {
             layout: Default::default(),
             syntax_highlight: Default::default(),
             taxonomies: Default::default(),
+            ignore_paths: Default::default(),
             minify: default_minify(),
-            serve_port: default_serve_port(),
+            serve_port: Default::default(),
         }
     }
 }
@@ -325,6 +326,17 @@ pub(super) fn normalize_config(config: Config) -> Result<Config, Error> {
         source: error.into(),
     })?;
 
+    // Canonicalize config path
+    let config_path = config_path
+        .as_ref()
+        .map(|path| path.canonicalize())
+        .transpose()
+        .map_err(|error| Error::LoadConfig {
+            config_path: config_path.to_owned(),
+            source: anyhow::anyhow!(error)
+                .context(format!("While normalizing config path: {:?}", config_path)),
+        })?;
+
     // Canonicalize input directory
     let input_dir = config
         .input_dir
@@ -374,12 +386,28 @@ pub(super) fn normalize_config(config: Config) -> Result<Config, Error> {
             )),
         })?;
 
+    // Paths to ignore from input/data/layout files
+    let mut ignore_paths = config.ignore_paths;
+
+    // Exclude configuration file
+    if let Some(config_path) = config_path.as_ref() {
+        debug_assert!(config_path.is_absolute());
+        ignore_paths.push(config_path.to_owned());
+    }
+
+    // Exclude output directory
+    if let Some(output_dir) = output_dir.as_ref() {
+        debug_assert!(output_dir.is_absolute());
+        ignore_paths.push(output_dir.to_owned());
+    }
+
     Ok(Config {
         config_path,
         input_dir,
         output_dir,
         data_dir,
         layout_dir,
+        ignore_paths,
         ..config
     })
 }
