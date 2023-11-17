@@ -129,7 +129,7 @@ pub(super) fn build(config: &Config) -> Result<(), Error> {
                     .to_str()
                     .map(|file_name| !file_name.starts_with(".") && !file_name.starts_with("_"))
                     .unwrap_or(false)
-                    && !config.ignore_paths.contains(&entry.path().to_owned()))
+                    && !config.input_ignore_paths.contains(&entry.path().to_owned()))
         })
         .filter_map(|result| {
             // Ignore errors (e.g. permission denied)

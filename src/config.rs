@@ -142,7 +142,7 @@ pub(crate) struct Config {
     /// Paths to ignore from input files.
     #[serde(skip)]
     #[vitrine(skip)]
-    pub(crate) ignore_paths: Vec<PathBuf>,
+    pub(crate) input_ignore_paths: Vec<PathBuf>,
 
     /// Determine whether CSS, HTML and JS should be minified.
     #[serde(default = "default_minify")]
@@ -168,7 +168,7 @@ impl Default for Config {
             layout: Default::default(),
             syntax_highlight: Default::default(),
             taxonomies: Default::default(),
-            ignore_paths: Default::default(),
+            input_ignore_paths: Default::default(),
             minify: default_minify(),
             serve_port: Default::default(),
         }
@@ -386,19 +386,31 @@ pub(super) fn normalize_config(config: Config) -> Result<Config, Error> {
             )),
         })?;
 
-    // Paths to ignore from input/data/layout files
-    let mut ignore_paths = config.ignore_paths;
+    // Paths to ignore from input files
+    let mut input_ignore_paths = config.input_ignore_paths;
 
     // Exclude configuration file
     if let Some(config_path) = config_path.as_ref() {
         debug_assert!(config_path.is_absolute());
-        ignore_paths.push(config_path.to_owned());
+        input_ignore_paths.push(config_path.to_owned());
     }
 
     // Exclude output directory
     if let Some(output_dir) = output_dir.as_ref() {
         debug_assert!(output_dir.is_absolute());
-        ignore_paths.push(output_dir.to_owned());
+        input_ignore_paths.push(output_dir.to_owned());
+    }
+
+    // Exclude data directory
+    if let Some(data_dir) = data_dir.as_ref() {
+        debug_assert!(data_dir.is_absolute());
+        input_ignore_paths.push(data_dir.to_owned());
+    }
+
+    // Exclude layout directory
+    if let Some(layout_dir) = layout_dir.as_ref() {
+        debug_assert!(layout_dir.is_absolute());
+        input_ignore_paths.push(layout_dir.to_owned());
     }
 
     Ok(Config {
@@ -407,7 +419,7 @@ pub(super) fn normalize_config(config: Config) -> Result<Config, Error> {
         output_dir,
         data_dir,
         layout_dir,
-        ignore_paths,
+        input_ignore_paths,
         ..config
     })
 }
