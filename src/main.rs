@@ -68,7 +68,7 @@ async fn main() -> anyhow::Result<()> {
         let serve = serve::serve(&config);
         let watch = watch::watch(&config, || build::build(&config));
 
-        futures::try_join!(serve, watch)?;
+        tokio::try_join!(serve, watch)?;
     }
 
     Ok(())

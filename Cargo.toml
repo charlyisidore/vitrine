@@ -21,7 +21,6 @@ members = ["vitrine_derive"]
 anyhow = "1.0.75"
 axum = "0.6.20"
 clap = { version = "4.4.7", features = ["derive"] }
-futures = "0.3.29"
 grass = "0.13.1"
 lightningcss = "1.0.0-alpha.50"
 lol_html = "1.2.0"

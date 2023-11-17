@@ -18,11 +18,19 @@ pub(super) async fn watch<F>(config: &Config, callback: F) -> Result<(), Error>
 where
     F: Fn() -> Result<(), Error>,
 {
-    let (tx, rx) = std::sync::mpsc::channel();
+    let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
+
+    let event_handler = move |result| {
+        if let Err(error) = sender.send(result) {
+            tracing::error!("Error: {:?}", error);
+        }
+    };
 
     let mut debouncer =
-        new_debouncer(Duration::from_secs(1), None, tx).map_err(|error| Error::Watch {
-            source: error.into(),
+        new_debouncer(Duration::from_secs(1), None, event_handler).map_err(|error| {
+            Error::Watch {
+                source: error.into(),
+            }
         })?;
 
     add_watch_path(&mut debouncer, &config.input_dir)?;
@@ -37,7 +45,7 @@ where
 
     tracing::info!("Watching for file changes");
 
-    for result in rx {
+    while let Some(result) = receiver.recv().await {
         match result {
             Ok(events) => {
                 let events: Vec<_> = events
@@ -65,7 +73,7 @@ where
                     .collect();
 
                 if events.is_empty() {
-                    return Ok(());
+                    continue;
                 }
 
                 let mut paths: Vec<_> = events
@@ -79,9 +87,7 @@ where
 
                 tracing::info!("Files changed: {}", paths.join(", "));
 
-                let result = (callback)();
-
-                if let Some(error) = result.err() {
+                if let Some(error) = (callback)().err() {
                     tracing::error!("{:?}", error);
                 }
             },
