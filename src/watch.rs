@@ -1,10 +1,13 @@
 //! Watch for file changes.
 
-use std::{path::Path, time::Duration};
+use std::{
+    path::Path,
+    time::{Duration, Instant},
+};
 
 use notify_debouncer_full::{
     new_debouncer,
-    notify::{EventKind, INotifyWatcher, RecursiveMode, Watcher},
+    notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher},
     Debouncer, FileIdMap,
 };
 
@@ -45,11 +48,14 @@ where
 
     tracing::info!("Watching for file changes");
 
+    let mut last_callback_time = Instant::now();
+
     while let Some(result) = receiver.recv().await {
         match result {
             Ok(events) => {
                 let events: Vec<_> = events
                     .iter()
+                    .filter(|event| event.time > last_callback_time)
                     .filter_map(|event| match event.kind {
                         EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) => {
                             Some(event)
@@ -87,6 +93,8 @@ where
 
                 tracing::info!("Files changed: {}", paths.join(", "));
 
+                last_callback_time = Instant::now();
+
                 if let Some(error) = (callback)().err() {
                     tracing::error!("{:?}", error);
                 }
@@ -99,7 +107,7 @@ where
 }
 
 fn add_watch_path<P>(
-    debouncer: &mut Debouncer<INotifyWatcher, FileIdMap>,
+    debouncer: &mut Debouncer<RecommendedWatcher, FileIdMap>,
     path: P,
 ) -> Result<(), Error>
 where
