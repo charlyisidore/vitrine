@@ -2,6 +2,7 @@
 //!
 //! This module uses [`markdown_it`] under the hood.
 
+mod math;
 mod syntax_highlight;
 
 use std::collections::HashMap;
@@ -48,6 +49,7 @@ impl Parser {
         let mut parser = MarkdownIt::new();
         markdown_it::plugins::cmark::add(&mut parser);
         markdown_it::plugins::html::add(&mut parser);
+        math::add(&mut parser);
         markdown_it::plugins::extra::strikethrough::add(&mut parser);
         markdown_it::plugins::extra::beautify_links::add(&mut parser);
         markdown_it::plugins::extra::linkify::add(&mut parser);

@@ -22,6 +22,7 @@ anyhow = "1.0.75"
 axum = "0.6.20"
 clap = { version = "4.4.7", features = ["derive"] }
 grass = "0.13.1"
+katex = "0.4.6"
 lightningcss = "1.0.0-alpha.50"
 lol_html = "1.2.0"
 markdown-it = "0.6.0"
