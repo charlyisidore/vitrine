@@ -7,7 +7,7 @@ use clap::Parser;
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
 pub(super) struct Cli {
-    /// Configuration file [default: "vitrine.config.rhai"]
+    /// Configuration file [default: "vitrine.config.lua"]
     #[arg(long)]
     pub(super) config: Option<PathBuf>,
 
@@ -31,7 +31,7 @@ pub(super) struct Cli {
     #[arg(long)]
     pub(super) layout_dir: Option<PathBuf>,
 
-    /// Serve the site
+    /// Run web server
     #[arg(long)]
     pub(super) serve: bool,
 
