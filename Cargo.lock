@@ -1714,7 +1714,6 @@ version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49f5dab59c348b9b50cf7f261960a20e389feb2713636399cd9082cd4b536154"
 dependencies = [
- "crossbeam-channel",
  "file-id",
  "log",
  "notify",
@@ -3373,7 +3372,7 @@ checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 
 [[package]]
 name = "vitrine"
-version = "0.1.11"
+version = "0.1.12"
 dependencies = [
  "anyhow",
  "assert_cmd",

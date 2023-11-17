@@ -1,6 +1,6 @@
 [package]
 name = "vitrine"
-version = "0.1.11"
+version = "0.1.12"
 authors = ["Charly Lersteau"]
 edition = "2021"
 description = "A scriptable static site generator"
@@ -28,7 +28,7 @@ markdown-it = "0.6.0"
 minify-html = "0.11.1"
 minify-js = "0.5.6"
 mlua = { version = "0.9.1", features = ["lua51", "send", "serialize", "vendored"] }
-notify-debouncer-full = "0.3.1"
+notify-debouncer-full = { version = "0.3.1", default-features = false }
 rhai = { version = "1.16.2", features = ["serde", "sync"] }
 serde = { version = "1.0.190", features = ["derive"] }
 serde_json = "1.0.107"
