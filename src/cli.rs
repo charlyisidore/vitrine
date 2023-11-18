@@ -27,9 +27,9 @@ pub(super) struct Cli {
     #[arg(long)]
     pub(super) data_dir: Option<PathBuf>,
 
-    /// Layout directory [default: "_layouts"]
+    /// Layouts directory [default: "_layouts"]
     #[arg(long)]
-    pub(super) layout_dir: Option<PathBuf>,
+    pub(super) layouts_dir: Option<PathBuf>,
 
     /// Run web server
     #[arg(long)]

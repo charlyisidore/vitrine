@@ -49,24 +49,24 @@ fn default_data_dir() -> Option<PathBuf> {
     Some(PathBuf::from("_data")).filter(|path| path.exists())
 }
 
-/// Return the default layout directory.
-fn default_layout_dir() -> Option<PathBuf> {
+/// Return the default layouts directory.
+fn default_layouts_dir() -> Option<PathBuf> {
     // Returns the path only if it exists
     Some(PathBuf::from("_layouts")).filter(|path| path.exists())
 }
 
 /// Return the default name of the content variable in layouts.
-fn default_layout_content_key() -> String {
+fn default_layouts_content_key() -> String {
     "content".to_owned()
 }
 
 /// Return the default name of the layout key in front matter data.
-fn default_layout_layout_key() -> String {
+fn default_layouts_layout_key() -> String {
     "layout".to_owned()
 }
 
 /// Return the default name of the page variable in layouts.
-fn default_layout_page_key() -> String {
+fn default_layouts_page_key() -> String {
     "page".to_owned()
 }
 
@@ -120,14 +120,14 @@ pub(crate) struct Config {
     /// Directory of layout files.
     ///
     /// If set to `None`, Vitrine does not use a layout engine.
-    #[serde(default = "default_layout_dir")]
-    #[vitrine(default = "default_layout_dir")]
-    pub(crate) layout_dir: Option<PathBuf>,
+    #[serde(default = "default_layouts_dir")]
+    #[vitrine(default = "default_layouts_dir")]
+    pub(crate) layouts_dir: Option<PathBuf>,
 
     /// Layout engine configuration.
     #[serde(default)]
     #[vitrine(default)]
-    pub(crate) layout: LayoutConfig,
+    pub(crate) layouts: LayoutsConfig,
 
     /// Syntax highlight configuration.
     #[serde(default)]
@@ -164,8 +164,8 @@ impl Default for Config {
             base_url: default_base_url(),
             data_dir: default_data_dir(),
             global_data: Default::default(),
-            layout_dir: default_layout_dir(),
-            layout: Default::default(),
+            layouts_dir: default_layouts_dir(),
+            layouts: Default::default(),
             syntax_highlight: Default::default(),
             taxonomies: Default::default(),
             input_ignore_paths: Default::default(),
@@ -177,20 +177,20 @@ impl Default for Config {
 
 /// Configuration for the layout engine.
 #[derive(Debug, Deserialize, FromLua, FromRhai)]
-pub(crate) struct LayoutConfig {
+pub(crate) struct LayoutsConfig {
     /// Name of the template variable representing the content.
-    #[serde(default = "default_layout_content_key")]
-    #[vitrine(default = "default_layout_content_key")]
+    #[serde(default = "default_layouts_content_key")]
+    #[vitrine(default = "default_layouts_content_key")]
     pub(crate) content_key: String,
 
     /// Name of the metadata key containing the layout name.
-    #[serde(default = "default_layout_layout_key")]
-    #[vitrine(default = "default_layout_layout_key")]
+    #[serde(default = "default_layouts_layout_key")]
+    #[vitrine(default = "default_layouts_layout_key")]
     pub(crate) layout_key: String,
 
     /// Name of the metadata key containing the page data.
-    #[serde(default = "default_layout_page_key")]
-    #[vitrine(default = "default_layout_page_key")]
+    #[serde(default = "default_layouts_page_key")]
+    #[vitrine(default = "default_layouts_page_key")]
     pub(crate) page_key: String,
 
     /// Custom filters for the layout engine.
@@ -209,12 +209,12 @@ pub(crate) struct LayoutConfig {
     pub(crate) testers: HashMap<String, Function>,
 }
 
-impl Default for LayoutConfig {
+impl Default for LayoutsConfig {
     fn default() -> Self {
         Self {
-            content_key: default_layout_content_key(),
-            layout_key: default_layout_layout_key(),
-            page_key: default_layout_page_key(),
+            content_key: default_layouts_content_key(),
+            layout_key: default_layouts_layout_key(),
+            page_key: default_layouts_page_key(),
             filters: Default::default(),
             functions: Default::default(),
             testers: Default::default(),
@@ -372,17 +372,17 @@ pub(super) fn normalize_config(config: Config) -> Result<Config, Error> {
                 .context(format!("While normalizing data_dir: {:?}", config.data_dir)),
         })?;
 
-    // Canonicalize layout directory
-    let layout_dir = config
-        .layout_dir
+    // Canonicalize layouts directory
+    let layouts_dir = config
+        .layouts_dir
         .as_ref()
         .map(|dir| dir.canonicalize())
         .transpose()
         .map_err(|error| Error::LoadConfig {
             config_path: config_path.to_owned(),
             source: anyhow::anyhow!(error).context(format!(
-                "While normalizing layout_dir: {:?}",
-                config.layout_dir
+                "While normalizing layouts_dir: {:?}",
+                config.layouts_dir
             )),
         })?;
 
@@ -407,10 +407,10 @@ pub(super) fn normalize_config(config: Config) -> Result<Config, Error> {
         input_ignore_paths.push(data_dir.to_owned());
     }
 
-    // Exclude layout directory
-    if let Some(layout_dir) = layout_dir.as_ref() {
-        debug_assert!(layout_dir.is_absolute());
-        input_ignore_paths.push(layout_dir.to_owned());
+    // Exclude layouts directory
+    if let Some(layouts_dir) = layouts_dir.as_ref() {
+        debug_assert!(layouts_dir.is_absolute());
+        input_ignore_paths.push(layouts_dir.to_owned());
     }
 
     Ok(Config {
@@ -418,7 +418,7 @@ pub(super) fn normalize_config(config: Config) -> Result<Config, Error> {
         input_dir,
         output_dir,
         data_dir,
-        layout_dir,
+        layouts_dir,
         input_ignore_paths,
         ..config
     })
@@ -449,11 +449,11 @@ pub(super) fn validate_config(config: &Config) -> Result<(), Error> {
         }
 
         // Protection against overwriting layout files
-        if let Some(layout_dir) = config.layout_dir.as_ref() {
-            if layout_dir.starts_with(output_dir) {
+        if let Some(layouts_dir) = config.layouts_dir.as_ref() {
+            if layouts_dir.starts_with(output_dir) {
                 return Err(Error::LoadConfig {
                     config_path: config.config_path.to_owned(),
-                    source: anyhow::anyhow!("layout_dir must be located outside output_dir"),
+                    source: anyhow::anyhow!("layouts_dir must be located outside output_dir"),
                 });
             }
         }

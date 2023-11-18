@@ -74,8 +74,8 @@ mod tests {
             output_dir = "bar",
             base_url = "/blog",
             data_dir = "_data",
-            layout_dir = "_layouts",
-            layout = {
+            layouts_dir = "_layouts",
+            layouts = {
                 filters = {
                     upper = function(value, args) return string.upper(value) end,
                 },
@@ -105,12 +105,12 @@ mod tests {
         assert_eq!(config.output_dir.unwrap().to_str().unwrap(), "bar");
         assert_eq!(config.base_url, "/blog");
         assert_eq!(config.data_dir.unwrap().to_str().unwrap(), "_data");
-        assert_eq!(config.layout_dir.unwrap().to_str().unwrap(), "_layouts");
-        assert_eq!(config.layout.filters.len(), 1);
-        assert!(config.layout.filters.contains_key("upper"));
+        assert_eq!(config.layouts_dir.unwrap().to_str().unwrap(), "_layouts");
+        assert_eq!(config.layouts.filters.len(), 1);
+        assert!(config.layouts.filters.contains_key("upper"));
         assert_eq!(
             config
-                .layout
+                .layouts
                 .filters
                 .get("upper")
                 .unwrap()
@@ -123,11 +123,11 @@ mod tests {
                 .unwrap(),
             "HELLO"
         );
-        assert_eq!(config.layout.functions.len(), 1);
-        assert!(config.layout.functions.contains_key("min"));
+        assert_eq!(config.layouts.functions.len(), 1);
+        assert!(config.layouts.functions.contains_key("min"));
         assert_eq!(
             config
-                .layout
+                .layouts
                 .functions
                 .get("min")
                 .unwrap()
@@ -140,11 +140,11 @@ mod tests {
                 .unwrap(),
             6
         );
-        assert_eq!(config.layout.testers.len(), 1);
-        assert!(config.layout.testers.contains_key("odd"));
+        assert_eq!(config.layouts.testers.len(), 1);
+        assert!(config.layouts.testers.contains_key("odd"));
         assert_eq!(
             config
-                .layout
+                .layouts
                 .testers
                 .get("odd")
                 .unwrap()
@@ -170,6 +170,6 @@ mod tests {
         assert_eq!(config.output_dir, super::super::default_output_dir());
         assert_eq!(config.base_url, super::super::default_base_url());
         assert_eq!(config.data_dir, super::super::default_data_dir());
-        assert_eq!(config.layout_dir, super::super::default_layout_dir());
+        assert_eq!(config.layouts_dir, super::super::default_layouts_dir());
     }
 }

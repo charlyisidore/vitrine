@@ -47,7 +47,7 @@ async fn main() -> anyhow::Result<()> {
             .filter(|_| !cli.dry_run),
         base_url: cli.base_url.unwrap_or(config.base_url),
         data_dir: cli.data_dir.or(config.data_dir),
-        layout_dir: cli.layout_dir.or(config.layout_dir),
+        layouts_dir: cli.layouts_dir.or(config.layouts_dir),
         minify: !cli.serve && config.minify,
         serve_port: cli.port,
         ..config

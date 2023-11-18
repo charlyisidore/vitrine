@@ -42,8 +42,8 @@ where
         add_watch_path(&mut debouncer, data_dir)?;
     }
 
-    if let Some(layout_dir) = config.layout_dir.as_ref() {
-        add_watch_path(&mut debouncer, layout_dir)?;
+    if let Some(layouts_dir) = config.layouts_dir.as_ref() {
+        add_watch_path(&mut debouncer, layouts_dir)?;
     }
 
     tracing::info!("Watching for file changes");

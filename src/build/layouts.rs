@@ -27,20 +27,20 @@ impl Engine {
     /// Create and configure a layout engine.
     pub(super) fn new(config: &Config) -> Result<Self, Error> {
         config
-            .layout_dir
+            .layouts_dir
             .as_ref()
-            .map(|layout_dir| {
+            .map(|layouts_dir| {
                 let mut tera =
-                    Tera::new(layout_dir.join("**").join("*").to_str().ok_or_else(|| {
+                    Tera::new(layouts_dir.join("**").join("*").to_str().ok_or_else(|| {
                         Error::NewLayoutEngine {
-                            source: anyhow::anyhow!("Invalid layout_dir"),
+                            source: anyhow::anyhow!("Invalid layouts_dir"),
                         }
                     })?)
                     .map_err(|error| Error::NewLayoutEngine {
                         source: error.into(),
                     })?;
 
-                for (name, filter) in config.layout.filters.iter() {
+                for (name, filter) in config.layouts.filters.iter() {
                     let filter = filter.to_owned();
                     let filter = move |value: &tera::Value,
                                        args: &HashMap<String, tera::Value>|
@@ -52,7 +52,7 @@ impl Engine {
                     tera.register_filter(name, filter);
                 }
 
-                for (name, function) in config.layout.functions.iter() {
+                for (name, function) in config.layouts.functions.iter() {
                     let function = function.to_owned();
                     let function =
                         move |args: &HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
@@ -63,7 +63,7 @@ impl Engine {
                     tera.register_function(name, function);
                 }
 
-                for (name, tester) in config.layout.testers.iter() {
+                for (name, tester) in config.layouts.testers.iter() {
                     let tester = tester.to_owned();
                     let tester = move |value: Option<&tera::Value>,
                                        args: &[tera::Value]|
@@ -76,15 +76,15 @@ impl Engine {
                 }
 
                 Ok(Self {
-                    content_key: config.layout.content_key.to_owned(),
-                    layout_key: config.layout.layout_key.to_owned(),
-                    page_key: config.layout.page_key.to_owned(),
+                    content_key: config.layouts.content_key.to_owned(),
+                    layout_key: config.layouts.layout_key.to_owned(),
+                    page_key: config.layouts.page_key.to_owned(),
                     tera,
                 })
             })
             .unwrap_or_else(|| {
                 Err(Error::NewLayoutEngine {
-                    source: anyhow::anyhow!("Missing layout_dir"),
+                    source: anyhow::anyhow!("Missing layouts_dir"),
                 })
             })
     }

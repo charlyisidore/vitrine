@@ -6,7 +6,7 @@ mod contents;
 mod data_cascade;
 mod front_matter;
 mod global_data;
-mod layout;
+mod layouts;
 mod markdown;
 mod minify_css;
 mod minify_html;
@@ -106,9 +106,9 @@ pub(super) fn build(config: &Config) -> Result<(), Error> {
     let scss_compiler = self::scss::Compiler::new();
 
     let layout_engine = config
-        .layout_dir
+        .layouts_dir
         .is_some()
-        .then(|| self::layout::Engine::new(config))
+        .then(|| self::layouts::Engine::new(config))
         .transpose()?;
 
     let html_minifier = self::minify_html::Minifier::new();

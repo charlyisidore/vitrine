@@ -12,7 +12,7 @@ mod tests {
             "output_dir": "bar",
             "base_url": "/blog",
             "data_dir": "_data",
-            "layout_dir": "_layouts",
+            "layouts_dir": "_layouts",
             "syntax_highlight": {
                 "pre_attributes": {
                     "class": "syntax-highlight"
@@ -27,7 +27,7 @@ mod tests {
         assert_eq!(config.output_dir.unwrap().to_str().unwrap(), "bar");
         assert_eq!(config.base_url, "/blog");
         assert_eq!(config.data_dir.unwrap().to_str().unwrap(), "_data");
-        assert_eq!(config.layout_dir.unwrap().to_str().unwrap(), "_layouts");
+        assert_eq!(config.layouts_dir.unwrap().to_str().unwrap(), "_layouts");
         assert_eq!(
             config.syntax_highlight.pre_attributes.get("class").unwrap(),
             "syntax-highlight"
@@ -42,6 +42,6 @@ mod tests {
         assert_eq!(config.output_dir, super::super::default_output_dir());
         assert_eq!(config.base_url, super::super::default_base_url());
         assert_eq!(config.data_dir, super::super::default_data_dir());
-        assert_eq!(config.layout_dir, super::super::default_layout_dir());
+        assert_eq!(config.layouts_dir, super::super::default_layouts_dir());
     }
 }
