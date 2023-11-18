@@ -94,7 +94,14 @@ impl BlockRule for MathBlockRule {
 
         let content = &line[DELIMITER.len()..line.len() - DELIMITER.len()];
 
-        let result = katex::render(content);
+        let opts = katex::Opts::builder().display_mode(true).build();
+
+        if let Some(error) = opts.as_ref().err() {
+            tracing::error!("markdown::math: {}", error);
+            return None;
+        }
+
+        let result = katex::render_with_opts(content, opts.unwrap());
 
         if let Some(error) = result.as_ref().err() {
             tracing::error!("markdown::math: {}", error);
