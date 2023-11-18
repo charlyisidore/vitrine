@@ -19,9 +19,19 @@ use crate::{
 /// Entry point of the program.
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Log format for debug mode
+    #[cfg(debug_assertions)]
+    let tracing_format = tracing_subscriber::fmt::layer();
+
+    // Log format for release mode
+    #[cfg(not(debug_assertions))]
+    let tracing_format = tracing_subscriber::fmt::layer()
+        .with_target(false)
+        .without_time();
+
     // Display log messages on the console
     tracing_subscriber::registry()
-        .with(tracing_subscriber::fmt::layer())
+        .with(tracing_format)
         .with(
             tracing_subscriber::EnvFilter::builder()
                 .with_default_directive(tracing_subscriber::filter::LevelFilter::INFO.into())
