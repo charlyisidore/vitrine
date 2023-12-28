@@ -58,6 +58,7 @@ impl Parser {
         markdown_it::plugins::extra::typographer::add(&mut parser);
         markdown_it::plugins::extra::smartquotes::add(&mut parser);
         markdown_it::plugins::extra::heading_anchors::add(&mut parser, |s| slug::slugify(s));
+        markdown_it_footnote::add(&mut parser);
 
         // Context to be used in Markdown rules
         parser.ext.insert(Context {

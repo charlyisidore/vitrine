@@ -1619,6 +1619,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "markdown-it-footnote"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6679ab967fbc45b290b25fb477af7556bf6825feec208a970585e6bb9aae3be"
+dependencies = [
+ "markdown-it",
+]
+
+[[package]]
 name = "matchers"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3498,6 +3507,7 @@ dependencies = [
  "lightningcss",
  "lol_html",
  "markdown-it",
+ "markdown-it-footnote",
  "minify-html",
  "minify-js 0.5.6",
  "mlua",
