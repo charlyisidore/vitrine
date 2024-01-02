@@ -2,7 +2,7 @@
 
 use std::net::SocketAddr;
 
-use axum::{Router, Server};
+use axum::Router;
 use tower_http::services::{ServeDir, ServeFile};
 
 use crate::{config::Config, error::Error};
@@ -27,8 +27,13 @@ pub(super) async fn serve(config: &Config) -> Result<(), Error> {
 
     tracing::info!("Listening on {}", addr);
 
-    Server::bind(&addr)
-        .serve(router.into_make_service())
+    let listener = tokio::net::TcpListener::bind(addr)
+        .await
+        .map_err(|error| Error::Serve {
+            source: error.into(),
+        })?;
+
+    axum::serve(listener, router.into_make_service())
         .await
         .map_err(|error| Error::Serve {
             source: error.into(),
