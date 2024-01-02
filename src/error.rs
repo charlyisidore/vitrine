@@ -42,6 +42,11 @@ pub(crate) enum Error {
         input_path: Option<PathBuf>,
         source: anyhow::Error,
     },
+    #[error("In {input_path:?} while compiling TypeScript")]
+    CompileTypescript {
+        input_path: Option<PathBuf>,
+        source: anyhow::Error,
+    },
     #[error("While creating syntax highlight CSS stylesheet")]
     CreateSyntaxHighlightStylesheet { source: anyhow::Error },
     #[error("While grouping entries using taxonomies")]

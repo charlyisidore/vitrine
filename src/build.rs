@@ -15,6 +15,7 @@ mod read_file;
 mod scss;
 mod syntax_highlight;
 mod taxonomies;
+mod typescript;
 mod url;
 mod write_file;
 
@@ -173,7 +174,7 @@ pub(super) fn build(config: &Config) -> Result<(), Error> {
         .map(|entry| {
             // Read content
             entry.and_then(|entry| match entry.format.as_str() {
-                "css" | "html" | "js" | "json" | "md" | "scss" | "toml" | "yaml" => {
+                "css" | "html" | "js" | "json" | "md" | "scss" | "toml" | "ts" | "yaml" => {
                     self::read_file::read_entry(entry)
                 },
                 // Other files will be copied directly
@@ -201,10 +202,11 @@ pub(super) fn build(config: &Config) -> Result<(), Error> {
             })
         })
         .map(|entry| {
-            // Parse/compile Markdown/SCSS
+            // Parse/compile Markdown/SCSS/TypeScript
             entry.and_then(|entry| match entry.format.as_str() {
                 "md" => markdown_parser.parse_entry(entry),
                 "scss" => scss_compiler.compile_entry(entry),
+                "ts" | "tsx" => self::typescript::compile_entry(entry),
                 _ => Ok(entry),
             })
         });

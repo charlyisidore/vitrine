@@ -31,6 +31,30 @@ fn fail_config_file_not_found() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
+fn typescript() -> Result<(), Box<dyn std::error::Error>> {
+    let dir = assert_fs::TempDir::new()?;
+
+    dir.child("script.ts").write_str(
+        r#"// Comment
+const myVar: string = "abc";
+"#,
+    )?;
+
+    let mut cmd = Command::cargo_bin("vitrine")?;
+    cmd.current_dir(&dir);
+
+    cmd.assert().success();
+
+    dir.child("_site/script.js")
+        .assert(predicate::path::is_file())
+        .assert(predicate::str::contains("string").not())
+        .assert(predicate::str::contains("myVar"))
+        .assert(predicate::str::contains("abc"));
+
+    Ok(())
+}
+
+#[test]
 fn javascript() -> Result<(), Box<dyn std::error::Error>> {
     let dir = assert_fs::TempDir::new()?;
 
