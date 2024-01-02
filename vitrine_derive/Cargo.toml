@@ -1,6 +1,6 @@
 [package]
 name = "vitrine_derive"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Charly Lersteau"]
 edition = "2021"
 description = "Procedural macros for Vitrine"
@@ -12,5 +12,5 @@ keywords = ["derive", "vitrine"]
 proc-macro = true
 
 [dependencies]
-quote = "1.0.33"
-syn = "2.0.38"
+quote = "1.0.34"
+syn = "2.0.45"
