@@ -19,6 +19,14 @@ impl FromLua for bool {
     }
 }
 
+impl FromLua for f64 {
+    fn from_lua(value: mlua::Value, _: &mlua::Lua) -> anyhow::Result<Self> {
+        Ok(value
+            .as_f64()
+            .ok_or_else(|| anyhow::anyhow!("Expected number, received {}", value.type_name()))?)
+    }
+}
+
 impl FromLua for String {
     fn from_lua(value: mlua::Value, _: &mlua::Lua) -> anyhow::Result<Self> {
         Ok(value
