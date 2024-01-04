@@ -75,6 +75,11 @@ fn default_minify() -> bool {
     true
 }
 
+/// Return the default URL of the sitemap.
+fn default_sitemap_url() -> String {
+    "/sitemap.xml".to_owned()
+}
+
 /// Configuration for Vitrine.
 ///
 /// This structure represents the configuration given to the site builder.
@@ -129,6 +134,11 @@ pub(crate) struct Config {
     #[vitrine(default)]
     pub(crate) layouts: LayoutsConfig,
 
+    /// Sitemap configuration.
+    #[serde(default)]
+    #[vitrine(default)]
+    pub(crate) sitemap: Option<SitemapConfig>,
+
     /// Syntax highlight configuration.
     #[serde(default)]
     #[vitrine(default)]
@@ -166,6 +176,7 @@ impl Default for Config {
             global_data: Default::default(),
             layouts_dir: default_layouts_dir(),
             layouts: Default::default(),
+            sitemap: Default::default(),
             syntax_highlight: Default::default(),
             taxonomies: Default::default(),
             input_ignore_paths: Default::default(),
@@ -220,6 +231,25 @@ impl Default for LayoutsConfig {
             testers: Default::default(),
         }
     }
+}
+
+/// Configuration object for sitemap generation.
+#[derive(Debug, Default, Deserialize, FromLua, FromRhai)]
+pub(crate) struct SitemapConfig {
+    /// Default page change frequency.
+    #[serde(default)]
+    #[vitrine(default)]
+    pub(crate) changefreq: Option<String>,
+
+    /// Default priority.
+    #[serde(default)]
+    #[vitrine(default)]
+    pub(crate) priority: Option<f64>,
+
+    /// URL of the sitemap.
+    #[serde(default = "default_sitemap_url")]
+    #[vitrine(default = "default_sitemap_url")]
+    pub(crate) url: String,
 }
 
 /// Configuration for syntax highlight.

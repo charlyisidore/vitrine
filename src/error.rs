@@ -59,6 +59,8 @@ pub(crate) enum Error {
         layout: Option<String>,
         source: anyhow::Error,
     },
+    #[error("While creating sitemap")]
+    CreateSitemap { source: anyhow::Error },
     #[error("In {input_path:?} while rewriting URL")]
     RewriteUrl {
         input_path: Option<PathBuf>,

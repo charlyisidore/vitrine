@@ -429,7 +429,9 @@ checksum = "7f2c685bad3eb3d45a01354cedb7d5faa66194d1d58ba6e267a8de788f79db38"
 dependencies = [
  "android-tzdata",
  "iana-time-zone",
+ "js-sys",
  "num-traits",
+ "wasm-bindgen",
  "windows-targets 0.48.5",
 ]
 
@@ -2541,6 +2543,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1004a344b30a54e2ee58d66a71b32d2db2feb0a31f9a2d302bf0536f15de2a33"
 dependencies = [
  "memchr",
+ "serde",
 ]
 
 [[package]]
@@ -4050,6 +4053,7 @@ dependencies = [
  "assert_cmd",
  "assert_fs",
  "axum",
+ "chrono",
  "clap",
  "grass",
  "katex",
@@ -4062,6 +4066,7 @@ dependencies = [
  "mlua",
  "notify-debouncer-full",
  "predicates",
+ "quick-xml",
  "rhai",
  "serde",
  "serde_json",

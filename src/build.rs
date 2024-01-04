@@ -13,6 +13,7 @@ mod minify_html;
 mod minify_js;
 mod read_file;
 mod scss;
+mod sitemap;
 mod syntax_highlight;
 mod taxonomies;
 mod typescript;
@@ -93,9 +94,35 @@ struct EntryData {
     #[serde(default)]
     contents: HashMap<String, String>,
 
+    /// Sitemap configuration.
+    #[serde(default)]
+    sitemap: Option<EntrySitemap>,
+
     /// Additional fields.
     #[serde(flatten)]
     extra: serde_json::Value,
+}
+
+/// Sitemap configuration for a build entry.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(untagged)]
+enum EntrySitemap {
+    /// If false, the build entry will not be shown in the sitemap.
+    Bool(bool),
+    /// Sitemap configuration for the build entry.
+    Object {
+        /// Date of last modification.
+        #[serde(default)]
+        lastmod: Option<String>,
+
+        /// Change frequency.
+        #[serde(default)]
+        change_freq: Option<String>,
+
+        /// Priority.
+        #[serde(default)]
+        priority: Option<f64>,
+    },
 }
 
 /// Build the site from given configuration.
@@ -232,7 +259,10 @@ pub(super) fn build(config: &Config) -> Result<(), Error> {
         .chain(self::syntax_highlight::create_stylesheet_entries(config));
 
     // Rewrite URLs
-    self::url::rewrite_url_entries(entries, config)?
+    let entries = self::url::rewrite_url_entries(entries, config)?;
+
+    // Generate a sitemap
+    self::sitemap::create_sitemap_entries(entries, config)?
         .map(|entry| {
             if !config.minify {
                 return entry;
