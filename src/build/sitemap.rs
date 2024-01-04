@@ -63,11 +63,11 @@ pub(super) fn create_sitemap_entries(
                         },
                         EntrySitemap::Object {
                             lastmod,
-                            change_freq,
+                            changefreq,
                             priority,
                         } => SitemapUrl {
                             lastmod: lastmod.to_owned(),
-                            changefreq: change_freq.to_owned(),
+                            changefreq: changefreq.to_owned(),
                             priority: priority.to_owned(),
                             ..Default::default()
                         },

@@ -121,7 +121,7 @@ enum EntrySitemap {
 
         /// Change frequency.
         #[serde(default)]
-        change_freq: Option<String>,
+        changefreq: Option<String>,
 
         /// Priority.
         #[serde(default)]
