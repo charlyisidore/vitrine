@@ -11,8 +11,11 @@ use super::{Config, Entry, Error};
 pub(super) fn write_entry(entry: Entry, config: &Config) -> Result<Entry, Error> {
     debug_assert!(entry.url.starts_with("/"));
 
+    // Prepend base_url
+    let url_path = format!("{}{}", config.base_url, entry.url);
+
     // All entry URLs should start with `/`
-    let url_path = entry.url.strip_prefix("/").unwrap();
+    let url_path = url_path.strip_prefix("/").unwrap();
 
     let mut output_path = config
         .output_dir
