@@ -80,14 +80,19 @@ pub(super) fn create_sitemap_entries(
                 // Fallback to defaults for unspecified fields
                 let sitemap_entry = SitemapUrl {
                     loc: format!("{}{}", config.base_url, entry.url),
-                    lastmod: entry
-                        .input_file
-                        .as_ref()
-                        .and_then(|dir_entry| dir_entry.metadata().ok())
-                        .and_then(|metadata| metadata.modified().ok())
-                        .map(|date| {
-                            let date: DateTime<Utc> = date.into();
-                            format!("{}", date.format("%+"))
+                    lastmod: sitemap_entry
+                        .lastmod
+                        .or_else(|| entry.data.as_ref().and_then(|data| data.date.to_owned()))
+                        .or_else(|| {
+                            entry
+                                .input_file
+                                .as_ref()
+                                .and_then(|dir_entry| dir_entry.metadata().ok())
+                                .and_then(|metadata| metadata.modified().ok())
+                                .map(|date| {
+                                    let date: DateTime<Utc> = date.into();
+                                    format!("{}", date.format("%+"))
+                                })
                         }),
                     changefreq: sitemap_entry
                         .changefreq

@@ -90,6 +90,10 @@ struct EntryData {
     /// Override the entry URL.
     url: Option<String>,
 
+    /// Entry date.
+    #[serde(default)]
+    date: Option<String>,
+
     /// Associated contents.
     #[serde(default)]
     contents: HashMap<String, String>,
