@@ -11,6 +11,7 @@ mod markdown;
 mod minify_css;
 mod minify_html;
 mod minify_js;
+mod minify_xml;
 mod read_file;
 mod scss;
 mod sitemap;
@@ -205,7 +206,7 @@ pub(super) fn build(config: &Config) -> Result<(), Error> {
         .map(|entry| {
             // Read content
             entry.and_then(|entry| match entry.format.as_str() {
-                "css" | "html" | "js" | "json" | "md" | "scss" | "toml" | "ts" | "yaml" => {
+                "css" | "html" | "js" | "json" | "md" | "scss" | "toml" | "ts" | "xml" | "yaml" => {
                     self::read_file::read_entry(entry)
                 },
                 // Other files will be copied directly
@@ -276,6 +277,7 @@ pub(super) fn build(config: &Config) -> Result<(), Error> {
                 "css" => self::minify_css::minify_entry(entry),
                 "html" => html_minifier.minify_entry(entry),
                 "js" => self::minify_js::minify_entry(entry),
+                "xml" => self::minify_xml::minify_entry(entry),
                 _ => Ok(entry),
             })
         })
