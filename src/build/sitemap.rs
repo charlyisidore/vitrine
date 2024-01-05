@@ -8,6 +8,27 @@ use super::{Config, Entry, EntrySitemap, Error};
 
 /// Preamble of the XML file.
 const XML_DECLARATION: &str = "<?xml version=\"1.0\" encoding=\"utf-8\"?>";
+const XMLNS: &str = "http://www.sitemaps.org/schemas/sitemap/0.9";
+
+// <urlset>...</urlset>
+#[derive(Debug, Default, Serialize)]
+struct SitemapUrlset<'a> {
+    #[serde(rename = "@xmlns")]
+    xmlns: &'a str,
+    url: Vec<SitemapUrl>,
+}
+
+// <url>...</url>
+#[derive(Debug, Default, Serialize)]
+struct SitemapUrl {
+    loc: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    lastmod: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    changefreq: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    priority: Option<f64>,
+}
 
 /// Generate a sitemap from page entries.
 ///
@@ -20,34 +41,14 @@ pub(super) fn create_sitemap_entries(
 
     // Sitemap is opt-in
     if let Some(sitemap_config) = config.sitemap.as_ref() {
-        // <urlset>...</urlset>
-        #[derive(Debug, Default, Serialize)]
-        struct SitemapUrlset<'a> {
-            #[serde(rename = "@xmlns")]
-            xmlns: &'a str,
-            url: Vec<SitemapUrl>,
-        }
-
-        // <url>...</url>
-        #[derive(Debug, Default, Serialize)]
-        struct SitemapUrl {
-            loc: String,
-            #[serde(skip_serializing_if = "Option::is_none")]
-            lastmod: Option<String>,
-            #[serde(skip_serializing_if = "Option::is_none")]
-            changefreq: Option<String>,
-            #[serde(skip_serializing_if = "Option::is_none")]
-            priority: Option<f64>,
-        }
-
-        let sitemap_urls: Vec<SitemapUrl> =
-            entries.iter().try_fold(Vec::new(), |mut sitemap, entry| {
+        let urlset: Vec<SitemapUrl> =
+            entries.iter().try_fold(Vec::new(), |mut urlset, entry| {
                 // Generate sitemap only for pages
                 if entry.format != "html" {
-                    return Ok(sitemap);
+                    return Ok(urlset);
                 }
 
-                let sitemap_entry = if let Some(sitemap_data) =
+                let sitemap_url = if let Some(sitemap_data) =
                     entry.data.as_ref().and_then(|data| data.sitemap.as_ref())
                 {
                     // Get sitemap configuration from metadata
@@ -58,7 +59,7 @@ pub(super) fn create_sitemap_entries(
                                 Default::default()
                             } else {
                                 // sitemap = false
-                                return Ok(sitemap);
+                                return Ok(urlset);
                             }
                         },
                         EntrySitemap::Object {
@@ -78,9 +79,9 @@ pub(super) fn create_sitemap_entries(
                 };
 
                 // Fallback to defaults for unspecified fields
-                let sitemap_entry = SitemapUrl {
+                let sitemap_url = SitemapUrl {
                     loc: format!("{}{}", config.base_url, entry.url),
-                    lastmod: sitemap_entry
+                    lastmod: sitemap_url
                         .lastmod
                         .or_else(|| entry.data.as_ref().and_then(|data| data.date.to_owned()))
                         .or_else(|| {
@@ -94,23 +95,23 @@ pub(super) fn create_sitemap_entries(
                                     format!("{}", date.format("%+"))
                                 })
                         }),
-                    changefreq: sitemap_entry
+                    changefreq: sitemap_url
                         .changefreq
                         .or_else(|| sitemap_config.changefreq.to_owned()),
-                    priority: sitemap_entry
+                    priority: sitemap_url
                         .priority
                         .or_else(|| sitemap_config.priority.to_owned()),
-                    ..sitemap_entry
+                    ..sitemap_url
                 };
 
-                sitemap.push(sitemap_entry);
+                urlset.push(sitemap_url);
 
-                Ok(sitemap)
+                Ok(urlset)
             })?;
 
         let urlset = SitemapUrlset {
-            xmlns: "http://www.sitemaps.org/schemas/sitemap/0.9",
-            url: sitemap_urls,
+            xmlns: XMLNS,
+            url: urlset,
         };
 
         let mut buffer = String::new();
