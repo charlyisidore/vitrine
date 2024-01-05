@@ -81,6 +81,11 @@ pub(crate) enum Error {
         input_path: Option<PathBuf>,
         source: anyhow::Error,
     },
+    #[error("In {input_path:?} while minifying JSON")]
+    MinifyJson {
+        input_path: Option<PathBuf>,
+        source: anyhow::Error,
+    },
     #[error("In {input_path:?} while minifying XML")]
     MinifyXml {
         input_path: Option<PathBuf>,

@@ -11,6 +11,7 @@ mod markdown;
 mod minify_css;
 mod minify_html;
 mod minify_js;
+mod minify_json;
 mod minify_xml;
 mod read_file;
 mod scss;
@@ -277,6 +278,7 @@ pub(super) fn build(config: &Config) -> Result<(), Error> {
                 "css" => self::minify_css::minify_entry(entry),
                 "html" => html_minifier.minify_entry(entry),
                 "js" => self::minify_js::minify_entry(entry),
+                "json" => self::minify_json::minify_entry(entry),
                 "xml" => self::minify_xml::minify_entry(entry),
                 _ => Ok(entry),
             })
