@@ -142,9 +142,8 @@ pub(super) fn create_sitemap_entries(
         entries.push(Entry {
             url: sitemap_config.url.to_owned(),
             format: "xml".to_owned(),
-            input_file: None,
             content: Some(content),
-            data: None,
+            ..Default::default()
         });
     }
 

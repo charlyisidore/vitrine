@@ -4,6 +4,7 @@
 
 mod contents;
 mod data_cascade;
+mod feed;
 mod front_matter;
 mod global_data;
 mod layouts;
@@ -91,6 +92,10 @@ impl Entry {
 struct EntryData {
     /// Override the entry URL.
     url: Option<String>,
+
+    /// Entry title.
+    #[serde(default)]
+    title: Option<String>,
 
     /// Entry date.
     #[serde(default)]
@@ -266,6 +271,9 @@ pub(super) fn build(config: &Config) -> Result<(), Error> {
 
     // Rewrite URLs
     let entries = self::url::rewrite_url_entries(entries, config)?;
+
+    // Generate feeds
+    let entries = self::feed::create_feeds_entries(entries, config)?;
 
     // Generate a sitemap
     self::sitemap::create_sitemap_entries(entries, config)?

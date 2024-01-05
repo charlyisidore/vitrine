@@ -70,14 +70,14 @@ fn default_layouts_page_key() -> String {
     "page".to_owned()
 }
 
-/// Return the default value for the `minify` option.
-fn default_minify() -> bool {
-    true
-}
-
 /// Return the default URL of the sitemap.
 fn default_sitemap_url() -> String {
     "/sitemap.xml".to_owned()
+}
+
+/// Return the default value for the `minify` option.
+fn default_minify() -> bool {
+    true
 }
 
 /// Configuration for Vitrine.
@@ -122,6 +122,11 @@ pub(crate) struct Config {
     #[vitrine(default)]
     pub(crate) global_data: serde_json::Value,
 
+    /// Feeds configuration.
+    #[serde(default)]
+    #[vitrine(default)]
+    pub(crate) feeds: Vec<FeedConfig>,
+
     /// Directory of layout files.
     ///
     /// If set to `None`, Vitrine does not use a layout engine.
@@ -135,8 +140,6 @@ pub(crate) struct Config {
     pub(crate) layouts: LayoutsConfig,
 
     /// Sitemap configuration.
-    #[serde(default)]
-    #[vitrine(default)]
     pub(crate) sitemap: Option<SitemapConfig>,
 
     /// Syntax highlight configuration.
@@ -174,6 +177,7 @@ impl Default for Config {
             base_url: default_base_url(),
             data_dir: default_data_dir(),
             global_data: Default::default(),
+            feeds: Default::default(),
             layouts_dir: default_layouts_dir(),
             layouts: Default::default(),
             sitemap: Default::default(),
@@ -184,6 +188,64 @@ impl Default for Config {
             serve_port: Default::default(),
         }
     }
+}
+
+/// Configuration for feed generation.
+#[derive(Debug, Default, Deserialize, FromLua, FromRhai)]
+pub(crate) struct FeedConfig {
+    /// URL of the feed.
+    pub(crate) url: String,
+
+    /// Authors of the feed.
+    pub(crate) author: Vec<FeedPersonConfig>,
+
+    /// Categories of the feed.
+    pub(crate) category: Vec<String>,
+
+    /// Contributors of the feed.
+    pub(crate) contributor: Vec<FeedPersonConfig>,
+
+    /// Generator of the feed.
+    pub(crate) generator: Option<String>,
+
+    /// Image that provides iconic visual identification for the feed.
+    pub(crate) icon: Option<String>,
+
+    /// Unique identifier of the feed.
+    pub(crate) id: Option<String>,
+
+    /// Image that provides visual identification for the feed.
+    pub(crate) logo: Option<String>,
+
+    /// Information about rights held in and over the feed.
+    pub(crate) rights: Option<String>,
+
+    /// Description or subtitle for the feed.
+    pub(crate) subtitle: Option<String>,
+
+    /// Title for the feed.
+    pub(crate) title: String,
+
+    /// The most recent instant in time when the feed was modified.
+    pub(crate) updated: Option<String>,
+
+    /// Predicate that determines whether an entry belongs to the feed or not.
+    #[serde(skip)]
+    #[vitrine(default)]
+    pub(crate) filter: Option<Function>,
+}
+
+/// Configuration for feed persons (author or contributor).
+#[derive(Debug, Default, Deserialize, FromLua, FromRhai)]
+pub(crate) struct FeedPersonConfig {
+    /// Person name.
+    pub(crate) name: String,
+
+    /// Person website.
+    pub(crate) uri: Option<String>,
+
+    /// Person email.
+    pub(crate) email: Option<String>,
 }
 
 /// Configuration for the layout engine.
@@ -237,13 +299,9 @@ impl Default for LayoutsConfig {
 #[derive(Debug, Default, Deserialize, FromLua, FromRhai)]
 pub(crate) struct SitemapConfig {
     /// Default page change frequency.
-    #[serde(default)]
-    #[vitrine(default)]
     pub(crate) changefreq: Option<String>,
 
     /// Default priority.
-    #[serde(default)]
-    #[vitrine(default)]
     pub(crate) priority: Option<f64>,
 
     /// URL of the sitemap.
