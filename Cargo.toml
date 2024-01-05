@@ -21,7 +21,7 @@ members = ["vitrine_derive"]
 anyhow = "1.0.79"
 axum = "0.7.3"
 chrono = { version = "0.4.31", features = ["serde"] }
-clap = { version = "4.4.12", features = ["derive"] }
+clap = { version = "4.4.13", features = ["derive"] }
 grass = "0.13.1"
 katex = "0.4.6"
 lightningcss = "1.0.0-alpha.51"
