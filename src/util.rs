@@ -1,4 +1,4 @@
-//! Utility functions.
+//! Utility functions and structures.
 
 pub(crate) mod data;
 pub(crate) mod feed;
