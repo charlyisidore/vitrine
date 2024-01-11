@@ -21,7 +21,7 @@ members = ["vitrine_derive"]
 anyhow = "1.0.79"
 axum = "0.7.3"
 chrono = { version = "0.4.31", features = ["serde"] }
-clap = { version = "4.4.13", features = ["derive"] }
+clap = { version = "4.4.14", features = ["derive"] }
 globset = "0.4.14"
 grass = "0.13.1"
 katex = "0.4.6"
@@ -31,7 +31,7 @@ markdown-it = "0.6.0"
 markdown-it-footnote = "0.2.0"
 minify-html = "0.15.0"
 minify-js = "0.5.6"
-mlua = { version = "0.9.2", features = ["lua51", "send", "serialize", "vendored"] }
+mlua = { version = "0.9.3", features = ["lua51", "send", "serialize", "vendored"] }
 notify-debouncer-full = { version = "0.3.1", default-features = false }
 quick-xml = { version = "0.31.0", features = ["serialize"] }
 rhai = { version = "1.16.3", features = ["serde", "sync"] }
@@ -39,7 +39,7 @@ serde = { version = "1.0.195", features = ["derive"] }
 serde_json = "1.0.111"
 serde_yaml = "0.9.30"
 slug = "0.1.5"
-swc_core = { version = "0.87.19", features = [
+swc_core = { version = "0.87.21", features = [
     "__common",
     "__ecma",
     "__ecma_transforms",
