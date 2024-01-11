@@ -12,5 +12,5 @@ keywords = ["derive", "vitrine"]
 proc-macro = true
 
 [dependencies]
-quote = "1.0.34"
-syn = "2.0.45"
+quote = "1.0.35"
+syn = "2.0.48"
