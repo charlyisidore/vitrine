@@ -7,6 +7,7 @@ mod data_cascade;
 mod feed;
 mod front_matter;
 mod global_data;
+mod ignore;
 mod layouts;
 mod markdown;
 mod minify_css;
@@ -140,6 +141,8 @@ enum EntrySitemap {
 pub(super) fn build(config: &Config) -> Result<(), Error> {
     let start_time = std::time::Instant::now();
 
+    let ignore_matcher = self::ignore::Matcher::new(config)?;
+
     let markdown_parser = self::markdown::Parser::new(config);
 
     let scss_compiler = self::scss::Compiler::new();
@@ -161,14 +164,16 @@ pub(super) fn build(config: &Config) -> Result<(), Error> {
     let entries = WalkDir::new(&config.input_dir)
         .into_iter()
         .filter_entry(|entry| {
-            // Skip hidden files and directories
+            // Skip hidden and ignored files and directories
             entry.depth() == 0
                 || (entry
                     .file_name()
                     .to_str()
                     .map(|file_name| !file_name.starts_with(".") && !file_name.starts_with("_"))
                     .unwrap_or(false)
-                    && !config.input_ignore_paths.contains(&entry.path().to_owned()))
+                    && !config.input_ignore_paths.contains(&entry.path().to_owned())
+                    && !ignore_matcher
+                        .is_match(entry.path().strip_prefix(&config.input_dir).unwrap()))
         })
         .filter_map(|result| {
             // Ignore errors (e.g. permission denied)

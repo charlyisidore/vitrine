@@ -152,6 +152,11 @@ pub(crate) struct Config {
     #[vitrine(default)]
     pub(crate) taxonomies: Vec<String>,
 
+    /// Ignore specific files or path patterns.
+    #[serde(default)]
+    #[vitrine(default)]
+    pub(crate) ignore: Vec<String>,
+
     /// Paths to ignore from input files.
     #[serde(skip)]
     #[vitrine(skip)]
@@ -183,6 +188,7 @@ impl Default for Config {
             sitemap: Default::default(),
             syntax_highlight: Default::default(),
             taxonomies: Default::default(),
+            ignore: Default::default(),
             input_ignore_paths: Default::default(),
             minify: default_minify(),
             serve_port: Default::default(),

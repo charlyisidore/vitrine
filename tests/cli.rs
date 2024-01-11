@@ -31,6 +31,30 @@ fn fail_config_file_not_found() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
+fn ignore() -> Result<(), Box<dyn std::error::Error>> {
+    let dir = assert_fs::TempDir::new()?;
+
+    dir.child("vitrine.config.json")
+        .write_str("{ \"ignore\": [\"hidden.txt\"] }")?;
+    dir.child("visible.txt").write_str("Visible")?;
+    dir.child("hidden.txt").write_str("Hidden")?;
+
+    let mut cmd = Command::cargo_bin("vitrine")?;
+    cmd.current_dir(&dir);
+
+    cmd.assert().success();
+
+    dir.child("_site/visible.txt")
+        .assert(predicate::path::is_file())
+        .assert(predicate::str::contains("Visible"));
+
+    dir.child("_site/hidden.txt")
+        .assert(predicate::path::exists().not());
+
+    Ok(())
+}
+
+#[test]
 fn typescript() -> Result<(), Box<dyn std::error::Error>> {
     let dir = assert_fs::TempDir::new()?;
 

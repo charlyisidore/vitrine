@@ -4056,6 +4056,7 @@ dependencies = [
  "axum",
  "chrono",
  "clap",
+ "globset",
  "grass",
  "katex",
  "lightningcss",

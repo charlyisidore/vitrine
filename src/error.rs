@@ -10,6 +10,8 @@ pub(crate) enum Error {
         config_path: Option<PathBuf>,
         source: anyhow::Error,
     },
+    #[error("While parsing ignore globs")]
+    NewIgnoreMatcher { source: anyhow::Error },
     #[error("While initializing the layout engine")]
     NewLayoutEngine { source: anyhow::Error },
     #[error("While reading global data file {input_path:?}")]
