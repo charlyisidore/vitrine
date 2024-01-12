@@ -36,7 +36,7 @@ jobs:
     - name: Package
       shell: bash
       run: |
-        cd target/${{ env.TARGET }}/release/
+        cd "target/${{ env.TARGET }}/release/"
         strip "${{ env.BINARY }}"
         asset="${{ env.BINARY }}-${{ env.TAG }}-${{ env.TARGET }}.tar.gz"
         tar czvf "../../../$asset" "${{ env.BINARY }}"
