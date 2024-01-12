@@ -33,7 +33,7 @@ jobs:
     - name: Build
       run: cargo build --verbose --release --target "${{ env.TARGET }}"
 
-    - name: Archive
+    - name: Package
       shell: bash
       run: |
         cd target/${{ env.TARGET }}/release/
