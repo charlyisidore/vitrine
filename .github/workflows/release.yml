@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v*.*.*"
 
 env:
   CARGO_TERM_COLOR: always
@@ -31,7 +31,7 @@ jobs:
         targets: ${{ env.TARGET }}
 
     - name: Build
-      run: cargo build --verbose --release --target "x86_64-unknown-linux-gnu"
+      run: cargo build --verbose --release --target "${{ env.TARGET }}"
 
     - name: Archive
       shell: bash
