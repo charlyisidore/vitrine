@@ -15,6 +15,7 @@ mod minify_html;
 mod minify_js;
 mod minify_json;
 mod minify_xml;
+mod navigation;
 mod read_file;
 mod scss;
 mod sitemap;
@@ -259,6 +260,9 @@ pub(super) fn build(config: &Config) -> Result<(), Error> {
 
     // Group entries using taxonomies
     let (entries, global_data) = self::taxonomies::group_entries(entries, config, global_data)?;
+
+    // Generate navigation tree
+    let entries = self::navigation::create_navigation_entries(entries, config)?;
 
     let entries = entries
         .map(|entry| {

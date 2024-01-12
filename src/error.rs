@@ -63,6 +63,8 @@ pub(crate) enum Error {
     },
     #[error("While creating feed")]
     CreateFeed { source: anyhow::Error },
+    #[error("While creating navigation tree")]
+    CreateNavigation { source: anyhow::Error },
     #[error("While creating sitemap")]
     CreateSitemap { source: anyhow::Error },
     #[error("In {input_path:?} while rewriting URL")]

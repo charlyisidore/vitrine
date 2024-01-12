@@ -70,6 +70,11 @@ fn default_layouts_page_key() -> String {
     "page".to_owned()
 }
 
+/// Return the default name of the navigation variable in layouts.
+fn default_navigation_navigation_key() -> String {
+    "navigation".to_owned()
+}
+
 /// Return the default URL of the sitemap.
 fn default_sitemap_url() -> String {
     "/sitemap.xml".to_owned()
@@ -139,6 +144,9 @@ pub(crate) struct Config {
     #[vitrine(default)]
     pub(crate) layouts: LayoutsConfig,
 
+    /// Navigation tree configuration.
+    pub(crate) navigation: Option<NavigationConfig>,
+
     /// Sitemap configuration.
     pub(crate) sitemap: Option<SitemapConfig>,
 
@@ -185,6 +193,7 @@ impl Default for Config {
             feeds: Default::default(),
             layouts_dir: default_layouts_dir(),
             layouts: Default::default(),
+            navigation: Default::default(),
             sitemap: Default::default(),
             syntax_highlight: Default::default(),
             taxonomies: Default::default(),
@@ -299,6 +308,15 @@ impl Default for LayoutsConfig {
             testers: Default::default(),
         }
     }
+}
+
+/// Configuration for navigation tree generation.
+#[derive(Debug, Default, Deserialize, FromLua, FromRhai)]
+pub(crate) struct NavigationConfig {
+    /// Name of the metadata key containing the navigation tree.
+    #[serde(default = "default_navigation_navigation_key")]
+    #[vitrine(default = "default_navigation_navigation_key")]
+    pub(crate) navigation_key: String,
 }
 
 /// Configuration object for sitemap generation.
