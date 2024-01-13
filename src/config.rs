@@ -328,6 +328,11 @@ pub(crate) struct SitemapConfig {
     /// Default priority.
     pub(crate) priority: Option<f64>,
 
+    /// Domain to prepend to URLs, if `base_url` does not specify it.
+    #[serde(default)]
+    #[vitrine(default)]
+    pub(crate) url_prefix: String,
+
     /// URL of the sitemap.
     #[serde(default = "default_sitemap_url")]
     #[vitrine(default = "default_sitemap_url")]

@@ -80,7 +80,10 @@ pub(super) fn create_sitemap_entries(
 
                 // Fallback to defaults for unspecified fields
                 let sitemap_url = SitemapUrl {
-                    loc: format!("{}{}", config.base_url, entry.url),
+                    loc: format!(
+                        "{}{}{}",
+                        sitemap_config.url_prefix, config.base_url, entry.url
+                    ),
                     lastmod: sitemap_url
                         .lastmod
                         .or_else(|| entry.data.as_ref().and_then(|data| data.date.to_owned()))
