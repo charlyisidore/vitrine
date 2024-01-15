@@ -206,9 +206,9 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
 name = "axum"
-version = "0.7.3"
+version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d09dbe0e490df5da9d69b36dca48a76635288a82f92eca90024883a56202026d"
+checksum = "1236b4b292f6c4d6dc34604bb5120d85c3fe1d1aa596bd5cc52ca054d13e7b9e"
 dependencies = [
  "async-trait",
  "axum-core",
@@ -240,9 +240,9 @@ dependencies = [
 
 [[package]]
 name = "axum-core"
-version = "0.4.2"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e87c8503f93e6d144ee5690907ba22db7ba79ab001a932ab99034f0fe836b3df"
+checksum = "a15c63fd72d41492dc4f497196f5da1fb04fb7529e631d73630d1b491e47a2e3"
 dependencies = [
  "async-trait",
  "bytes",
@@ -405,6 +405,38 @@ name = "bytes"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2bd12c1caf447e69cd4528f47f94d203fd2582878ecb9e9465484c4148a8223"
+
+[[package]]
+name = "camino"
+version = "1.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c59e92b5a388f549b863a7bea62612c09f24c8393560709a54558a9abdfb3b9c"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "cargo-platform"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ceed8ef69d8518a5dda55c07425450b58a4e1946f4951eab6d7191ee86c2443d"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "cargo_metadata"
+version = "0.18.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d886547e41f740c616ae73108f6eb70afe6d940c7bc697cb30f13daec073037"
+dependencies = [
+ "camino",
+ "cargo-platform",
+ "semver 1.0.21",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
 
 [[package]]
 name = "cc"
@@ -1634,9 +1666,9 @@ dependencies = [
 
 [[package]]
 name = "lightningcss"
-version = "1.0.0-alpha.51"
+version = "1.0.0-alpha.52"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99d6ad516c08b24c246b339159dc2ee2144c012e8ebdf4db4bddefb8734b2b69"
+checksum = "771a62dedf5ec563bbfea9760f6c6a6bc546e67355eba0cd7d00c0dc34b11d90"
 dependencies = [
  "ahash 0.7.7",
  "bitflags 2.4.1",
@@ -2931,6 +2963,9 @@ name = "semver"
 version = "1.0.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b97ed7a9823b74f99c7742f5336af7be5ecd3eeafcb1507d1fa93347b1d589b0"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "semver-parser"
@@ -3106,9 +3141,9 @@ dependencies = [
 
 [[package]]
 name = "smallvec"
-version = "1.11.2"
+version = "1.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4dccd0940a2dcdf68d092b8cbab7dc0ad8fa938bf95787e1b916b0e3d0e8e970"
+checksum = "2593d31f82ead8df961d8bd23a64c2ccf2eb5dd34b0a34bfb4dd54011c72009e"
 dependencies = [
  "serde",
 ]
@@ -3257,9 +3292,9 @@ dependencies = [
 
 [[package]]
 name = "swc_core"
-version = "0.87.21"
+version = "0.87.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f71409708fe30c531a1447cc7d339f53d76b0b7235b2b9e3cc070882a15a55b0"
+checksum = "c4818fc72224c8e84e360cccac81e9358d2bc0046af18051f71309b56e8ee032"
 dependencies = [
  "swc_common",
  "swc_ecma_codegen",
@@ -3774,9 +3809,9 @@ dependencies = [
 
 [[package]]
 name = "tower-http"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09e12e6351354851911bdf8c2b8f2ab15050c567d70a8b9a37ae7b8301a4080d"
+checksum = "0da193277a4e2c33e59e09b5861580c33dd0a637c3883d0fa74ba40c0374af2e"
 dependencies = [
  "bitflags 2.4.1",
  "bytes",
@@ -4036,11 +4071,13 @@ checksum = "830b7e5d4d90034032940e4ace0d9a9a057e7a45cd94e6c007832e39edb82f6d"
 
 [[package]]
 name = "vergen"
-version = "8.2.7"
+version = "8.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2066fbfd3bfbadab28cab8bae840c9e74917bc6deeef2ed0781f2eb2fdfafdb"
+checksum = "03c7b513a7d40506d5a07f186a298821cc9ec2cc22088a3593f7b612a66659f6"
 dependencies = [
  "anyhow",
+ "cargo_metadata",
+ "regex",
  "rustversion",
 ]
 

@@ -19,19 +19,24 @@ members = ["vitrine_derive"]
 
 [dependencies]
 anyhow = "1.0.79"
-axum = "0.7.3"
+axum = "0.7.4"
 chrono = { version = "0.4.31", features = ["serde"] }
 clap = { version = "4.4.16", features = ["derive"] }
 globset = "0.4.14"
 grass = "0.13.1"
 katex = "0.4.6"
-lightningcss = "1.0.0-alpha.51"
+lightningcss = "1.0.0-alpha.52"
 lol_html = "1.2.0"
 markdown-it = "0.6.0"
 markdown-it-footnote = "0.2.0"
 minify-html = "0.15.0"
 minify-js = "0.5.6"
-mlua = { version = "0.9.4", features = ["lua51", "send", "serialize", "vendored"] }
+mlua = { version = "0.9.4", features = [
+    "lua51",
+    "send",
+    "serialize",
+    "vendored",
+] }
 notify-debouncer-full = { version = "0.3.1", default-features = false }
 quick-xml = { version = "0.31.0", features = ["serialize"] }
 rhai = { version = "1.16.3", features = ["serde", "sync"] }
@@ -39,21 +44,19 @@ serde = { version = "1.0.195", features = ["derive"] }
 serde_json = "1.0.111"
 serde_yaml = "0.9.30"
 slug = "0.1.5"
-swc_core = { version = "0.87.21", features = [
-    "__common",
-    "__ecma",
-    "__ecma_transforms",
-    "__visit",
+swc_core = { version = "0.87.22", features = [
+    "common",
     "ecma_codegen",
     "ecma_parser",
     "ecma_transforms_typescript",
+    "ecma_visit",
 ] }
 syntect = "5.1.0"
 tera = "1.19.1"
 thiserror = "1.0.56"
 tokio = { version = "1.35.1", features = ["macros", "rt-multi-thread"] }
 toml = "0.8.8"
-tower-http = { version = "0.5.0", features = ["fs"] }
+tower-http = { version = "0.5.1", features = ["fs"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 vitrine_derive = { version = "=0.1.2", path = "vitrine_derive" }
