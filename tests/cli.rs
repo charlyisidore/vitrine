@@ -25,7 +25,7 @@ fn fail_config_file_not_found() -> Result<(), Box<dyn std::error::Error>> {
 
     cmd.assert()
         .failure()
-        .stderr(predicate::str::contains("No such file"));
+        .stderr(predicate::str::contains("os error 2"));
 
     Ok(())
 }
