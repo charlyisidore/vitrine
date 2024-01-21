@@ -12,7 +12,7 @@ use std::{
 };
 
 use serde::Deserialize;
-use vitrine_derive::{FromLua, FromRhai};
+use vitrine_derive::{FromJs, FromLua, FromRhai};
 
 use crate::{
     error::Error,
@@ -20,7 +20,8 @@ use crate::{
 };
 
 /// Default file names for configuration files.
-const DEFAULT_CONFIG_FILE_NAMES: [&str; 5] = [
+const DEFAULT_CONFIG_FILE_NAMES: [&str; 6] = [
+    "vitrine.config.js",
     "vitrine.config.json",
     "vitrine.config.lua",
     "vitrine.config.rhai",
@@ -88,7 +89,7 @@ fn default_minify() -> bool {
 /// Configuration for Vitrine.
 ///
 /// This structure represents the configuration given to the site builder.
-#[derive(Debug, Deserialize, FromLua, FromRhai)]
+#[derive(Debug, Deserialize, FromJs, FromLua, FromRhai)]
 pub(crate) struct Config {
     /// Path to the configuration file.
     #[serde(skip)]
@@ -206,7 +207,7 @@ impl Default for Config {
 }
 
 /// Configuration for feed generation.
-#[derive(Debug, Default, Deserialize, FromLua, FromRhai)]
+#[derive(Debug, Default, Deserialize, FromJs, FromLua, FromRhai)]
 pub(crate) struct FeedConfig {
     /// URL of the feed.
     pub(crate) url: String,
@@ -251,7 +252,7 @@ pub(crate) struct FeedConfig {
 }
 
 /// Configuration for feed persons (author or contributor).
-#[derive(Debug, Default, Deserialize, FromLua, FromRhai)]
+#[derive(Debug, Default, Deserialize, FromJs, FromLua, FromRhai)]
 pub(crate) struct FeedPersonConfig {
     /// Person name.
     pub(crate) name: String,
@@ -264,7 +265,7 @@ pub(crate) struct FeedPersonConfig {
 }
 
 /// Configuration for the layout engine.
-#[derive(Debug, Deserialize, FromLua, FromRhai)]
+#[derive(Debug, Deserialize, FromJs, FromLua, FromRhai)]
 pub(crate) struct LayoutsConfig {
     /// Name of the template variable representing the content.
     #[serde(default = "default_layouts_content_key")]
@@ -311,7 +312,7 @@ impl Default for LayoutsConfig {
 }
 
 /// Configuration for navigation tree generation.
-#[derive(Debug, Default, Deserialize, FromLua, FromRhai)]
+#[derive(Debug, Default, Deserialize, FromJs, FromLua, FromRhai)]
 pub(crate) struct NavigationConfig {
     /// Name of the metadata key containing the navigation tree.
     #[serde(default = "default_navigation_navigation_key")]
@@ -320,7 +321,7 @@ pub(crate) struct NavigationConfig {
 }
 
 /// Configuration object for sitemap generation.
-#[derive(Debug, Default, Deserialize, FromLua, FromRhai)]
+#[derive(Debug, Default, Deserialize, FromJs, FromLua, FromRhai)]
 pub(crate) struct SitemapConfig {
     /// Default page change frequency.
     pub(crate) changefreq: Option<String>,
@@ -340,7 +341,7 @@ pub(crate) struct SitemapConfig {
 }
 
 /// Configuration for syntax highlight.
-#[derive(Debug, Default, Deserialize, FromLua, FromRhai)]
+#[derive(Debug, Default, Deserialize, FromJs, FromLua, FromRhai)]
 pub(crate) struct SyntaxHighlightConfig {
     /// HTML attributes for syntax highlight `<code>` element.
     #[serde(default)]
@@ -369,7 +370,7 @@ pub(crate) struct SyntaxHighlightConfig {
 }
 
 /// Configuration for a syntax highlight CSS stylesheet.
-#[derive(Debug, Deserialize, FromLua, FromRhai)]
+#[derive(Debug, Deserialize, FromJs, FromLua, FromRhai)]
 pub(crate) struct SyntaxHighlightStylesheetConfig {
     /// Prefix for class names.
     #[serde(default)]
@@ -410,6 +411,7 @@ where
     let config: Config =
         if let Some(extension) = config_path.extension().and_then(|v| v.to_str()) {
             match extension {
+                "js" => crate::util::data::js::read_file(config_path),
                 "json" => crate::util::data::json::read_file(config_path),
                 "lua" => crate::util::data::lua::read_file(config_path),
                 "rhai" => crate::util::data::rhai::read_file(config_path),

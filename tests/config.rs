@@ -7,6 +7,35 @@ use assert_fs::prelude::*;
 use predicates::prelude::*;
 
 #[test]
+fn config_default_js() -> Result<(), Box<dyn std::error::Error>> {
+    let dir = assert_fs::TempDir::new()?;
+
+    dir.child("vitrine.config.js").write_str(
+        r#"// Config
+({
+    input_dir: "content",
+    output_dir: "public",
+})
+"#,
+    )?;
+
+    dir.child("content/index.md").write_str("Home")?;
+
+    let mut cmd = Command::cargo_bin("vitrine")?;
+    cmd.current_dir(&dir);
+
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("vitrine.config.js"));
+
+    dir.child("public/index.html")
+        .assert(predicate::path::is_file())
+        .assert(predicate::str::contains("Home"));
+
+    Ok(())
+}
+
+#[test]
 fn config_default_json() -> Result<(), Box<dyn std::error::Error>> {
     let dir = assert_fs::TempDir::new()?;
 

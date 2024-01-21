@@ -22,9 +22,10 @@ anyhow = "1.0.79"
 axum = "0.7.4"
 chrono = { version = "0.4.31", features = ["serde"] }
 clap = { version = "4.4.18", features = ["derive"] }
+futures = "0.3.30"
 globset = "0.4.14"
 grass = "0.13.1"
-katex = "0.4.6"
+katex = { version = "0.4.6", features = ["duktape"], default-features = false }
 lightningcss = "1.0.0-alpha.52"
 lol_html = "1.2.0"
 markdown-it = "0.6.0"
@@ -39,6 +40,7 @@ mlua = { version = "0.9.4", features = [
 ] }
 notify-debouncer-full = { version = "0.3.1", default-features = false }
 quick-xml = { version = "0.31.0", features = ["serialize"] }
+quickjs_runtime = { version = "0.12.0", default-features = false }
 rhai = { version = "1.16.3", features = ["serde", "sync"] }
 serde = { version = "1.0.195", features = ["derive"] }
 serde_json = "1.0.111"

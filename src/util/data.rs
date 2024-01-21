@@ -1,5 +1,6 @@
 //! Utility functions for serializable data.
 
+pub(crate) mod js;
 pub(crate) mod json;
 pub(crate) mod lua;
 pub(crate) mod rhai;
