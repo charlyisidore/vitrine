@@ -1,9 +1,18 @@
 //! Procedural macros for Vitrine.
 
+mod from_js;
 mod from_lua;
 mod from_rhai;
 
 use proc_macro::TokenStream;
+
+/// Derive `FromJs` for a struct.
+#[proc_macro_derive(FromJs, attributes(vitrine))]
+pub fn from_js_derive(input: TokenStream) -> TokenStream {
+    let ast = syn::parse_macro_input!(input);
+
+    from_js::impl_from_js_macro(&ast)
+}
 
 /// Derive `FromLua` for a struct.
 #[proc_macro_derive(FromLua, attributes(vitrine))]
