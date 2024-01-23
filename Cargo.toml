@@ -1,10 +1,17 @@
 [package]
 name = "vitrine"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Charly Lersteau"]
 edition = "2021"
-description = "A simple static site generator"
-license = "AGPL-3.0-only"
+description = "A scriptable static site generator"
 repository = "https://github.com/charlyisidore/vitrine"
+license = "AGPL-3.0-only"
+keywords = ["static", "site", "generator"]
+categories = [
+    "command-line-utilities",
+    "parsing",
+    "template-engine",
+    "web-programming",
+]
 
 [dependencies]
