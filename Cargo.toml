@@ -1,6 +1,6 @@
 [package]
 name = "vitrine"
-version = "0.1.24"
+version = "0.1.25"
 authors = ["Charly Lersteau"]
 edition = "2021"
 description = "A scriptable static site generator"
@@ -20,19 +20,19 @@ members = ["vitrine_derive"]
 [dependencies]
 anyhow = "1.0.79"
 axum = "0.7.4"
-chrono = { version = "0.4.31", features = ["serde"] }
-clap = { version = "4.4.18", features = ["derive"] }
+chrono = { version = "0.4.33", features = ["serde"] }
+clap = { version = "4.5.0", features = ["derive"] }
 futures = "0.3.30"
 globset = "0.4.14"
-grass = "0.13.1"
+grass = "0.13.2"
 katex = { version = "0.4.6", default-features = false, features = ["duktape"] }
-lightningcss = "1.0.0-alpha.52"
+lightningcss = "1.0.0-alpha.53"
 lol_html = "1.2.0"
 markdown-it = "0.6.0"
 markdown-it-footnote = "0.2.0"
 minify-html = "0.15.0"
 minify-js = "0.5.6"
-mlua = { version = "0.9.4", features = [
+mlua = { version = "0.9.5", features = [
     "lua51",
     "send",
     "serialize",
@@ -41,23 +41,23 @@ mlua = { version = "0.9.4", features = [
 notify-debouncer-full = { version = "0.3.1", default-features = false }
 quick-xml = { version = "0.31.0", features = ["serialize"] }
 quickjs_runtime = { version = "0.12.0", default-features = false }
-rhai = { version = "1.16.3", features = ["serde", "sync"] }
-serde = { version = "1.0.195", features = ["derive"] }
-serde_json = "1.0.111"
-serde_yaml = "0.9.30"
+rhai = { version = "1.17.1", features = ["serde", "sync"] }
+serde = { version = "1.0.196", features = ["derive"] }
+serde_json = "1.0.113"
+serde_yaml = "0.9.31"
 slug = "0.1.5"
-swc_core = { version = "0.88.0", features = [
+swc_core = { version = "0.90.6", features = [
     "common",
     "ecma_codegen",
     "ecma_parser",
     "ecma_transforms_typescript",
     "ecma_visit",
 ] }
-syntect = "5.1.0"
+syntect = "5.2.0"
 tera = "1.19.1"
 thiserror = "1.0.56"
-tokio = { version = "1.35.1", features = ["macros", "rt-multi-thread"] }
-toml = "0.8.8"
+tokio = { version = "1.36.0", features = ["macros", "rt-multi-thread"] }
+toml = "0.8.10"
 tower-http = { version = "0.5.1", features = ["fs"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
