@@ -76,6 +76,21 @@ mod tests {
     use super::DirWalker;
 
     #[test]
+    fn walk_dir() {
+        let temp_dir = TempDir::new();
+        let dir = &temp_dir.path();
+
+        std::fs::write(dir.join("foo"), "").expect("failed to create file");
+
+        let result: Vec<PathBuf> = DirWalker::new(dir)
+            .walk()
+            .map(|entry| entry.path().to_path_buf())
+            .collect();
+
+        assert_eq!(result, vec![dir.join("foo")]);
+    }
+
+    #[test]
     fn hidden() {
         let temp_dir = TempDir::new();
         let dir = &temp_dir.path();
