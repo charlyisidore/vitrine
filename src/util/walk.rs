@@ -18,10 +18,7 @@ pub struct DirWalker {
 
 impl DirWalker {
     /// Create a directory walker.
-    pub fn new<P>(dir: P) -> Self
-    where
-        P: AsRef<Path>,
-    {
+    pub fn new(dir: impl AsRef<Path>) -> Self {
         let mut builder = WalkBuilder::new(dir);
 
         builder
