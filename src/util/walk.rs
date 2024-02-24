@@ -71,19 +71,19 @@ impl DirWalker {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
+    use temp_dir::TempDir;
 
     use super::DirWalker;
 
     #[test]
     fn walk_dir() {
         let temp_dir = TempDir::new();
-        let dir = &temp_dir.path();
+        let dir = temp_dir.path();
 
         std::fs::create_dir_all(dir.join("foo")).expect("failed to create dir");
         std::fs::write(dir.join("foo").join("bar"), "").expect("failed to create file");
 
-        let result: Vec<PathBuf> = DirWalker::new(dir)
+        let result: Vec<_> = DirWalker::new(dir)
             .walk()
             .map(|entry| entry.path().to_path_buf())
             .collect();
@@ -94,12 +94,12 @@ mod tests {
     #[test]
     fn hidden() {
         let temp_dir = TempDir::new();
-        let dir = &temp_dir.path();
+        let dir = temp_dir.path();
 
         std::fs::write(dir.join(".foo"), "").expect("failed to create file");
         std::fs::write(dir.join("bar"), "").expect("failed to create file");
 
-        let result: Vec<PathBuf> = DirWalker::new(dir)
+        let result: Vec<_> = DirWalker::new(dir)
             .walk()
             .map(|entry| entry.path().to_path_buf())
             .collect();
@@ -110,13 +110,13 @@ mod tests {
     #[test]
     fn git_ignore() {
         let temp_dir = TempDir::new();
-        let dir = &temp_dir.path();
+        let dir = temp_dir.path();
 
         std::fs::write(dir.join(".gitignore"), "foo").expect("failed to create file");
         std::fs::write(dir.join("foo"), "").expect("failed to create file");
         std::fs::write(dir.join("bar"), "").expect("failed to create file");
 
-        let result: Vec<PathBuf> = DirWalker::new(dir)
+        let result: Vec<_> = DirWalker::new(dir)
             .walk()
             .map(|entry| entry.path().to_path_buf())
             .collect();
@@ -124,43 +124,47 @@ mod tests {
         assert_eq!(result, vec![dir.join("bar")]);
     }
 
-    /// Wraps a temporary directory path.
-    ///
-    /// The directory is removed when this is dropped.
-    struct TempDir(PathBuf);
+    mod temp_dir {
+        use std::path::{Path, PathBuf};
 
-    impl Drop for TempDir {
-        fn drop(&mut self) {
-            std::fs::remove_dir_all(&self.0).expect("failed to remove temp dir")
-        }
-    }
+        /// Wraps a temporary directory path.
+        ///
+        /// The directory is removed when this is dropped.
+        pub(super) struct TempDir(PathBuf);
 
-    impl TempDir {
-        /// Create a temporary directory.
-        fn new() -> Self {
-            let dir = std::env::temp_dir();
-            for _ in 0..10 {
-                let path = dir.join(format!("vitrine_{}", random_number()));
-                if !path.exists() {
-                    std::fs::create_dir_all(&path)
-                        .expect(&format!("failed to create temp dir {:?}", path));
-                    return Self(path);
-                }
+        impl Drop for TempDir {
+            fn drop(&mut self) {
+                std::fs::remove_dir_all(&self.0).expect("failed to remove temp dir")
             }
-            panic!("failed to create temp dir")
         }
 
-        /// Return the directory path.
-        fn path(&self) -> &PathBuf {
-            &self.0
-        }
-    }
+        impl TempDir {
+            /// Create a temporary directory.
+            pub fn new() -> Self {
+                let dir = std::env::temp_dir();
+                for _ in 0..10 {
+                    let path = dir.join(format!("vitrine_{}", random_number()));
+                    if !path.exists() {
+                        std::fs::create_dir_all(&path)
+                            .expect(&format!("failed to create temp dir {:?}", path));
+                        return Self(path);
+                    }
+                }
+                panic!("failed to create temp dir")
+            }
 
-    /// Generate a random number.
-    fn random_number() -> u64 {
-        use std::hash::{BuildHasher, Hasher};
-        std::collections::hash_map::RandomState::new()
-            .build_hasher()
-            .finish()
+            /// Return the directory path.
+            pub fn path(&self) -> &Path {
+                &self.0
+            }
+        }
+
+        /// Generate a random number.
+        fn random_number() -> u64 {
+            use std::hash::{BuildHasher, Hasher};
+            std::collections::hash_map::RandomState::new()
+                .build_hasher()
+                .finish()
+        }
     }
 }
