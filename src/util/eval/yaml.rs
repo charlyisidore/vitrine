@@ -15,23 +15,19 @@ pub enum YamlError {
 }
 
 /// Read value from a YAML data file.
-pub fn from_file<T, P>(path: P) -> Result<T, YamlError>
+pub fn from_file<T>(path: impl AsRef<Path>) -> Result<T, YamlError>
 where
     T: DeserializeOwned,
-    P: AsRef<Path>,
 {
-    let s = std::fs::read_to_string(path)?;
-    from_str(s)
+    from_str(std::fs::read_to_string(path)?)
 }
 
 /// Read value from a YAML data string.
-pub fn from_str<T, S>(s: S) -> Result<T, YamlError>
+pub fn from_str<T>(s: impl AsRef<str>) -> Result<T, YamlError>
 where
     T: DeserializeOwned,
-    S: AsRef<str>,
 {
-    let s = s.as_ref();
-    Ok(serde_yaml::from_str(s)?)
+    Ok(serde_yaml::from_str(s.as_ref())?)
 }
 
 #[cfg(test)]
