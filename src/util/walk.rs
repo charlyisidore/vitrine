@@ -80,14 +80,15 @@ mod tests {
         let temp_dir = TempDir::new();
         let dir = &temp_dir.path();
 
-        std::fs::write(dir.join("foo"), "").expect("failed to create file");
+        std::fs::create_dir_all(dir.join("foo")).expect("failed to create dir");
+        std::fs::write(dir.join("foo").join("bar"), "").expect("failed to create file");
 
         let result: Vec<PathBuf> = DirWalker::new(dir)
             .walk()
             .map(|entry| entry.path().to_path_buf())
             .collect();
 
-        assert_eq!(result, vec![dir.join("foo")]);
+        assert_eq!(result, vec![dir.join("foo").join("bar")]);
     }
 
     #[test]
