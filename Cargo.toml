@@ -14,4 +14,23 @@ categories = [
     "web-programming",
 ]
 
+[workspace]
+members = ["crates/derive"]
+
+[features]
+default = ["js", "lua", "rhai"]
+js = ["dep:futures", "dep:quickjs_runtime"]
+lua = ["dep:mlua"]
+rhai = ["dep:rhai"]
+
 [dependencies]
+futures = { version = "0.3.30", optional = true }
+mlua = { version = "0.9.5", features = ["lua51", "send", "serialize", "vendored"], optional = true }
+quickjs_runtime = { version = "0.12.1", default-features = false, features = ["console", "setimmediate", "setinterval", "settimeout"], optional = true }
+rhai = { version = "1.17.1", features = ["serde", "sync"], optional = true }
+serde = "1.0.197"
+serde_json = "1.0.114"
+serde_yaml = "0.9.32"
+thiserror = "1.0.57"
+toml = { version = "0.8.10", default-features = false, features = ["parse"] }
+vitrine_derive = { version = "=0.2.0", path = "crates/derive" }
