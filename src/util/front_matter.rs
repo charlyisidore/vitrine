@@ -25,10 +25,9 @@ pub enum FrontMatterError {
 /// When a front matter is detected, this function returns a tuple `(data,
 /// content)`, where `data` is the deserialized front matter data, and `content`
 /// is the content without the front matter. Otherwise, it returns [`None`].
-pub fn parse<T, S>(content: S) -> Result<Option<(T, String)>, FrontMatterError>
+pub fn parse<T>(content: impl AsRef<str>) -> Result<Option<(T, String)>, FrontMatterError>
 where
     T: DeserializeOwned,
-    S: AsRef<str>,
 {
     let Some((format, data, content)) = extract(content) else {
         return Ok(None);
@@ -49,10 +48,7 @@ where
 /// data, content)`, where `format` is the expected data format, `data` is the
 /// front matter string, and `content` is the content without front matter.
 /// Otherwise, it returns [`None`].
-pub fn extract<S>(content: S) -> Option<(String, String, String)>
-where
-    S: AsRef<str>,
-{
+pub fn extract(content: impl AsRef<str>) -> Option<(String, String, String)> {
     let content = content.as_ref();
 
     // Use the `std::str::Lines` trait to read the content line by line
@@ -106,7 +102,7 @@ mod tests {
             "baz\n"
         );
 
-        let result = parse::<Data, _>(CONTENT).unwrap();
+        let result = parse::<Data>(CONTENT).unwrap();
 
         assert!(result.is_none());
     }
@@ -120,7 +116,7 @@ mod tests {
             "foo\n"
         );
 
-        let (data, content) = parse::<Data, _>(CONTENT).unwrap().unwrap();
+        let (data, content) = parse::<Data>(CONTENT).unwrap().unwrap();
 
         assert_eq!(data.layout, "post");
         assert_eq!(content, "foo");
@@ -135,7 +131,7 @@ mod tests {
             "foo\n"
         );
 
-        let (data, content) = parse::<Data, _>(CONTENT).unwrap().unwrap();
+        let (data, content) = parse::<Data>(CONTENT).unwrap().unwrap();
 
         assert_eq!(data.layout, "post");
         assert_eq!(content, "foo");

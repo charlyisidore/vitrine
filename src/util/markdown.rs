@@ -54,10 +54,7 @@ impl MarkdownParser {
     ///   `<stuff data-sourcepos="1:1-2:3">`.
     ///
     /// See <https://docs.rs/markdown-it/0.6.0/markdown_it/plugins/index.html> for more details.
-    pub fn add_plugin<S>(&mut self, name: S) -> Result<(), MarkdownError>
-    where
-        S: AsRef<str>,
-    {
+    pub fn add_plugin(&mut self, name: impl AsRef<str>) -> Result<(), MarkdownError> {
         use markdown_it::plugins::{extra, html, sourcepos};
 
         let name = name.as_ref();
@@ -82,10 +79,7 @@ impl MarkdownParser {
     }
 
     /// Compile a Markdown string to HTML.
-    pub fn parse<S>(&self, input: S) -> String
-    where
-        S: AsRef<str>,
-    {
+    pub fn parse(&self, input: impl AsRef<str>) -> String {
         let input = input.as_ref();
         let ast = self.parser.parse(input);
         ast.render()
