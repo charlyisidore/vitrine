@@ -91,6 +91,11 @@ impl MarkdownParser {
         ast.render()
     }
 
+    /// Return a reference to the [`MarkdownIt`] instance.
+    pub fn parser_ref(&mut self) -> &MarkdownIt {
+        &self.parser
+    }
+
     /// Return a mutable reference to the [`MarkdownIt`] instance.
     pub fn parser_mut(&mut self) -> &mut MarkdownIt {
         &mut self.parser
