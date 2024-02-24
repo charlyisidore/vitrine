@@ -125,11 +125,9 @@ mod tests {
             let dir = std::env::temp_dir();
             for _ in 0..10 {
                 let path = dir.join(format!("vitrine_{}", random_number()));
-                if path.exists() {
-                    continue;
-                } else {
+                if !path.exists() {
                     std::fs::create_dir_all(&path)
-                        .expect(&format!("failed to create temp dir {:?}", path.display()));
+                        .expect(&format!("failed to create temp dir {:?}", path));
                     return Self(path);
                 }
             }
