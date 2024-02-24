@@ -25,6 +25,7 @@ rhai = ["dep:rhai"]
 
 [dependencies]
 futures = { version = "0.3.30", optional = true }
+ignore = "0.4.22"
 markdown-it = { version = "0.6.0", default-features = false, features = ["linkify"] }
 mlua = { version = "0.9.5", features = ["lua51", "send", "serialize", "vendored"], optional = true }
 quickjs_runtime = { version = "0.12.1", default-features = false, features = ["console", "setimmediate", "setinterval", "settimeout"], optional = true }
