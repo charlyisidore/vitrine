@@ -36,10 +36,9 @@ pub enum JsError {
 }
 
 /// Read value from a JavaScript script file.
-pub fn from_file<T, P>(path: P) -> Result<T, JsError>
+pub fn from_file<T>(path: impl AsRef<Path>) -> Result<T, JsError>
 where
     T: FromJs,
-    P: AsRef<Path>,
 {
     let path = path.as_ref();
 
@@ -55,10 +54,9 @@ where
 }
 
 /// Read value from a JavaScript script string.
-pub fn from_str<T, S>(s: S) -> Result<T, JsError>
+pub fn from_str<T>(s: impl AsRef<str>) -> Result<T, JsError>
 where
     T: FromJs,
-    S: AsRef<str>,
 {
     let s = s.as_ref();
 

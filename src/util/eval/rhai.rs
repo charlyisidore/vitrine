@@ -30,10 +30,9 @@ pub enum RhaiError {
 }
 
 /// Read value from a Rhai script file.
-pub fn from_file<T, P>(path: P) -> Result<T, RhaiError>
+pub fn from_file<T>(path: impl AsRef<Path>) -> Result<T, RhaiError>
 where
     T: FromRhai,
-    P: AsRef<Path>,
 {
     let path = path.as_ref();
     let engine = Engine::new();
@@ -43,10 +42,9 @@ where
 }
 
 /// Read value from a Rhai script string.
-pub fn from_str<T, S>(s: S) -> Result<T, RhaiError>
+pub fn from_str<T>(s: impl AsRef<str>) -> Result<T, RhaiError>
 where
     T: FromRhai,
-    S: AsRef<str>,
 {
     let s = s.as_ref();
     let engine = Engine::new();

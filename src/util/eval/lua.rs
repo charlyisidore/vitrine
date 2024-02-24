@@ -25,20 +25,18 @@ pub enum LuaError {
 }
 
 /// Read value from a Lua script file.
-pub fn from_file<T, P>(path: P) -> Result<T, LuaError>
+pub fn from_file<T>(path: impl AsRef<Path>) -> Result<T, LuaError>
 where
     T: FromLua,
-    P: AsRef<Path>,
 {
     let s = std::fs::read_to_string(path)?;
     from_str(s)
 }
 
 /// Read value from a Lua script string.
-pub fn from_str<T, S>(s: S) -> Result<T, LuaError>
+pub fn from_str<T>(s: impl AsRef<str>) -> Result<T, LuaError>
 where
     T: FromLua,
-    S: AsRef<str>,
 {
     let s = s.as_ref();
     let lua = new_lua();
