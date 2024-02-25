@@ -292,10 +292,10 @@ macro_rules! impl_from_js_fn {
                     match value {
                         JsValueFacade::JsFunction { cached_function } => {
                             let runtime = Arc::clone(&runtime);
-                            Ok(Self::from(move |($($arg,)*): ($($ty,)*)| {
+                            Ok(Self::from(move |$($arg: $ty),*| {
                                 let args = Vec::from([$($ty::into_js($arg)?,)*]);
                                 let result = cached_function.invoke_function_sync(args)?;
-                                Ok(R::from_js(result, &runtime)?)
+                                R::from_js(result, &runtime)
                             }))
                         },
                         _ => Err(JsError::FromJs {
@@ -309,6 +309,7 @@ macro_rules! impl_from_js_fn {
     }
 }
 
+impl_from_js_fn! {}
 impl_from_js_fn! { a1: A1 }
 impl_from_js_fn! { a1: A1, a2: A2 }
 impl_from_js_fn! { a1: A1, a2: A2, a3: A3 }

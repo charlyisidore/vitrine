@@ -201,7 +201,7 @@ mod tests {
     fn function_from_js() {
         use crate::util::function::Function;
         let f: Function<(i32, i32), i32> = from_str("(x, y) => x + y").unwrap();
-        assert_eq!(f.call((1, 2)).unwrap(), 3);
+        assert_eq!(f.call(1, 2).unwrap(), 3);
     }
 
     #[test]

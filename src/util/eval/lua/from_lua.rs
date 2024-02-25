@@ -197,12 +197,12 @@ macro_rules! impl_from_lua_fn {
                             })?
                             .to_owned();
 
-                        Ok(Self::from(move |($($arg,)*): ($($ty,)*)| {
+                        Ok(Self::from(move |$($arg: $ty),*| {
                             let lua = lua.lock().unwrap();
                             let function: mlua::Function = lua.registry_value(&key)?;
                             let args = ($($ty::into_lua($arg, &lua)?,)*);
                             let result = function.call(args)?;
-                            Ok(R::from_lua(result, &lua)?)
+                            R::from_lua(result, &lua)
                         }))
                     },
                     _ => Err(mlua::Error::FromLuaConversionError {
@@ -217,6 +217,7 @@ macro_rules! impl_from_lua_fn {
     }
 }
 
+impl_from_lua_fn! {}
 impl_from_lua_fn! { a1: A1 }
 impl_from_lua_fn! { a1: A1, a2: A2 }
 impl_from_lua_fn! { a1: A1, a2: A2, a3: A3 }

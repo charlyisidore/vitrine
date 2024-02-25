@@ -220,17 +220,18 @@ macro_rules! impl_from_rhai_fn {
                     })?;
                 let runtime = Arc::clone(runtime);
 
-                Ok(Self::from(move |($($arg,)*): ($($ty,)*)| {
+                Ok(Self::from(move |$($arg: $ty),*| {
                     let (engine, ast) = runtime.as_ref();
                     let args = ($($ty::into_rhai($arg),)*);
                     let result = fn_ptr.call(engine, ast, args)?;
-                    Ok(R::from_rhai(result, &runtime)?)
+                    R::from_rhai(result, &runtime)
                 }))
             }
         }
     }
 }
 
+impl_from_rhai_fn! {}
 impl_from_rhai_fn! { a1: A1 }
 impl_from_rhai_fn! { a1: A1, a2: A2 }
 impl_from_rhai_fn! { a1: A1, a2: A2, a3: A3 }
