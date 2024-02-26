@@ -32,8 +32,6 @@ macro_rules! impl_into_lua {
 }
 
 impl_into_lua! { bool }
-impl_into_lua! { f32 }
-impl_into_lua! { f64 }
 impl_into_lua! { i8 }
 impl_into_lua! { i16 }
 impl_into_lua! { i32 }
@@ -46,6 +44,8 @@ impl_into_lua! { u32 }
 impl_into_lua! { u64 }
 impl_into_lua! { u128 }
 impl_into_lua! { usize }
+impl_into_lua! { f32 }
+impl_into_lua! { f64 }
 impl_into_lua! { &str }
 impl_into_lua! { String }
 

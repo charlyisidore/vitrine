@@ -24,20 +24,6 @@ impl IntoJs for bool {
     }
 }
 
-/// Implements [`IntoJs`] for float types.
-macro_rules! impl_into_js_float {
-    ($ty:ty) => {
-        impl IntoJs for $ty {
-            fn into_js(self) -> Result<JsValueFacade, JsError> {
-                Ok(JsValueFacade::new_f64(self as f64))
-            }
-        }
-    };
-}
-
-impl_into_js_float! { f32 }
-impl_into_js_float! { f64 }
-
 /// Implements [`IntoJs`] for integer types that fit in [`i32`].
 macro_rules! impl_into_js_integer {
     ($ty:ty) => {
@@ -93,6 +79,20 @@ impl_into_js_integer_unsigned! { u32 }
 impl_into_js_integer_unsigned! { u64 }
 impl_into_js_integer_unsigned! { u128 }
 impl_into_js_integer_unsigned! { usize }
+
+/// Implements [`IntoJs`] for float types.
+macro_rules! impl_into_js_float {
+    ($ty:ty) => {
+        impl IntoJs for $ty {
+            fn into_js(self) -> Result<JsValueFacade, JsError> {
+                Ok(JsValueFacade::new_f64(self as f64))
+            }
+        }
+    };
+}
+
+impl_into_js_float! { f32 }
+impl_into_js_float! { f64 }
 
 impl IntoJs for &str {
     fn into_js(self) -> Result<JsValueFacade, JsError> {

@@ -30,24 +30,6 @@ impl FromRhai for bool {
     }
 }
 
-/// Implements [`FromRhai`] for float types.
-macro_rules! impl_from_rhai_float {
-    ($ty:ty) => {
-        impl FromRhai for $ty {
-            fn from_rhai(value: Dynamic, _: &Arc<(Engine, AST)>) -> Result<Self, RhaiError> {
-                Ok(value.as_float().map_err(|type_name| RhaiError::FromRhai {
-                    from: type_name,
-                    to: stringify!($ty),
-                    message: Some("expected float".to_string()),
-                })? as $ty)
-            }
-        }
-    };
-}
-
-impl_from_rhai_float! { f32 }
-impl_from_rhai_float! { f64 }
-
 /// Implements [`FromRhai`] for int types.
 macro_rules! impl_from_rhai_int {
     ($ty:ty) => {
@@ -75,6 +57,24 @@ impl_from_rhai_int! { u32 }
 impl_from_rhai_int! { u64 }
 impl_from_rhai_int! { u128 }
 impl_from_rhai_int! { usize }
+
+/// Implements [`FromRhai`] for float types.
+macro_rules! impl_from_rhai_float {
+    ($ty:ty) => {
+        impl FromRhai for $ty {
+            fn from_rhai(value: Dynamic, _: &Arc<(Engine, AST)>) -> Result<Self, RhaiError> {
+                Ok(value.as_float().map_err(|type_name| RhaiError::FromRhai {
+                    from: type_name,
+                    to: stringify!($ty),
+                    message: Some("expected float".to_string()),
+                })? as $ty)
+            }
+        }
+    };
+}
+
+impl_from_rhai_float! { f32 }
+impl_from_rhai_float! { f64 }
 
 /// Implements [`FromRhai`] for string types.
 macro_rules! impl_from_rhai_string {

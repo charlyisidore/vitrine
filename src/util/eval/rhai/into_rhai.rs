@@ -22,20 +22,6 @@ impl IntoRhai for bool {
     }
 }
 
-/// Implements [`IntoRhai`] for float types.
-macro_rules! impl_into_rhai_float {
-    ($ty:ty) => {
-        impl IntoRhai for $ty {
-            fn into_rhai(self) -> Dynamic {
-                Dynamic::from_float(self as f64)
-            }
-        }
-    };
-}
-
-impl_into_rhai_float! { f32 }
-impl_into_rhai_float! { f64 }
-
 /// Implements [`IntoRhai`] for int types.
 macro_rules! impl_into_rhai_int {
     ($ty:ty) => {
@@ -59,6 +45,20 @@ impl_into_rhai_int! { u32 }
 impl_into_rhai_int! { u64 }
 impl_into_rhai_int! { u128 }
 impl_into_rhai_int! { usize }
+
+/// Implements [`IntoRhai`] for float types.
+macro_rules! impl_into_rhai_float {
+    ($ty:ty) => {
+        impl IntoRhai for $ty {
+            fn into_rhai(self) -> Dynamic {
+                Dynamic::from_float(self as f64)
+            }
+        }
+    };
+}
+
+impl_into_rhai_float! { f32 }
+impl_into_rhai_float! { f64 }
 
 impl IntoRhai for &str {
     fn into_rhai(self) -> Dynamic {

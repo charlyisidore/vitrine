@@ -34,31 +34,6 @@ impl FromJs for bool {
     }
 }
 
-/// Implements [`FromJs`] for float types.
-macro_rules! impl_from_js_float {
-    ($ty:ty) => {
-        impl FromJs for $ty {
-            fn from_js(
-                value: JsValueFacade,
-                _: &Arc<QuickJsRuntimeFacade>,
-            ) -> Result<Self, JsError> {
-                if value.is_f64() {
-                    Ok(value.get_f64() as $ty)
-                } else {
-                    Err(JsError::FromJs {
-                        from: value.get_value_type().to_string(),
-                        to: stringify!($ty),
-                        message: Some("expected number".to_string()),
-                    })
-                }
-            }
-        }
-    };
-}
-
-impl_from_js_float! { f32 }
-impl_from_js_float! { f64 }
-
 /// Implements [`FromJs`] for integer types.
 macro_rules! impl_from_js_integer {
     ($ty:ty) => {
@@ -92,6 +67,31 @@ impl_from_js_integer! { u32 }
 impl_from_js_integer! { u64 }
 impl_from_js_integer! { u128 }
 impl_from_js_integer! { usize }
+
+/// Implements [`FromJs`] for float types.
+macro_rules! impl_from_js_float {
+    ($ty:ty) => {
+        impl FromJs for $ty {
+            fn from_js(
+                value: JsValueFacade,
+                _: &Arc<QuickJsRuntimeFacade>,
+            ) -> Result<Self, JsError> {
+                if value.is_f64() {
+                    Ok(value.get_f64() as $ty)
+                } else {
+                    Err(JsError::FromJs {
+                        from: value.get_value_type().to_string(),
+                        to: stringify!($ty),
+                        message: Some("expected number".to_string()),
+                    })
+                }
+            }
+        }
+    };
+}
+
+impl_from_js_float! { f32 }
+impl_from_js_float! { f64 }
 
 /// Implements [`FromJs`] for string types.
 macro_rules! impl_from_js_string {
