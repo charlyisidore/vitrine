@@ -72,7 +72,10 @@ pub struct BoxedError(Box<dyn std::error::Error + Send + Sync>);
 
 impl BoxedError {
     /// Wrap an error with [`BoxedError`].
-    pub fn new(e: impl std::error::Error + Send + Sync + 'static) -> Self {
+    pub fn new<E>(e: E) -> Self
+    where
+        E: std::error::Error + Send + Sync + 'static,
+    {
         Self(Box::new(e))
     }
 }
