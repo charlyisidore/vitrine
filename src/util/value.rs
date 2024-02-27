@@ -86,6 +86,14 @@ impl<'de> Deserialize<'de> for Value {
     }
 }
 
+impl<'de> serde::de::IntoDeserializer<'de, ValueError> for Value {
+    type Deserializer = ValueDeserializer;
+
+    fn into_deserializer(self) -> Self::Deserializer {
+        ValueDeserializer(self)
+    }
+}
+
 /// Type used for [`Value`] maps.
 pub type Map<K, V> = std::collections::HashMap<K, V>;
 
@@ -124,7 +132,7 @@ pub fn from_value<'de, T>(value: Value) -> Result<T, ValueError>
 where
     T: Deserialize<'de>,
 {
-    T::deserialize(value)
+    T::deserialize(ValueDeserializer(value))
 }
 
 /// Convert a `T` to a [`Value`].
@@ -522,8 +530,12 @@ impl serde::ser::SerializeStructVariant for ValueSerializeStructVariant {
     }
 }
 
+/// Deserialize any data structure from [`Value`].
+#[doc(hidden)]
+pub struct ValueDeserializer(Value);
+
 /// Deserialize any data structure to [`Value`].
-impl<'de> serde::de::Deserializer<'de> for Value {
+impl<'de> serde::de::Deserializer<'de> for ValueDeserializer {
     type Error = ValueError;
 
     serde::forward_to_deserialize_any! {
@@ -554,7 +566,7 @@ impl<'de> serde::de::Deserializer<'de> for Value {
         V: serde::de::Visitor<'de>,
     {
         use serde::de::value::{MapDeserializer, SeqDeserializer};
-        match self {
+        match self.0 {
             Value::Bool(v) => visitor.visit_bool(v),
             Value::I64(v) => visitor.visit_i64(v),
             Value::U64(v) => visitor.visit_u64(v),
@@ -570,18 +582,10 @@ impl<'de> serde::de::Deserializer<'de> for Value {
     where
         V: serde::de::Visitor<'de>,
     {
-        match self {
+        match self.0 {
             Value::Unit => visitor.visit_none(),
             _ => visitor.visit_some(self),
         }
-    }
-}
-
-impl<'de> serde::de::IntoDeserializer<'de, ValueError> for Value {
-    type Deserializer = Self;
-
-    fn into_deserializer(self) -> Self::Deserializer {
-        self
     }
 }
 
