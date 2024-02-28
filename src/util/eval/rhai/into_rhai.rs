@@ -169,6 +169,7 @@ macro_rules! impl_into_rhai_serde {
     }
 }
 
+impl_into_rhai_serde! { crate::util::value::Value }
 impl_into_rhai_serde! { serde_json::Value }
 impl_into_rhai_serde! { toml::Value }
 impl_into_rhai_serde! { serde_yaml::Value }
