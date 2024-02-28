@@ -31,14 +31,14 @@ impl Value {
     /// Return the type name as a string slice.
     fn type_name(&self) -> &'static str {
         match self {
-            Self::Bool(_) => "Bool",
-            Self::I64(_) => "I64",
-            Self::U64(_) => "U64",
-            Self::F64(_) => "F64",
-            Self::Str(_) => "Str",
-            Self::Unit => "Unit",
-            Self::Seq(_) => "Seq",
-            Self::Map(_) => "Map",
+            Self::Bool(_) => "bool",
+            Self::I64(_) => "i64",
+            Self::U64(_) => "u64",
+            Self::F64(_) => "f64",
+            Self::Str(_) => "str",
+            Self::Unit => "unit",
+            Self::Seq(_) => "seq",
+            Self::Map(_) => "map",
         }
     }
 }
@@ -450,7 +450,7 @@ impl serde::ser::SerializeMap for ValueSerializeMap {
             Value::Str(v) => self.key = Some(v),
             v => {
                 return Err(ValueError(format!(
-                    "invalid type: {}, expected Str",
+                    "invalid type: {}, expected str",
                     v.type_name(),
                 )))
             },
