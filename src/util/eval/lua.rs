@@ -163,6 +163,43 @@ mod tests {
     }
 
     #[test]
+    fn value_from_lua() {
+        use crate::util::value::Value;
+        let value: Value = from_str(
+            r#"{
+                bool = true,
+                int = 1,
+                float = 3.14,
+                string = "bar",
+                unit = nil,
+                vec = { 1, 2, 3 },
+                map = { baz = 1 },
+            }"#,
+        )
+        .unwrap();
+        assert_eq!(
+            value,
+            Value::Map(
+                [
+                    ("bool".into(), Value::Bool(true)),
+                    ("int".into(), Value::I64(1)),
+                    ("float".into(), Value::F64(3.14)),
+                    ("string".into(), Value::Str("bar".into())),
+                    (
+                        "vec".into(),
+                        Value::Seq([Value::I64(1), Value::I64(2), Value::I64(3)].into()),
+                    ),
+                    (
+                        "map".into(),
+                        Value::Map([("baz".into(), Value::I64(1))].into()),
+                    ),
+                ]
+                .into(),
+            )
+        );
+    }
+
+    #[test]
     fn function_from_lua() {
         use crate::util::function::Function;
         let f: Function<(i32, i32), i32> = from_str("function (x, y) return x + y end").unwrap();

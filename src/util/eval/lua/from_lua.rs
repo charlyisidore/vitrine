@@ -171,6 +171,7 @@ macro_rules! impl_from_lua_serde {
     }
 }
 
+impl_from_lua_serde! { crate::util::value::Value }
 impl_from_lua_serde! { serde_json::Value }
 impl_from_lua_serde! { toml::Value }
 impl_from_lua_serde! { serde_yaml::Value }

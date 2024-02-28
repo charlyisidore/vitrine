@@ -227,33 +227,107 @@ impl_from_js_object! {
         S: Default + BuildHasher
 }
 
+impl FromJs for crate::util::value::Value {
+    fn from_js(
+        value: JsValueFacade,
+        _runtime: &Arc<QuickJsRuntimeFacade>,
+    ) -> Result<Self, JsError> {
+        use futures::executor::block_on;
+
+        use crate::util::value::to_value;
+
+        let value_type = value.get_value_type();
+
+        match value {
+            JsValueFacade::Null => Ok(Self::Unit),
+            JsValueFacade::Undefined => Ok(Self::Unit),
+            JsValueFacade::Boolean { val } => Ok(Self::Bool(val)),
+            JsValueFacade::F64 { val } => Ok(Self::F64(val)),
+            JsValueFacade::I32 { val } => Ok(Self::I64(val.into())),
+            JsValueFacade::String { val } => Ok(Self::Str(val.to_string())),
+            JsValueFacade::Array { val } => Ok(Self::Seq(
+                val.into_iter()
+                    .map(|v| FromJs::from_js(v, _runtime))
+                    .collect::<Result<_, _>>()?,
+            )),
+            JsValueFacade::JsArray { cached_array } => Ok(Self::Seq(
+                block_on(cached_array.get_array())?
+                    .into_iter()
+                    .map(|v| FromJs::from_js(v, _runtime))
+                    .collect::<Result<_, _>>()?,
+            )),
+            JsValueFacade::Object { val } => Ok(Self::Map(
+                val.into_iter()
+                    .map(|(k, v)| Ok((k, FromJs::from_js(v, _runtime)?)))
+                    .collect::<Result<_, JsError>>()?,
+            )),
+            JsValueFacade::JsObject { cached_object } => Ok(Self::Map(
+                cached_object
+                    .get_object_sync()?
+                    .into_iter()
+                    .map(|(k, v)| Ok((k, FromJs::from_js(v, _runtime)?)))
+                    .collect::<Result<_, JsError>>()?,
+            )),
+            JsValueFacade::JsPromise { ref cached_promise } => FromJs::from_js(
+                cached_promise
+                    .get_promise_result_sync()?
+                    .map_err(|e| JsError::FromJs {
+                        from: value_type.to_string(),
+                        to: "vitrine::Value",
+                        message: Some(e.stringify()),
+                    })?,
+                _runtime,
+            ),
+            JsValueFacade::JsonStr { json } => Ok(to_value(serde_json::from_str(&json)?).map_err(
+                |e| JsError::FromJs {
+                    from: value_type.to_string(),
+                    to: "vitrine::Value",
+                    message: Some(format!("{e}")),
+                },
+            )?),
+            JsValueFacade::SerdeValue { value } => {
+                Ok(to_value(value).map_err(|e| JsError::FromJs {
+                    from: value_type.to_string(),
+                    to: "vitrine::Value",
+                    message: Some(format!("{e}")),
+                })?)
+            },
+            _ => Err(JsError::FromJs {
+                from: value_type.to_string(),
+                to: "vitrine::Value",
+                message: Some("expected vitrine::Value".to_string()),
+            }),
+        }
+    }
+}
+
 impl FromJs for serde_json::Value {
     fn from_js(
         value: JsValueFacade,
         _runtime: &Arc<QuickJsRuntimeFacade>,
     ) -> Result<Self, JsError> {
         use futures::executor::block_on;
-        use serde_json::Value;
+        use serde_json::Map;
 
         match value {
-            JsValueFacade::Null => Ok(Value::Null),
-            JsValueFacade::Undefined => Ok(Value::Null),
-            JsValueFacade::Boolean { val } => Ok(Value::from(val)),
-            JsValueFacade::F64 { val } => Ok(Value::from(val)),
-            JsValueFacade::I32 { val } => Ok(Value::from(val)),
-            JsValueFacade::String { val } => Ok(Value::from(val.to_string())),
-            JsValueFacade::Array { val } => Ok(Value::from_iter(
+            JsValueFacade::Null => Ok(Self::Null),
+            JsValueFacade::Undefined => Ok(Self::Null),
+            JsValueFacade::Boolean { val } => Ok(Self::from(val)),
+            JsValueFacade::F64 { val } => Ok(Self::from(val)),
+            JsValueFacade::I32 { val } => Ok(Self::from(val)),
+            JsValueFacade::String { val } => Ok(Self::from(val.to_string())),
+            JsValueFacade::Array { val } => Ok(Self::from_iter(
                 val.into_iter()
                     .map(|v| FromJs::from_js(v, _runtime))
-                    .collect::<Result<Vec<Value>, JsError>>()?,
+                    .collect::<Result<Vec<Self>, JsError>>()?,
             )),
             JsValueFacade::JsArray { cached_array } => {
                 Ok(block_on(cached_array.get_serde_value())?)
             },
-            JsValueFacade::Object { val } => Ok(Value::from_iter(
+            JsValueFacade::Object { val } => Ok(Self::from_iter(
                 val.into_iter()
                     .map(|(k, v)| Ok((k, FromJs::from_js(v, _runtime)?)))
-                    .collect::<Result<HashMap<String, Value>, JsError>>()?,
+                    .collect::<Result<Map<String, Self>, JsError>>()?,
             )),
             JsValueFacade::JsObject { cached_object } => {
                 Ok(block_on(cached_object.get_serde_value())?)
