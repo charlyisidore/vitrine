@@ -158,14 +158,14 @@ impl Value {
 impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::Bool(u), Self::Bool(v)) if u == v => true,
-            (Self::I64(u), Self::I64(v)) if u == v => true,
-            (Self::U64(u), Self::U64(v)) if u == v => true,
-            (Self::F64(u), Self::F64(v)) if u == v => true,
-            (Self::Str(u), Self::Str(v)) if u == v => true,
+            (Self::Bool(u), Self::Bool(v)) => u == v,
+            (Self::I64(u), Self::I64(v)) => u == v,
+            (Self::U64(u), Self::U64(v)) => u == v,
+            (Self::F64(u), Self::F64(v)) => u == v,
+            (Self::Str(u), Self::Str(v)) => u == v,
             (Self::Unit, Self::Unit) => true,
-            (Self::Seq(u), Self::Seq(v)) if u == v => true,
-            (Self::Map(u), Self::Map(v)) if u == v => true,
+            (Self::Seq(u), Self::Seq(v)) => u == v,
+            (Self::Map(u), Self::Map(v)) => u == v,
             _ => false,
         }
     }
