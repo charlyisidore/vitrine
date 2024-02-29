@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 /// This structure can store serializable values. It can be used as an
 /// intermediate type to communicate between script engines (e.g. JavaScript)
 /// and other modules such as layout engines (e.g. Jinja).
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Value {
     /// Boolean.
     Bool(bool),
@@ -151,22 +151,6 @@ impl Value {
         match self {
             Self::Map(v) => Some(v),
             _ => None,
-        }
-    }
-}
-
-impl PartialEq for Value {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Bool(u), Self::Bool(v)) => u == v,
-            (Self::I64(u), Self::I64(v)) => u == v,
-            (Self::U64(u), Self::U64(v)) => u == v,
-            (Self::F64(u), Self::F64(v)) => u == v,
-            (Self::Str(u), Self::Str(v)) => u == v,
-            (Self::Unit, Self::Unit) => true,
-            (Self::Seq(u), Self::Seq(v)) => u == v,
-            (Self::Map(u), Self::Map(v)) => u == v,
-            _ => false,
         }
     }
 }
