@@ -10,13 +10,17 @@ use std::sync::Arc;
 /// # Example
 ///
 /// ```
+/// # use std::error::Error;
+/// # fn main() -> Result<(), Box<dyn Error>> {
+/// #
 /// use vitrine::util::function::Function;
 ///
 /// let add: Function<(i32, i32), i32> = Function::from(|x, y| x + y);
-///
-/// let result = add.call(1, 2).unwrap();
-///
+/// let result = add.call(1, 2)?;
 /// assert_eq!(result, 3);
+/// #
+/// #     Ok(())
+/// # }
 /// ```
 #[derive(Clone)]
 pub struct Function<A, R>(Arc<dyn Fn(A) -> Result<R, AnyError> + Send + Sync>);
