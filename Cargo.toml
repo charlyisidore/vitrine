@@ -18,15 +18,19 @@ categories = [
 members = ["crates/derive"]
 
 [features]
-default = ["js", "lua", "rhai"]
+default = ["jinja", "js", "lua", "rhai", "tera"]
+jinja = ["dep:minijinja"]
 js = ["dep:futures", "dep:quickjs_runtime"]
 lua = ["dep:mlua"]
 rhai = ["dep:rhai"]
+tera = ["dep:tera"]
 
 [dependencies]
+anyhow = "1.0.80"
 futures = { version = "0.3.30", optional = true }
 ignore = "0.4.22"
 markdown-it = { version = "0.6.0", default-features = false, features = ["linkify"] }
+minijinja = { version = "1.0.12", features = ["loader"], optional = true }
 mlua = { version = "0.9.5", features = ["lua51", "send", "serialize", "vendored"], optional = true }
 quickjs_runtime = { version = "0.12.1", default-features = false, features = ["console", "setimmediate", "setinterval", "settimeout"], optional = true }
 rhai = { version = "1.17.1", features = ["serde", "sync"], optional = true }
@@ -34,6 +38,7 @@ serde = "1.0.197"
 serde_json = "1.0.114"
 serde_yaml = "0.9.32"
 slug = "0.1.5"
+tera = { version = "1.19.1", optional = true }
 thiserror = "1.0.57"
 toml = { version = "0.8.10", default-features = false, features = ["parse"] }
 vitrine_derive = { version = "=0.2.0", path = "crates/derive" }
