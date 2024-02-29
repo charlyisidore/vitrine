@@ -1,9 +1,6 @@
 //! Configure the site builder.
 
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 use thiserror::Error;
@@ -81,21 +78,8 @@ pub enum ConfigError {
     },
 }
 
-/// Return the default input directory.
-pub fn default_input_dir() -> PathBuf {
-    ".".into()
-}
-
-/// Return the default output directory.
-pub fn default_output_dir() -> Option<PathBuf> {
-    Some("_site".into())
-}
-
-/// Return the default layout directory if it exists.
-pub fn default_layout_dir() -> Option<PathBuf> {
-    // Returns the path only if it exists
-    Some(PathBuf::from("_layouts")).filter(|path| path.exists())
-}
+/// Type used for maps in [`Config`].
+pub type Map<K, V> = std::collections::HashMap<K, V>;
 
 /// Configuration for the site builder.
 #[derive(Debug, Default, Deserialize, VitrineNoop)]
@@ -160,17 +144,17 @@ pub struct LayoutConfig {
     /// Custom filters.
     #[serde(skip)]
     #[vitrine(default)]
-    pub filters: HashMap<String, LayoutFilter>,
+    pub filters: Map<String, LayoutFilter>,
 
     /// Custom functions.
     #[serde(skip)]
     #[vitrine(default)]
-    pub functions: HashMap<String, LayoutFunction>,
+    pub functions: Map<String, LayoutFunction>,
 
     /// Custom tests.
     #[serde(skip)]
     #[vitrine(default)]
-    pub tests: HashMap<String, LayoutTest>,
+    pub tests: Map<String, LayoutTest>,
 }
 
 /// Configuration for the markdown parser.
@@ -319,4 +303,20 @@ impl Config {
 
         Ok(())
     }
+}
+
+/// Return the default input directory.
+pub fn default_input_dir() -> PathBuf {
+    ".".into()
+}
+
+/// Return the default output directory.
+pub fn default_output_dir() -> Option<PathBuf> {
+    Some("_site".into())
+}
+
+/// Return the default layout directory if it exists.
+pub fn default_layout_dir() -> Option<PathBuf> {
+    // Returns the path only if it exists
+    Some(PathBuf::from("_layouts")).filter(|path| path.exists())
 }
