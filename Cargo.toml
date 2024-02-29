@@ -29,7 +29,11 @@ tera = ["dep:tera"]
 anyhow = "1.0.80"
 futures = { version = "0.3.30", optional = true }
 ignore = "0.4.22"
+lightningcss = { version = "1.0.0-alpha.54", default-features = false, features = ["bundler", "grid", "sourcemap"] }
+lol_html = "1.2.0"
 markdown-it = { version = "0.6.0", default-features = false, features = ["linkify"] }
+minify-html = "0.15.0"
+minify-js = "0.5.6"
 minijinja = { version = "1.0.12", features = ["loader"], optional = true }
 mlua = { version = "0.9.5", features = ["lua51", "send", "serialize", "vendored"], optional = true }
 quickjs_runtime = { version = "0.12.1", default-features = false, features = ["console", "setimmediate", "setinterval", "settimeout"], optional = true }
