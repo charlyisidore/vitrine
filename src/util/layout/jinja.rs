@@ -23,12 +23,22 @@ pub struct JinjaEngine<'source> {
     env: Environment<'source>,
 }
 
-impl JinjaEngine<'_> {
+impl<'source> JinjaEngine<'source> {
     /// Create a Jinja layout engine.
     pub fn new() -> Self {
         Self {
             env: Environment::new(),
         }
+    }
+
+    /// Return a reference to the [`Environment`] instance.
+    pub fn env_ref(&mut self) -> &Environment {
+        &self.env
+    }
+
+    /// Return a mutable reference to the [`Environment`] instance.
+    pub fn env_mut(&mut self) -> &'source mut Environment {
+        &mut self.env
     }
 }
 

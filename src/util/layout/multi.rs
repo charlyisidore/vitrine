@@ -3,10 +3,7 @@
 //! This module provides a layout engine that call sub-engines depending on the
 //! layout file extension.
 
-use std::{
-    collections::HashMap,
-    ops::{Deref, DerefMut},
-};
+use std::collections::HashMap;
 
 use serde::Serialize;
 use thiserror::Error;
@@ -58,10 +55,12 @@ impl MultiEngine {
     }
 
     /// Return a reference to the engine of given layout name.
-    fn get_engine(
+    pub fn get_engine_ref(
         &self,
         name: impl AsRef<str>,
     ) -> Result<&(dyn DynamicEngine + 'static), MultiError> {
+        use std::ops::Deref;
+
         let name = name.as_ref();
 
         let Some((_, extension)) = name.rsplit_once('.') else {
@@ -78,10 +77,12 @@ impl MultiEngine {
     }
 
     /// Return a mutable reference to the engine of given layout name.
-    fn get_engine_mut(
+    pub fn get_engine_mut(
         &mut self,
         name: impl AsRef<str>,
     ) -> Result<&mut (dyn DynamicEngine + 'static), MultiError> {
+        use std::ops::DerefMut;
+
         let name = name.as_ref();
 
         let Some((_, extension)) = name.rsplit_once('.') else {
@@ -179,7 +180,7 @@ impl LayoutEngine for MultiEngine {
         context: impl Serialize,
     ) -> Result<String, Self::Error> {
         let name = name.as_ref();
-        let engine = self.get_engine(name)?;
+        let engine = self.get_engine_ref(name)?;
         let context = crate::util::value::to_value(context)?;
         engine.render(name, context)
     }

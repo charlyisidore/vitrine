@@ -32,6 +32,16 @@ impl TeraEngine {
             tera: Tera::default(),
         }
     }
+
+    /// Return a reference to the [`Tera`] instance.
+    pub fn tera_ref(&mut self) -> &Tera {
+        &self.tera
+    }
+
+    /// Return a mutable reference to the [`Tera`] instance.
+    pub fn tera_mut(&mut self) -> &mut Tera {
+        &mut self.tera
+    }
 }
 
 impl LayoutEngine for TeraEngine {
