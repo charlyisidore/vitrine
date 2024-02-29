@@ -54,14 +54,25 @@ pub trait LayoutEngine {
     ) -> Result<(), Self::Error>;
 
     /// Add a custom filter.
-    fn add_filter(&mut self, name: impl AsRef<str>, f: LayoutFilter) -> Result<(), Self::Error>;
+    fn add_filter(
+        &mut self,
+        name: impl AsRef<str>,
+        f: impl Into<LayoutFilter>,
+    ) -> Result<(), Self::Error>;
 
     /// Add a custom function.
-    fn add_function(&mut self, name: impl AsRef<str>, f: LayoutFunction)
-        -> Result<(), Self::Error>;
+    fn add_function(
+        &mut self,
+        name: impl AsRef<str>,
+        f: impl Into<LayoutFunction>,
+    ) -> Result<(), Self::Error>;
 
     /// Add a custom test.
-    fn add_test(&mut self, name: impl AsRef<str>, f: LayoutTest) -> Result<(), Self::Error>;
+    fn add_test(
+        &mut self,
+        name: impl AsRef<str>,
+        f: impl Into<LayoutTest>,
+    ) -> Result<(), Self::Error>;
 
     /// Render a layout by name with context.
     fn render(&self, name: impl AsRef<str>, context: impl Serialize)

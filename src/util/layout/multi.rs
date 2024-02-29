@@ -143,26 +143,34 @@ impl LayoutEngine for MultiEngine {
         Ok(())
     }
 
-    fn add_filter(&mut self, name: impl AsRef<str>, f: LayoutFilter) -> Result<(), Self::Error> {
+    fn add_filter(
+        &mut self,
+        name: impl AsRef<str>,
+        f: impl Into<LayoutFilter>,
+    ) -> Result<(), Self::Error> {
         let name = name.as_ref();
         let engine = self.get_engine_mut(name)?;
-        engine.add_filter(name, f)
+        engine.add_filter(name, f.into())
     }
 
     fn add_function(
         &mut self,
         name: impl AsRef<str>,
-        f: LayoutFunction,
+        f: impl Into<LayoutFunction>,
     ) -> Result<(), Self::Error> {
         let name = name.as_ref();
         let engine = self.get_engine_mut(name)?;
-        engine.add_function(name, f)
+        engine.add_function(name, f.into())
     }
 
-    fn add_test(&mut self, name: impl AsRef<str>, f: LayoutTest) -> Result<(), Self::Error> {
+    fn add_test(
+        &mut self,
+        name: impl AsRef<str>,
+        f: impl Into<LayoutTest>,
+    ) -> Result<(), Self::Error> {
         let name = name.as_ref();
         let engine = self.get_engine_mut(name)?;
-        engine.add_test(name, f)
+        engine.add_test(name, f.into())
     }
 
     fn render(

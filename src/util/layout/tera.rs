@@ -44,8 +44,13 @@ impl LayoutEngine for TeraEngine {
         Ok(self.tera.add_raw_templates(iter)?)
     }
 
-    fn add_filter(&mut self, name: impl AsRef<str>, f: LayoutFilter) -> Result<(), Self::Error> {
+    fn add_filter(
+        &mut self,
+        name: impl AsRef<str>,
+        f: impl Into<LayoutFilter>,
+    ) -> Result<(), Self::Error> {
         use tera::{Error, Value};
+        let f = f.into();
         let f = move |value: &Value, kwargs: &HashMap<String, Value>| -> Result<Value, Error> {
             let value =
                 crate::util::value::to_value(value).map_err(|e| Error::msg(format!("{e}")))?;
@@ -66,9 +71,10 @@ impl LayoutEngine for TeraEngine {
     fn add_function(
         &mut self,
         name: impl AsRef<str>,
-        f: LayoutFunction,
+        f: impl Into<LayoutFunction>,
     ) -> Result<(), Self::Error> {
         use tera::{Error, Value};
+        let f = f.into();
         let f = move |kwargs: &HashMap<String, Value>| -> Result<Value, Error> {
             let args = Default::default();
             let kwargs = kwargs
@@ -84,8 +90,13 @@ impl LayoutEngine for TeraEngine {
         Ok(())
     }
 
-    fn add_test(&mut self, name: impl AsRef<str>, f: LayoutTest) -> Result<(), Self::Error> {
+    fn add_test(
+        &mut self,
+        name: impl AsRef<str>,
+        f: impl Into<LayoutTest>,
+    ) -> Result<(), Self::Error> {
         use tera::{Error, Value};
+        let f = f.into();
         let f = move |value: Option<&Value>, args: &[Value]| -> Result<bool, Error> {
             let value =
                 crate::util::value::to_value(value).map_err(|e| Error::msg(format!("{e}")))?;
@@ -123,9 +134,7 @@ mod tests {
     use serde::Serialize;
 
     use super::TeraEngine;
-    use crate::util::layout::{
-        LayoutEngine, LayoutFilter, LayoutFunction, LayoutTest, Map, Value as LayoutValue,
-    };
+    use crate::util::layout::{LayoutEngine, Map, Value as LayoutValue};
 
     #[derive(Serialize)]
     struct Data {
@@ -159,12 +168,12 @@ mod tests {
     fn custom_filter() {
         let mut engine = TeraEngine::new();
 
-        let filter = LayoutFilter::from(|value: LayoutValue, _, _| -> LayoutValue {
+        let filter = |value: LayoutValue, _, _| -> LayoutValue {
             value
                 .as_str()
                 .map(|s| s.to_uppercase())
                 .map_or_else(|| LayoutValue::Unit, |s| LayoutValue::Str(s))
-        });
+        };
 
         engine.add_filter("upper_case", filter).unwrap();
 
@@ -185,13 +194,13 @@ mod tests {
     fn custom_function() {
         let mut engine = TeraEngine::new();
 
-        let function = LayoutFunction::from(|_, kwargs: Map<String, LayoutValue>| -> LayoutValue {
+        let function = |_, kwargs: Map<String, LayoutValue>| -> LayoutValue {
             kwargs
                 .get("s")
                 .and_then(|s| s.as_str())
                 .map(|s| s.to_uppercase())
                 .map_or_else(|| LayoutValue::Unit, |s| LayoutValue::Str(s))
-        });
+        };
 
         engine.add_function("upper_case", function).unwrap();
 
@@ -212,12 +221,12 @@ mod tests {
     fn custom_test() {
         let mut engine = TeraEngine::new();
 
-        let test = LayoutTest::from(|value: LayoutValue, _, _| -> bool {
+        let test = |value: LayoutValue, _, _| -> bool {
             value
                 .as_str()
                 .map(|s| s == s.to_uppercase())
                 .unwrap_or(false)
-        });
+        };
 
         engine.add_test("upper_case", test).unwrap();
 

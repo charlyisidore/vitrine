@@ -46,8 +46,13 @@ impl LayoutEngine for JinjaEngine<'_> {
         Ok(())
     }
 
-    fn add_filter(&mut self, name: impl AsRef<str>, f: LayoutFilter) -> Result<(), Self::Error> {
+    fn add_filter(
+        &mut self,
+        name: impl AsRef<str>,
+        f: impl Into<LayoutFilter>,
+    ) -> Result<(), Self::Error> {
         use minijinja::{value::Rest, Error, ErrorKind, Value};
+        let f = f.into();
         let f = move |value: Value, args: Rest<Value>| -> Result<Value, Error> {
             let value = crate::util::value::to_value(value)
                 .map_err(|e| Error::new(ErrorKind::InvalidOperation, format!("{e}")))?;
@@ -68,9 +73,10 @@ impl LayoutEngine for JinjaEngine<'_> {
     fn add_function(
         &mut self,
         name: impl AsRef<str>,
-        f: LayoutFunction,
+        f: impl Into<LayoutFunction>,
     ) -> Result<(), Self::Error> {
         use minijinja::{value::Rest, Error, ErrorKind, Value};
+        let f = f.into();
         let f = move |args: Rest<Value>| -> Result<Value, Error> {
             let args = args
                 .iter()
@@ -86,8 +92,13 @@ impl LayoutEngine for JinjaEngine<'_> {
         Ok(())
     }
 
-    fn add_test(&mut self, name: impl AsRef<str>, f: LayoutTest) -> Result<(), Self::Error> {
+    fn add_test(
+        &mut self,
+        name: impl AsRef<str>,
+        f: impl Into<LayoutTest>,
+    ) -> Result<(), Self::Error> {
         use minijinja::{value::Rest, Error, ErrorKind, Value};
+        let f = f.into();
         let f = move |value: Value, args: Rest<Value>| -> Result<bool, Error> {
             let value = crate::util::value::to_value(value)
                 .map_err(|e| Error::new(ErrorKind::InvalidOperation, format!("{e}")))?;
@@ -125,9 +136,7 @@ mod tests {
     use serde::Serialize;
 
     use super::JinjaEngine;
-    use crate::util::layout::{
-        LayoutEngine, LayoutFilter, LayoutFunction, LayoutTest, Value as LayoutValue,
-    };
+    use crate::util::layout::{LayoutEngine, Value as LayoutValue};
 
     #[derive(Serialize)]
     struct Data {
@@ -161,12 +170,12 @@ mod tests {
     fn custom_filter() {
         let mut engine = JinjaEngine::new();
 
-        let filter = LayoutFilter::from(|value: LayoutValue, _, _| -> LayoutValue {
+        let filter = |value: LayoutValue, _, _| -> LayoutValue {
             value
                 .as_str()
                 .map(|s| s.to_uppercase())
                 .map_or_else(|| LayoutValue::Unit, |s| LayoutValue::Str(s))
-        });
+        };
 
         engine.add_filter("upper_case", filter).unwrap();
 
@@ -187,12 +196,12 @@ mod tests {
     fn custom_function() {
         let mut engine = JinjaEngine::new();
 
-        let function = LayoutFunction::from(|args: Vec<LayoutValue>, _| -> LayoutValue {
+        let function = |args: Vec<LayoutValue>, _| -> LayoutValue {
             args.get(0)
                 .and_then(|s| s.as_str())
                 .map(|s| s.to_uppercase())
                 .map_or_else(|| LayoutValue::Unit, |s| LayoutValue::Str(s))
-        });
+        };
 
         engine.add_function("upper_case", function).unwrap();
 
@@ -213,12 +222,12 @@ mod tests {
     fn custom_test() {
         let mut engine = JinjaEngine::new();
 
-        let test = LayoutTest::from(|value: LayoutValue, _, _| -> bool {
+        let test = |value: LayoutValue, _, _| -> bool {
             value
                 .as_str()
                 .map(|s| s == s.to_uppercase())
                 .unwrap_or(false)
-        });
+        };
 
         engine.add_test("upper_case", test).unwrap();
 
