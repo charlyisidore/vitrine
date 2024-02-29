@@ -22,7 +22,7 @@ impl ScssCompiler<'_> {
     /// Create a SCSS compiler.
     pub fn new() -> Self {
         Self {
-            options: Options::default(),
+            options: Default::default(),
         }
     }
 
