@@ -11,6 +11,7 @@ use thiserror::Error;
 /// List of errors for this module.
 #[derive(Debug, Error)]
 pub enum MarkdownError {
+    /// Plugin not found error.
     #[error("plugin not found: `{0}`")]
     PluginNotFound(String),
 }

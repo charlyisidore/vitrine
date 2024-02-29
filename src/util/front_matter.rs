@@ -14,8 +14,10 @@ const YAML_DELIMITER: &str = "---";
 /// List of errors for this module.
 #[derive(Debug, Error)]
 pub enum FrontMatterError {
+    /// TOML parse error.
     #[error(transparent)]
     Toml(#[from] crate::util::eval::toml::TomlError),
+    /// YAML parse error.
     #[error(transparent)]
     Yaml(#[from] crate::util::eval::yaml::YamlError),
 }
