@@ -13,26 +13,43 @@ use thiserror::Error;
 /// List of errors for this module.
 #[derive(Debug, Error)]
 pub enum JsError {
+    /// Error converting values from JavaScript.
     #[error("{}", format_from_js_error(.from, .to, .message))]
     FromJs {
+        /// Source type name.
         from: String,
+        /// Target type name.
         to: &'static str,
+        /// Optional message.
         message: Option<String>,
     },
+    /// Error converting values to JavaScript.
     #[error("{}", format_into_js_error(.from, .to, .message))]
     IntoJs {
+        /// Source type name.
         from: &'static str,
+        /// Target type name.
         to: &'static str,
+        /// Optional message.
         message: Option<String>,
     },
-    #[error(transparent)]
-    SerdeJson(#[from] serde_json::Error),
-    #[error(transparent)]
-    QuickjsRuntime(#[from] quickjs_runtime::jsutils::JsError),
+    /// I/O error.
     #[error(transparent)]
     Io(#[from] std::io::Error),
+    /// JavaScript runtime error.
+    #[error(transparent)]
+    QuickjsRuntime(#[from] quickjs_runtime::jsutils::JsError),
+    /// Serde error.
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
+    /// Add a field name to the error context.
     #[error("field `{field}`")]
-    WithField { source: Box<Self>, field: String },
+    WithField {
+        /// Source error.
+        source: Box<Self>,
+        /// Field name.
+        field: String,
+    },
 }
 
 /// Read value from a JavaScript script file.

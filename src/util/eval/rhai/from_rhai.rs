@@ -17,6 +17,7 @@ pub trait FromRhai
 where
     Self: Sized,
 {
+    /// Perform the conversion.
     fn from_rhai(value: Dynamic, runtime: &Arc<(Engine, AST)>) -> Result<Self, RhaiError>;
 }
 

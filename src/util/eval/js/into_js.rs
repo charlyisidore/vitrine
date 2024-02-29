@@ -15,6 +15,7 @@ pub trait IntoJs
 where
     Self: Sized,
 {
+    /// Perform the conversion.
     fn into_js(self) -> Result<JsValueFacade, JsError>;
 }
 

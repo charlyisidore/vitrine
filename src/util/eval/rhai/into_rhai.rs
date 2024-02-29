@@ -13,6 +13,7 @@ pub trait IntoRhai
 where
     Self: Sized,
 {
+    /// Perform the conversion.
     fn into_rhai(self) -> Dynamic;
 }
 

@@ -17,6 +17,7 @@ pub trait FromJs
 where
     Self: Sized,
 {
+    /// Perform the conversion.
     fn from_js(value: JsValueFacade, runtime: &Arc<QuickJsRuntimeFacade>) -> Result<Self, JsError>;
 }
 

@@ -8,8 +8,10 @@ use thiserror::Error;
 /// List of errors for this module.
 #[derive(Debug, Error)]
 pub enum YamlError {
+    /// I/O error.
     #[error(transparent)]
     Io(#[from] std::io::Error),
+    /// Parse error.
     #[error(transparent)]
     Yaml(#[from] serde_yaml::Error),
 }

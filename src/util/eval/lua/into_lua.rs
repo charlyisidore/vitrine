@@ -17,6 +17,7 @@ pub trait IntoLua
 where
     Self: Sized,
 {
+    /// Perform the conversion.
     fn into_lua(self, lua: &Lua) -> Result<mlua::Value, LuaError>;
 }
 

@@ -16,12 +16,20 @@ use thiserror::Error;
 /// List of errors for this module.
 #[derive(Debug, Error)]
 pub enum LuaError {
+    /// I/O error.
     #[error(transparent)]
     Io(#[from] std::io::Error),
+    /// Lua runtime error.
     #[error(transparent)]
     Lua(#[from] mlua::Error),
+    /// Add a field name to the error context.
     #[error("field `{field}`")]
-    WithField { source: Box<Self>, field: String },
+    WithField {
+        /// Source error.
+        source: Box<Self>,
+        /// Field name.
+        field: String,
+    },
 }
 
 /// Read value from a Lua script file.
@@ -29,8 +37,7 @@ pub fn from_file<T>(path: impl AsRef<Path>) -> Result<T, LuaError>
 where
     T: FromLua,
 {
-    let s = std::fs::read_to_string(path)?;
-    from_str(s)
+    from_str(std::fs::read_to_string(path)?)
 }
 
 /// Read value from a Lua script string.

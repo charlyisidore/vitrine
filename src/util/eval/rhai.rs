@@ -13,20 +13,33 @@ use thiserror::Error;
 /// List of errors for this module.
 #[derive(Debug, Error)]
 pub enum RhaiError {
+    /// Rhai boxed runtime error.
     #[error(transparent)]
     BoxRhaiEval(#[from] Box<rhai::EvalAltResult>),
+    /// Error converting values from Rhai.
     #[error("{}", format_from_rhai_error(.from, .to, .message))]
     FromRhai {
+        /// Source type name.
         from: &'static str,
+        /// Target type name.
         to: &'static str,
+        /// Optional message.
         message: Option<String>,
     },
+    /// Rhai runtime error.
     #[error(transparent)]
     RhaiEval(#[from] rhai::EvalAltResult),
+    /// Rhai parse error.
     #[error(transparent)]
     RhaiParse(#[from] rhai::ParseError),
+    /// Add a field name to the error context.
     #[error("field `{field}`")]
-    WithField { source: Box<Self>, field: String },
+    WithField {
+        /// Source error.
+        source: Box<Self>,
+        /// Field name.
+        field: String,
+    },
 }
 
 /// Read value from a Rhai script file.
