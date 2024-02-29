@@ -44,10 +44,7 @@ impl Value {
 
     /// Check if the value is a `bool`.
     pub fn is_bool(&self) -> bool {
-        match self {
-            Self::Bool(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::Bool(_))
     }
 
     /// If the value is a `bool`, returns the associated [`bool`].
@@ -60,10 +57,7 @@ impl Value {
 
     /// Check if the value is a `i64`.
     pub fn is_i64(&self) -> bool {
-        match self {
-            Self::I64(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::I64(_))
     }
 
     /// If the value is a `i64`, returns the associated [`i64`].
@@ -76,10 +70,7 @@ impl Value {
 
     /// Check if the value is a `u64`.
     pub fn is_u64(&self) -> bool {
-        match self {
-            Self::U64(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::U64(_))
     }
 
     /// If the value is a `u64`, returns the associated [`u64`].
@@ -92,10 +83,7 @@ impl Value {
 
     /// Check if the value is a `f64`.
     pub fn is_f64(&self) -> bool {
-        match self {
-            Self::F64(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::F64(_))
     }
 
     /// If the value is a `f64`, returns the associated [`f64`].
@@ -108,10 +96,7 @@ impl Value {
 
     /// Check if the value is a `str`.
     pub fn is_str(&self) -> bool {
-        match self {
-            Self::Str(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::Str(_))
     }
 
     /// If the value is a `str`, returns the associated `&str`.
@@ -124,18 +109,12 @@ impl Value {
 
     /// Check if the value is a `()`.
     pub fn is_unit(&self) -> bool {
-        match self {
-            Self::Unit => true,
-            _ => false,
-        }
+        matches!(self, Self::Unit)
     }
 
     /// Check if the value is a `seq`.
     pub fn is_seq(&self) -> bool {
-        match self {
-            Self::Seq(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::Seq(_))
     }
 
     /// If the value is a `seq`, returns the associated [`Vec`].
@@ -156,10 +135,7 @@ impl Value {
 
     /// Check if the value is a `map`.
     pub fn is_map(&self) -> bool {
-        match self {
-            Self::Map(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::Map(_))
     }
 
     /// If the value is a `map`, returns the associated [`Map`].
