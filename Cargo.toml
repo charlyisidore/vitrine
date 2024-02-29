@@ -28,6 +28,7 @@ tera = ["dep:tera"]
 [dependencies]
 anyhow = "1.0.80"
 futures = { version = "0.3.30", optional = true }
+grass = { version = "0.13.2", default-features = false }
 ignore = "0.4.22"
 lightningcss = { version = "1.0.0-alpha.54", default-features = false, features = ["bundler", "grid", "sourcemap"] }
 lol_html = "1.2.0"

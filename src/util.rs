@@ -1,6 +1,7 @@
 //! Utility functions and structures.
 
 pub mod bundle;
+pub mod compile;
 pub mod eval;
 pub mod front_matter;
 pub mod function;
