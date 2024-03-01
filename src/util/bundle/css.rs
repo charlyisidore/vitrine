@@ -2,9 +2,9 @@
 //!
 //! This module uses [`lightningcss`] under the hood.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-use lightningcss::bundler::{Bundler, FileProvider};
+use lightningcss::bundler::{Bundler, FileProvider, SourceProvider};
 use thiserror::Error;
 
 /// List of errors for this module.
@@ -16,17 +16,58 @@ pub enum BundleCssError {
     /// Printer error.
     #[error("{0}")]
     Printer(String),
+    /// Source provider error.
+    #[error("{0}")]
+    SourceProvider(String),
+}
+
+/// A [`SourceProvider`] that allows to use a closure to read a source.
+pub struct BundleCssProvider<'a> {
+    reader: Reader<'a>,
+}
+
+/// Reader type for [`BundleCssProvider`].
+pub type Reader<'a> = Box<dyn Fn(&Path) -> Result<&'a str, BundleCssError> + Send + Sync + 'a>;
+
+impl<'a> BundleCssProvider<'a> {
+    /// Create a source provider from a closure.
+    pub fn new<F>(reader: F) -> Self
+    where
+        F: Fn(&Path) -> Result<&'a str, BundleCssError> + Send + Sync + 'a,
+    {
+        Self {
+            reader: Box::new(reader),
+        }
+    }
+}
+
+impl SourceProvider for BundleCssProvider<'_> {
+    type Error = BundleCssError;
+
+    fn read<'a>(&'a self, file: &Path) -> Result<&'a str, Self::Error> {
+        (self.reader)(file)
+    }
+
+    fn resolve(&self, specifier: &str, originating_file: &Path) -> Result<PathBuf, Self::Error> {
+        Ok(originating_file.with_file_name(specifier))
+    }
 }
 
 /// Bundle a CSS file.
 pub fn bundle_css_file(path: impl AsRef<Path>) -> Result<String, BundleCssError> {
-    let path = path.as_ref();
+    bundle_css(path, &FileProvider::new())
+}
 
-    let file_provider = FileProvider::new();
+/// Bundle CSS with a custom source provider.
+pub fn bundle_css(
+    path: impl AsRef<Path>,
+    provider: &impl SourceProvider,
+) -> Result<String, BundleCssError> {
+    let path = path.as_ref();
 
     let parser_options = Default::default();
 
-    let mut bundler = Bundler::new(&file_provider, None, parser_options);
+    let mut bundler = Bundler::new(provider, None, parser_options);
 
     let style_sheet = bundler
         .bundle(path)
@@ -43,29 +84,45 @@ pub fn bundle_css_file(path: impl AsRef<Path>) -> Result<String, BundleCssError>
 
 #[cfg(test)]
 mod tests {
+    use std::{collections::HashMap, path::PathBuf};
+
     use temp_dir::TempDir;
 
-    use super::bundle_css_file;
+    use super::{bundle_css, bundle_css_file, BundleCssError, BundleCssProvider};
 
     #[test]
-    fn bundle() {
+    fn bundle_file() {
         let temp_dir = TempDir::new();
         let dir = temp_dir.path();
         let path = dir.join("foo.css");
 
         std::fs::write(&path, r#"@import url("bar.css");"#).expect("failed to create file");
 
-        std::fs::write(
-            dir.join("bar.css"),
-            concat!(
-                ".foo {\n",          //
-                "  color: black;\n", //
-                "}\n"
-            ),
-        )
-        .expect("failed to create file");
+        std::fs::write(dir.join("bar.css"), ".foo { color: black; }")
+            .expect("failed to create file");
 
         let result = bundle_css_file(path).unwrap();
+
+        assert!(result.contains(".foo"));
+        assert!(result.contains("color:"));
+    }
+
+    #[test]
+    fn bundle_str() {
+        let sources: HashMap<PathBuf, String> = [
+            ("foo.css".into(), r#"@import url("bar.css");"#.into()),
+            ("bar.css".into(), ".foo { color: black; }".into()),
+        ]
+        .into();
+
+        let provider = BundleCssProvider::new(|path| {
+            sources
+                .get(path)
+                .map(|s| s.as_str())
+                .ok_or_else(|| BundleCssError::SourceProvider("source not found".to_string()))
+        });
+
+        let result = bundle_css(PathBuf::from("foo.css"), &provider).unwrap();
 
         assert!(result.contains(".foo"));
         assert!(result.contains("color:"));
