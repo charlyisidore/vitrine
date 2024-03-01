@@ -43,6 +43,7 @@ serde = "1.0.197"
 serde_json = "1.0.114"
 serde_yaml = "0.9.32"
 slug = "0.1.5"
+swc_core = { version = "0.90.14", features = ["bundler", "common", "ecma_ast", "ecma_codegen", "ecma_loader", "ecma_loader_lru", "ecma_loader_node", "ecma_loader_parking_lot", "ecma_parser"] }
 tera = { version = "1.19.1", optional = true }
 thiserror = "1.0.57"
 toml = { version = "0.8.10", default-features = false, features = ["parse"] }
