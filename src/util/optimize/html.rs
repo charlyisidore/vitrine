@@ -19,10 +19,10 @@ pub enum MinifyHtmlError {
     LolHtmlRewriting(#[from] RewritingError),
     /// Error minifying CSS.
     #[error(transparent)]
-    MinifyCss(#[from] crate::util::minify::css::MinifyCssError),
+    MinifyCss(#[from] crate::util::optimize::css::MinifyCssError),
     /// Error minifying JavaScript.
     #[error(transparent)]
-    MinifyJs(#[from] crate::util::minify::js::MinifyJsError),
+    MinifyJs(#[from] crate::util::optimize::js::MinifyJsError),
     /// Error minifying `<script>` elements.
     #[error("failed to minify `<script>` element")]
     MinifyScriptElement(Box<Self>),
@@ -74,7 +74,7 @@ impl Default for HtmlMinifier {
 /// This function minifies code inside `<script>` and `<style>` elements, as
 /// well as `style` attributes. The rest of the HTML code is not minified.
 pub fn minify_inline(input: impl AsRef<str>) -> Result<String, MinifyHtmlError> {
-    use crate::util::minify::{css::minify_css, js::minify_js};
+    use crate::util::optimize::{css::minify_css, js::minify_js};
 
     let input = input.as_ref();
     let mut script_buffer = String::new();
