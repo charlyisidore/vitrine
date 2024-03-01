@@ -59,27 +59,27 @@ where
 {
     let path = path.as_ref();
 
-    let s = std::fs::read_to_string(path)?;
+    let source = std::fs::read_to_string(path)?;
 
     let runtime = Arc::new(QuickJsRuntimeBuilder::new().build());
 
     let path = path.to_string_lossy();
-    let script = Script::new(&path, &s);
+    let script = Script::new(&path, &source);
     let value = runtime.eval_sync(None, script)?;
 
     T::from_js(value, &runtime)
 }
 
 /// Read value from a JavaScript script string.
-pub fn from_str<T>(s: impl AsRef<str>) -> Result<T, JsError>
+pub fn from_str<T>(source: impl AsRef<str>) -> Result<T, JsError>
 where
     T: FromJs,
 {
-    let s = s.as_ref();
+    let source = source.as_ref();
 
     let runtime = Arc::new(QuickJsRuntimeBuilder::new().build());
 
-    let script = Script::new("", s);
+    let script = Script::new("", source);
     let value = runtime.eval_sync(None, script)?;
 
     T::from_js(value, &runtime)

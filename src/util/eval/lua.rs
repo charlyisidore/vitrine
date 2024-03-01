@@ -41,14 +41,14 @@ where
 }
 
 /// Read value from a Lua script string.
-pub fn from_str<T>(s: impl AsRef<str>) -> Result<T, LuaError>
+pub fn from_str<T>(source: impl AsRef<str>) -> Result<T, LuaError>
 where
     T: FromLua,
 {
-    let s = s.as_ref();
+    let source = source.as_ref();
     let lua = new_lua();
     let lua = lua.lock().unwrap();
-    let value = lua.load(s).eval()?;
+    let value = lua.load(source).eval()?;
     T::from_lua(value, &lua)
 }
 

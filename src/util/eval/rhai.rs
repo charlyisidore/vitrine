@@ -55,13 +55,13 @@ where
 }
 
 /// Read value from a Rhai script string.
-pub fn from_str<T>(s: impl AsRef<str>) -> Result<T, RhaiError>
+pub fn from_str<T>(source: impl AsRef<str>) -> Result<T, RhaiError>
 where
     T: FromRhai,
 {
-    let s = s.as_ref();
+    let source = source.as_ref();
     let engine = Engine::new();
-    let ast = engine.compile(s)?;
+    let ast = engine.compile(source)?;
     let result = engine.eval_ast(&ast)?;
     T::from_rhai(result, &Arc::new((engine, ast)))
 }

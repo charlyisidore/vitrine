@@ -25,11 +25,11 @@ where
 }
 
 /// Read value from a JSON data string.
-pub fn from_str<T>(s: impl AsRef<str>) -> Result<T, JsonError>
+pub fn from_str<T>(source: impl AsRef<str>) -> Result<T, JsonError>
 where
     T: DeserializeOwned,
 {
-    Ok(serde_json::from_str(s.as_ref())?)
+    Ok(serde_json::from_str(source.as_ref())?)
 }
 
 #[cfg(test)]

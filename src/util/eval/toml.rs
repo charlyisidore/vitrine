@@ -25,11 +25,11 @@ where
 }
 
 /// Read value from a TOML data string.
-pub fn from_str<T>(s: impl AsRef<str>) -> Result<T, TomlError>
+pub fn from_str<T>(source: impl AsRef<str>) -> Result<T, TomlError>
 where
     T: DeserializeOwned,
 {
-    Ok(toml::from_str(s.as_ref())?)
+    Ok(toml::from_str(source.as_ref())?)
 }
 
 #[cfg(test)]

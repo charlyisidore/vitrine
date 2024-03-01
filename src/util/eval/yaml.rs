@@ -25,11 +25,11 @@ where
 }
 
 /// Read value from a YAML data string.
-pub fn from_str<T>(s: impl AsRef<str>) -> Result<T, YamlError>
+pub fn from_str<T>(source: impl AsRef<str>) -> Result<T, YamlError>
 where
     T: DeserializeOwned,
 {
-    Ok(serde_yaml::from_str(s.as_ref())?)
+    Ok(serde_yaml::from_str(source.as_ref())?)
 }
 
 #[cfg(test)]
