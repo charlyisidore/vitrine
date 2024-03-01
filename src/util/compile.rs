@@ -1,3 +1,0 @@
-//! Minify SCSS, TypeScript...
-
-pub mod scss;
