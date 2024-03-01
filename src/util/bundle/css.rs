@@ -19,7 +19,7 @@ pub enum BundleCssError {
 }
 
 /// Bundle a CSS file.
-pub fn bundle_css(path: impl AsRef<Path>) -> Result<String, BundleCssError> {
+pub fn bundle_css_file(path: impl AsRef<Path>) -> Result<String, BundleCssError> {
     let path = path.as_ref();
 
     let file_provider = FileProvider::new();
@@ -45,7 +45,7 @@ pub fn bundle_css(path: impl AsRef<Path>) -> Result<String, BundleCssError> {
 mod tests {
     use temp_dir::TempDir;
 
-    use super::bundle_css;
+    use super::bundle_css_file;
 
     #[test]
     fn bundle() {
@@ -65,7 +65,7 @@ mod tests {
         )
         .expect("failed to create file");
 
-        let result = bundle_css(path).unwrap();
+        let result = bundle_css_file(path).unwrap();
 
         assert!(result.contains(".foo"));
         assert!(result.contains("color:"));

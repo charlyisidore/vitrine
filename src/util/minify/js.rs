@@ -1,10 +1,10 @@
 //! Minify JavaScript code.
 //!
-//! This module uses [`minify_js`] under the hood.
+//! This module uses [`::minify_js`] under the hood.
 
 use std::string::FromUtf8Error;
 
-use minify_js::{Session, TopLevelMode};
+use ::minify_js::{Session, TopLevelMode};
 use thiserror::Error;
 
 /// List of errors for this module.
