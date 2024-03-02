@@ -64,28 +64,34 @@ pub fn extract(source: &str) -> Option<(&str, &str, &str)> {
         return None;
     };
 
-    // The `+++` delimiter is for TOML
-    // The `---` delimiter can specify the format in the rest of the line
-    let format = match delimiter {
-        TOML_DELIMITER => "toml",
-        YAML_DELIMITER => {
-            let format = format.trim();
-            if format.is_empty() {
-                "yaml"
-            } else {
-                format
-            }
-        },
-        _ => unreachable!("unsupported delimiter"),
+    // Check if a format is specified, otherwise determine according to the
+    // delimiter
+    let format = format.trim();
+    let format = if format.is_empty() {
+        match delimiter {
+            TOML_DELIMITER => "toml",
+            YAML_DELIMITER => "yaml",
+            _ => unreachable!("unsupported delimiter"),
+        }
+    } else {
+        format
     };
 
     // Find the second delimiter
-    let Some((data, content)) = source.split_once(&format!("\n{delimiter}")) else {
+    let Some(data_end) = source.find(&format!("\n{delimiter}")) else {
         return None;
     };
 
-    // Ignore the rest of the line
-    let Some((_, content)) = content.split_once('\n') else {
+    let data = &source[..data_end + 1];
+    let content = &source[data_end + 1 + delimiter.len()..];
+
+    // The second delimiter must end with eof or new line
+    let Some(content) = content
+        .is_empty()
+        .then_some(content)
+        .or_else(|| content.strip_prefix('\n'))
+        .or_else(|| content.strip_prefix("\r\n"))
+    else {
         return None;
     };
 
@@ -96,7 +102,7 @@ pub fn extract(source: &str) -> Option<(&str, &str, &str)> {
 mod tests {
     use serde::Deserialize;
 
-    use super::parse;
+    use super::{extract, parse};
 
     #[derive(Deserialize)]
     struct Data {
@@ -104,7 +110,7 @@ mod tests {
     }
 
     #[test]
-    fn no_front_matter() {
+    fn extract_no_front_matter() {
         const INPUT: &str = concat!(
             "foo\n", //
             "---\n", //
@@ -113,30 +119,70 @@ mod tests {
             "baz\n"
         );
 
-        let result = parse::<Data>(INPUT).unwrap();
+        let result = extract(INPUT);
 
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn extract_no_second_delimiter() {
+        const INPUT: &str = concat!(
+            "---\n", //
+            "layout: \"post\"\n"
+        );
+
+        let result = extract(INPUT);
+
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn extract_invalid_second_delimiter() {
+        const INPUT: &str = concat!(
+            "---\n",              //
+            "layout: \"post\"\n", //
+            "----\n",             //
+            "foo\n"
+        );
+
+        let result = extract(INPUT);
+
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn extract_eof() {
+        const INPUT: &str = concat!(
+            "---\n",              //
+            "layout: \"post\"\n", //
+            "---"
+        );
+
+        let (_, data, content) = extract(INPUT).unwrap();
+
+        assert_eq!(data, "layout: \"post\"\n");
+        assert_eq!(content, "");
+    }
+
+    #[test]
+    fn extract_crlf() {
+        const INPUT: &str = concat!(
+            "---\r\n",              //
+            "layout: \"post\"\r\n", //
+            "---\r\n",              //
+            "foo\r\n"
+        );
+
+        let (_, data, content) = extract(INPUT).unwrap();
+
+        assert_eq!(data, "layout: \"post\"\r\n");
+        assert_eq!(content, "foo\r\n");
     }
 
     #[test]
     fn parse_toml() {
         const INPUT: &str = concat!(
             "+++\n",               //
-            "layout = \"post\"\n", //
-            "+++\n",               //
-            "foo\n"
-        );
-
-        let (data, content) = parse::<Data>(INPUT).unwrap().unwrap();
-
-        assert_eq!(data.layout, "post");
-        assert_eq!(content, "foo\n");
-    }
-
-    #[test]
-    fn parse_toml_ignore() {
-        const INPUT: &str = concat!(
-            "+++yaml\n",           //
             "layout = \"post\"\n", //
             "+++\n",               //
             "foo\n"
@@ -164,11 +210,26 @@ mod tests {
     }
 
     #[test]
-    fn parse_format() {
+    fn parse_format_toml() {
         const INPUT: &str = concat!(
             "---toml\n",           //
             "layout = \"post\"\n", //
             "---\n",               //
+            "foo\n"
+        );
+
+        let (data, content) = parse::<Data>(INPUT).unwrap().unwrap();
+
+        assert_eq!(data.layout, "post");
+        assert_eq!(content, "foo\n");
+    }
+
+    #[test]
+    fn parse_format_yaml() {
+        const INPUT: &str = concat!(
+            "+++yaml\n",          //
+            "layout: \"post\"\n", //
+            "+++\n",              //
             "foo\n"
         );
 
