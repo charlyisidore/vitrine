@@ -6,10 +6,10 @@ use serde::de::DeserializeOwned;
 use thiserror::Error;
 
 /// Delimiter used for TOML front matters.
-const TOML_DELIMITER: &str = "+++";
+pub const TOML_DELIMITER: &str = "+++";
 
 /// Delimiter used for YAML front matters.
-const YAML_DELIMITER: &str = "---";
+pub const YAML_DELIMITER: &str = "---";
 
 /// List of errors for this module.
 #[derive(Debug, Error)]
@@ -27,17 +27,17 @@ pub enum FrontMatterError {
 /// When a front matter is detected, this function returns a tuple `(data,
 /// content)`, where `data` is the deserialized front matter data, and `content`
 /// is the content without the front matter. Otherwise, it returns [`None`].
-pub fn parse<T>(content: impl AsRef<str>) -> Result<Option<(T, String)>, FrontMatterError>
+pub fn parse<T>(source: &str) -> Result<Option<(T, &str)>, FrontMatterError>
 where
     T: DeserializeOwned,
 {
-    let Some((format, data, content)) = extract(content) else {
+    let Some((format, data, content)) = extract(source) else {
         return Ok(None);
     };
 
-    let data = match format.as_str() {
-        "toml" => crate::util::eval::toml::from_str(&data)?,
-        "yaml" => crate::util::eval::yaml::from_str(&data)?,
+    let data = match format {
+        "toml" => crate::util::eval::toml::from_str(data)?,
+        "yaml" => crate::util::eval::yaml::from_str(data)?,
         _ => return Ok(None),
     };
 
@@ -50,35 +50,44 @@ where
 /// data, content)`, where `format` is the expected data format, `data` is the
 /// front matter string, and `content` is the content without front matter.
 /// Otherwise, it returns [`None`].
-pub fn extract(content: impl AsRef<str>) -> Option<(String, String, String)> {
-    let content = content.as_ref();
-
-    // Use the `std::str::Lines` trait to read the content line by line
-    let mut lines = content.lines().peekable();
-
-    // Skip if the first line does not contain exactly the delimiter
-    let Some(delimiter) = lines.next_if(|line| [TOML_DELIMITER, YAML_DELIMITER].contains(line))
+pub fn extract(source: &str) -> Option<(&str, &str, &str)> {
+    // Source must start with known delimiter
+    let Some(delimiter) = [TOML_DELIMITER, YAML_DELIMITER]
+        .into_iter()
+        .find(|delimiter| source.starts_with(delimiter))
     else {
         return None;
     };
 
-    // Read until the second delimiter or the end
-    let data = lines
-        .by_ref()
-        .take_while(|&line| line != delimiter)
-        .collect::<Vec<&str>>()
-        .join("\n");
+    // Extract the rest of the first line in `format`
+    let Some((format, source)) = source[delimiter.len()..].split_once('\n') else {
+        return None;
+    };
 
-    // Read until the end
-    let content = lines.by_ref().collect::<Vec<&str>>().join("\n");
-
-    // Detect the format according to the delimiter
+    // The `+++` delimiter is for TOML
+    // The `---` delimiter can specify the format in the rest of the line
     let format = match delimiter {
         TOML_DELIMITER => "toml",
-        YAML_DELIMITER => "yaml",
-        _ => unreachable!(),
-    }
-    .to_string();
+        YAML_DELIMITER => {
+            let format = format.trim();
+            if format.is_empty() {
+                "yaml"
+            } else {
+                format
+            }
+        },
+        _ => unreachable!("unsupported delimiter"),
+    };
+
+    // Find the second delimiter
+    let Some((data, content)) = source.split_once(&format!("\n{delimiter}")) else {
+        return None;
+    };
+
+    // Ignore the rest of the line
+    let Some((_, content)) = content.split_once('\n') else {
+        return None;
+    };
 
     Some((format, data, content))
 }
@@ -96,7 +105,7 @@ mod tests {
 
     #[test]
     fn no_front_matter() {
-        const CONTENT: &str = concat!(
+        const INPUT: &str = concat!(
             "foo\n", //
             "---\n", //
             "bar\n", //
@@ -104,38 +113,83 @@ mod tests {
             "baz\n"
         );
 
-        let result = parse::<Data>(CONTENT).unwrap();
+        let result = parse::<Data>(INPUT).unwrap();
 
         assert!(result.is_none());
     }
 
     #[test]
     fn parse_toml() {
-        const CONTENT: &str = concat!(
+        const INPUT: &str = concat!(
             "+++\n",               //
             "layout = \"post\"\n", //
             "+++\n",               //
             "foo\n"
         );
 
-        let (data, content) = parse::<Data>(CONTENT).unwrap().unwrap();
+        let (data, content) = parse::<Data>(INPUT).unwrap().unwrap();
 
         assert_eq!(data.layout, "post");
-        assert_eq!(content, "foo");
+        assert_eq!(content, "foo\n");
+    }
+
+    #[test]
+    fn parse_toml_ignore() {
+        const INPUT: &str = concat!(
+            "+++yaml\n",           //
+            "layout = \"post\"\n", //
+            "+++\n",               //
+            "foo\n"
+        );
+
+        let (data, content) = parse::<Data>(INPUT).unwrap().unwrap();
+
+        assert_eq!(data.layout, "post");
+        assert_eq!(content, "foo\n");
     }
 
     #[test]
     fn parse_yaml() {
-        const CONTENT: &str = concat!(
+        const INPUT: &str = concat!(
             "---\n",              //
             "layout: \"post\"\n", //
             "---\n",              //
             "foo\n"
         );
 
-        let (data, content) = parse::<Data>(CONTENT).unwrap().unwrap();
+        let (data, content) = parse::<Data>(INPUT).unwrap().unwrap();
 
         assert_eq!(data.layout, "post");
-        assert_eq!(content, "foo");
+        assert_eq!(content, "foo\n");
+    }
+
+    #[test]
+    fn parse_format() {
+        const INPUT: &str = concat!(
+            "---toml\n",           //
+            "layout = \"post\"\n", //
+            "---\n",               //
+            "foo\n"
+        );
+
+        let (data, content) = parse::<Data>(INPUT).unwrap().unwrap();
+
+        assert_eq!(data.layout, "post");
+        assert_eq!(content, "foo\n");
+    }
+
+    #[test]
+    fn parse_format_trim() {
+        const INPUT: &str = concat!(
+            "---  toml  \n",       //
+            "layout = \"post\"\n", //
+            "---\n",               //
+            "foo\n"
+        );
+
+        let (data, content) = parse::<Data>(INPUT).unwrap().unwrap();
+
+        assert_eq!(data.layout, "post");
+        assert_eq!(content, "foo\n");
     }
 }
