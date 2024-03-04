@@ -1,6 +1,6 @@
 [package]
 name = "vitrine"
-version = "0.1.26"
+version = "0.1.27"
 authors = ["Charly Lersteau"]
 edition = "2021"
 description = "A scriptable static site generator"
@@ -32,7 +32,7 @@ markdown-it = "0.6.0"
 markdown-it-footnote = "0.2.0"
 minify-html = "0.15.0"
 minify-js = "0.5.6"
-mlua = { version = "0.9.5", features = [
+mlua = { version = "0.9.6", features = [
     "lua51",
     "send",
     "serialize",
@@ -46,7 +46,7 @@ serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.114"
 serde_yaml = "0.9.32"
 slug = "0.1.5"
-swc_core = { version = "0.90.12", features = [
+swc_core = { version = "0.90.15", features = [
     "common",
     "ecma_codegen",
     "ecma_parser",
@@ -62,7 +62,7 @@ tower-http = { version = "0.5.2", features = ["fs"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 vitrine_derive = { version = "=0.1.4", path = "vitrine_derive" }
-walkdir = "2.4.0"
+walkdir = "2.5.0"
 
 [dev-dependencies]
 assert_cmd = "2.0.14"
