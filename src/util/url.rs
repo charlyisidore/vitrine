@@ -602,9 +602,6 @@ pub mod path {
             };
 
             let result = result.iter().enumerate().fold(root, |mut p, (i, c)| {
-                if i + 1 == result.len() && c.as_str() == "index.html" {
-                    return p;
-                }
                 p.0.push_str(c.as_str());
                 if i + 1 < result.len() || !c.as_str().contains('.') {
                     p.0.push('/');
@@ -883,7 +880,10 @@ mod tests {
                 "https://example.com/style.css",
                 "https://example.com/style.css",
             ),
-            ("https://example.com/index.html", "https://example.com/"),
+            (
+                "https://example.com/index.html",
+                "https://example.com/index.html",
+            ),
             (
                 "https://example.com/foo//bar",
                 "https://example.com/foo/bar/",
