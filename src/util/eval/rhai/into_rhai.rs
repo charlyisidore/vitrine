@@ -87,6 +87,12 @@ macro_rules! impl_into_rhai_path {
 impl_into_rhai_path! { &Path }
 impl_into_rhai_path! { PathBuf }
 
+impl IntoRhai for crate::util::url::Url {
+    fn into_rhai(self) -> Dynamic {
+        Dynamic::from(self.into_string())
+    }
+}
+
 impl<T> IntoRhai for Option<T>
 where
     T: IntoRhai,

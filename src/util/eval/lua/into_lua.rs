@@ -72,6 +72,12 @@ macro_rules! impl_into_lua_path {
 impl_into_lua_path! { &Path }
 impl_into_lua_path! { PathBuf }
 
+impl IntoLua for crate::util::url::Url {
+    fn into_lua(self, lua: &Lua) -> Result<mlua::Value, LuaError> {
+        Ok(mlua::Value::String(lua.create_string(self.into_string())?))
+    }
+}
+
 impl<T> IntoLua for Option<T>
 where
     T: IntoLua,

@@ -126,6 +126,12 @@ macro_rules! impl_into_js_path {
 impl_into_js_path! { &Path }
 impl_into_js_path! { PathBuf }
 
+impl IntoJs for crate::util::url::Url {
+    fn into_js(self) -> Result<JsValueFacade, JsError> {
+        Ok(JsValueFacade::new_string(self.into_string()))
+    }
+}
+
 impl<T> IntoJs for Option<T>
 where
     T: IntoJs,

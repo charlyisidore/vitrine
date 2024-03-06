@@ -149,6 +149,13 @@ mod tests {
     }
 
     #[test]
+    fn url_buf_from_js() {
+        use crate::util::url::Url;
+        let value: Url = from_str(r#""foo""#).unwrap();
+        assert_eq!(value, Url::from("foo"));
+    }
+
+    #[test]
     fn some_option_from_js() {
         let value: Option<i32> = from_str("42").unwrap();
         assert_eq!(value, Some(42));

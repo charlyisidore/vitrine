@@ -51,20 +51,28 @@ impl_from_lua_from_lua! { f64 }
 impl_from_lua_from_lua! { usize }
 impl_from_lua_from_lua! { String }
 
-impl FromLua for PathBuf {
-    fn from_lua(value: mlua::Value, lua: &Lua) -> Result<Self, LuaError> {
-        let type_name = value.type_name();
-        Ok(lua
-            .coerce_string(value)?
-            .ok_or_else(|| mlua::Error::FromLuaConversionError {
-                from: type_name,
-                to: "PathBuf",
-                message: Some("expected string or number".to_string()),
-            })?
-            .to_str()?
-            .into())
-    }
+/// Implements [`FromLua`] for string types.
+macro_rules! impl_from_lua_string {
+    ($ty:ty) => {
+        impl FromLua for $ty {
+            fn from_lua(value: mlua::Value, lua: &Lua) -> Result<Self, LuaError> {
+                let type_name = value.type_name();
+                Ok(lua
+                    .coerce_string(value)?
+                    .ok_or_else(|| mlua::Error::FromLuaConversionError {
+                        from: type_name,
+                        to: stringify!($ty),
+                        message: Some("expected string or number".to_string()),
+                    })?
+                    .to_str()?
+                    .into())
+            }
+        }
+    };
 }
+
+impl_from_lua_string! { PathBuf }
+impl_from_lua_string! { crate::util::url::Url }
 
 impl<T> FromLua for Option<T>
 where
