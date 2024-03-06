@@ -153,11 +153,38 @@ impl Value {
             _ => None,
         }
     }
+
+    /// Get a reference to an item from a `seq` or a `map`, by index or key, or
+    /// [`None`].
+    pub fn get(&self, index: impl Index) -> Option<&Value> {
+        index.index_into(self)
+    }
+
+    /// Get a mutable reference to an item from a `seq` or a `map`, by index or
+    /// key, or [`None`].
+    pub fn get_mut(&mut self, index: impl Index) -> Option<&mut Value> {
+        index.index_into_mut(self)
+    }
 }
 
 impl Default for Value {
     fn default() -> Self {
         Self::Unit
+    }
+}
+
+impl From<String> for Value {
+    fn from(value: String) -> Self {
+        Self::Str(value)
+    }
+}
+
+impl<T> From<Map<String, T>> for Value
+where
+    T: Into<Value>,
+{
+    fn from(value: Map<String, T>) -> Self {
+        Self::Map(value.into_iter().map(|(k, v)| (k, v.into())).collect())
     }
 }
 
@@ -198,6 +225,71 @@ impl<'de> serde::de::IntoDeserializer<'de, ValueError> for Value {
 
 /// Type used for [`Value`] maps.
 pub type Map<K, V> = std::collections::HashMap<K, V>;
+
+/// A trait to access items of `seq` and `map` types by index or key.
+pub trait Index {
+    /// Return a reference to the item value indexed by `self`, or [`None`].
+    fn index_into<'v>(&self, value: &'v Value) -> Option<&'v Value>;
+
+    /// Return a mutable reference to the value item indexed by `self`, or
+    /// [`None`].
+    fn index_into_mut<'v>(&self, value: &'v mut Value) -> Option<&'v mut Value>;
+}
+
+impl Index for usize {
+    fn index_into<'v>(&self, value: &'v Value) -> Option<&'v Value> {
+        match value {
+            Value::Seq(seq) => seq.get(*self),
+            _ => None,
+        }
+    }
+
+    fn index_into_mut<'v>(&self, value: &'v mut Value) -> Option<&'v mut Value> {
+        match value {
+            Value::Seq(seq) => seq.get_mut(*self),
+            _ => None,
+        }
+    }
+}
+
+impl Index for str {
+    fn index_into<'v>(&self, value: &'v Value) -> Option<&'v Value> {
+        match value {
+            Value::Map(map) => map.get(self),
+            _ => None,
+        }
+    }
+
+    fn index_into_mut<'v>(&self, value: &'v mut Value) -> Option<&'v mut Value> {
+        match value {
+            Value::Map(map) => map.get_mut(self),
+            _ => None,
+        }
+    }
+}
+
+impl Index for String {
+    fn index_into<'v>(&self, value: &'v Value) -> Option<&'v Value> {
+        self.as_str().index_into(value)
+    }
+
+    fn index_into_mut<'v>(&self, value: &'v mut Value) -> Option<&'v mut Value> {
+        self.as_str().index_into_mut(value)
+    }
+}
+
+impl<T> Index for &T
+where
+    T: Index + ?Sized,
+{
+    fn index_into<'v>(&self, value: &'v Value) -> Option<&'v Value> {
+        self.index_into(value)
+    }
+
+    fn index_into_mut<'v>(&self, value: &'v mut Value) -> Option<&'v mut Value> {
+        self.index_into_mut(value)
+    }
+}
 
 /// Error related to [`Value`].
 #[derive(Debug)]
