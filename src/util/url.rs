@@ -540,14 +540,11 @@ pub mod path {
         /// Normalize the path.
         pub fn normalize(&self, absolute: bool) -> Self {
             if self.0.is_empty() {
-                return Self::from(
-                    if absolute {
-                        Component::RootDir
-                    } else {
-                        Component::CurDir
-                    }
-                    .as_str(),
-                );
+                return Self::from(if absolute {
+                    Component::RootDir.as_str()
+                } else {
+                    ""
+                });
             }
 
             let has_root = absolute || self.is_absolute();
