@@ -283,11 +283,11 @@ where
     T: Index + ?Sized,
 {
     fn index_into<'v>(&self, value: &'v Value) -> Option<&'v Value> {
-        self.index_into(value)
+        (*self).index_into(value)
     }
 
     fn index_into_mut<'v>(&self, value: &'v mut Value) -> Option<&'v mut Value> {
-        self.index_into_mut(value)
+        (*self).index_into_mut(value)
     }
 }
 
