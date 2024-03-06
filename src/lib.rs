@@ -18,4 +18,5 @@ extern crate self as vitrine;
 pub mod config;
 pub mod util;
 
+pub use config::Config;
 pub use util::url::Url;
