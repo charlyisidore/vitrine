@@ -60,6 +60,18 @@ pub fn extract(
     content: impl AsRef<str>,
     mut f: impl FnMut(Asset) -> Option<Asset>,
 ) -> Result<String, AssetError> {
+    use std::convert::Infallible;
+    try_extract(content, |asset| Ok::<_, Infallible>(f(asset)))
+}
+
+/// Same as [`extract`], but the given closure returns a [`Result`].
+pub fn try_extract<E>(
+    content: impl AsRef<str>,
+    mut f: impl FnMut(Asset) -> Result<Option<Asset>, E>,
+) -> Result<String, AssetError>
+where
+    E: std::error::Error + Send + Sync + 'static,
+{
     let content = content.as_ref();
 
     const HEIGHT: &str = "height";
@@ -88,7 +100,7 @@ pub fn extract(
                             url: src,
                             width,
                             height,
-                        })) {
+                        }))? {
                             element.set_attribute(SRC, &image.url)?;
                             if let Some(width) = image.width {
                                 element.set_attribute(WIDTH, &format!("{width}"))?;
@@ -113,7 +125,7 @@ pub fn extract(
                         let Some(href) = element.get_attribute(HREF) else {
                             return Ok(());
                         };
-                        if let Some(Asset::Style(style)) = f(Asset::Style(Style { url: href })) {
+                        if let Some(Asset::Style(style)) = f(Asset::Style(Style { url: href }))? {
                             element.set_attribute(HREF, &style.url)?;
                         }
                     },
@@ -122,7 +134,8 @@ pub fn extract(
                         let Some(src) = element.get_attribute(SRC) else {
                             return Ok(());
                         };
-                        if let Some(Asset::Script(script)) = f(Asset::Script(Script { url: src })) {
+                        if let Some(Asset::Script(script)) = f(Asset::Script(Script { url: src }))?
+                        {
                             element.set_attribute(SRC, &script.url)?;
                         }
                     },
