@@ -543,7 +543,7 @@ pub mod path {
                 return Self::from(if absolute {
                     Component::RootDir.as_str()
                 } else {
-                    ""
+                    Component::CurDir.as_str()
                 });
             }
 
