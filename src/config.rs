@@ -15,7 +15,6 @@ use vitrine_derive::VitrineNoop;
 use crate::util::{
     layout::{LayoutFilter, LayoutFunction, LayoutTest},
     path::PathExt,
-    url::Url,
     value::Value,
 };
 
@@ -94,7 +93,7 @@ pub struct Config {
     /// Base URL of the site.
     #[serde(default)]
     #[vitrine(default)]
-    pub base_url: Url,
+    pub base_url: String,
 
     /// Directory of input files.
     #[serde(default = "default_input_dir")]
@@ -236,9 +235,6 @@ impl Config {
                 }))
             })?;
 
-        // Normalize base URL
-        let base_url = self.base_url.normalize();
-
         // Canonicalize input directory
         let input_dir = self.input_dir.canonicalize().map_err(|source| {
             ConfigError::Normalize(Box::new(ConfigError::WithDir {
@@ -275,7 +271,6 @@ impl Config {
 
         Ok(Config {
             config_path,
-            base_url,
             input_dir,
             output_dir,
             layout_dir,
