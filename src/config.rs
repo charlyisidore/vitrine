@@ -141,6 +141,11 @@ pub struct Config {
 #[cfg_attr(feature = "lua", derive(FromLua))]
 #[cfg_attr(feature = "rhai", derive(FromRhai))]
 pub struct LayoutConfig {
+    /// Engine identifier.
+    #[serde(default)]
+    #[vitrine(default)]
+    pub engine: Option<String>,
+
     /// Custom filters.
     #[serde(skip)]
     #[vitrine(default)]
