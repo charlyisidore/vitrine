@@ -236,6 +236,9 @@ impl Config {
                 }))
             })?;
 
+        // Normalize base URL
+        let base_url = self.base_url.normalize();
+
         // Canonicalize input directory
         let input_dir = self.input_dir.canonicalize().map_err(|source| {
             ConfigError::Normalize(Box::new(ConfigError::WithDir {
@@ -272,6 +275,7 @@ impl Config {
 
         Ok(Config {
             config_path,
+            base_url,
             input_dir,
             output_dir,
             layout_dir,
