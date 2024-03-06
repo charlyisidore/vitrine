@@ -92,12 +92,12 @@ pub fn extract(
                             element.set_attribute(SRC, &image.url)?;
                             if let Some(width) = image.width {
                                 element.set_attribute(WIDTH, &format!("{width}"))?;
-                            } else {
+                            } else if width.is_some() {
                                 element.remove_attribute(WIDTH);
                             }
                             if let Some(height) = image.height {
                                 element.set_attribute(HEIGHT, &format!("{height}"))?;
-                            } else {
+                            } else if height.is_some() {
                                 element.remove_attribute(HEIGHT);
                             }
                         }
