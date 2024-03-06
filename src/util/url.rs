@@ -4,6 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 
+pub use self::path::Path as UrlPath;
 use self::{authority::Authority, path::Path};
 
 /// An owned and mutable URL.
@@ -164,6 +165,12 @@ impl Url {
             }
         }
         Self(url)
+    }
+}
+
+impl std::fmt::Display for Url {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
@@ -537,6 +544,26 @@ pub mod path {
             Components { path: &self.0 }
         }
 
+        /// Return the file name, if any.
+        pub fn file_name(&self) -> Option<&str> {
+            self.components()
+                .last()
+                .and_then(|component| match component {
+                    Component::Normal(s) => Some(s),
+                    _ => None,
+                })
+        }
+
+        /// Join a path to `self`.
+        pub fn join(&self, path: impl AsRef<str>) -> Self {
+            let path = path.as_ref();
+            Self(if self.0.ends_with('/') {
+                format!("{}{}", self.0, path)
+            } else {
+                format!("{}/{}", self.0, path)
+            })
+        }
+
         /// Normalize the path.
         pub fn normalize(&self, absolute: bool) -> Self {
             if self.0.is_empty() {
@@ -590,6 +617,12 @@ pub mod path {
             }
 
             result
+        }
+    }
+
+    impl std::fmt::Display for Path {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "{}", self.0)
         }
     }
 
