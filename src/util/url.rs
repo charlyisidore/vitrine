@@ -824,7 +824,7 @@ mod tests {
 
     #[test]
     fn normalize_url() {
-        const CASES: [(&str, &str); 17] = [
+        const CASES: [(&str, &str); 18] = [
             (
                 "HTTPS://User@Example.COM/Foo",
                 "https://User@example.com/Foo/",
@@ -857,6 +857,7 @@ mod tests {
             ),
             ("https://example.com/foo?", "https://example.com/foo/"),
             ("https://example.com/foo#", "https://example.com/foo/"),
+            ("", "."),
             ("foo", "foo/"),
             ("./foo", "foo/"),
             ("../foo", "../foo/"),
