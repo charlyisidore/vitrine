@@ -5,6 +5,7 @@ pub mod bundle;
 pub mod eval;
 pub mod front_matter;
 pub mod function;
+pub mod iter;
 pub mod layout;
 pub mod optimize;
 pub mod path;
