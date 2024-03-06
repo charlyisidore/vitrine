@@ -93,11 +93,13 @@ pub fn extract(
                             if let Some(width) = image.width {
                                 element.set_attribute(WIDTH, &format!("{width}"))?;
                             } else if width.is_some() {
+                                debug_assert!(element.has_attribute(WIDTH));
                                 element.remove_attribute(WIDTH);
                             }
                             if let Some(height) = image.height {
                                 element.set_attribute(HEIGHT, &format!("{height}"))?;
                             } else if height.is_some() {
+                                debug_assert!(element.has_attribute(HEIGHT));
                                 element.remove_attribute(HEIGHT);
                             }
                         }
