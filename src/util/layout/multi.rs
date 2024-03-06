@@ -8,14 +8,14 @@ use std::collections::HashMap;
 use serde::Serialize;
 use thiserror::Error;
 
-use super::{LayoutEngine, LayoutFilter, LayoutFunction, LayoutTest, Value as LayoutValue};
+use super::{DynamicLayoutEngine, LayoutEngine, LayoutFilter, LayoutFunction, LayoutTest};
 
 /// List of errors for this module.
 #[derive(Debug, Error)]
 pub enum MultiError {
-    /// Boxed error.
+    /// Layout error.
     #[error(transparent)]
-    Boxed(#[from] Box<dyn std::error::Error>),
+    Layout(#[from] super::LayoutError),
     /// Missing layout file extension error.
     #[error("missing file extension")]
     MissingFileExtension,
@@ -37,7 +37,7 @@ pub enum MultiError {
 #[derive(Debug)]
 pub struct MultiEngine {
     /// List of layout engines.
-    engines: HashMap<String, Box<dyn DynamicEngine>>,
+    engines: HashMap<String, Box<dyn DynamicLayoutEngine>>,
 }
 
 impl MultiEngine {
@@ -49,7 +49,11 @@ impl MultiEngine {
     }
 
     /// Add a layout engine.
-    pub fn add_engine(&mut self, extension: impl AsRef<str>, engine: impl DynamicEngine + 'static) {
+    pub fn add_engine(
+        &mut self,
+        extension: impl AsRef<str>,
+        engine: impl DynamicLayoutEngine + 'static,
+    ) {
         self.engines
             .insert(extension.as_ref().to_string(), Box::new(engine));
     }
@@ -58,7 +62,7 @@ impl MultiEngine {
     pub fn get_engine_ref(
         &self,
         name: impl AsRef<str>,
-    ) -> Result<&(dyn DynamicEngine + 'static), MultiError> {
+    ) -> Result<&(dyn DynamicLayoutEngine + 'static), MultiError> {
         use std::ops::Deref;
 
         let name = name.as_ref();
@@ -80,7 +84,7 @@ impl MultiEngine {
     pub fn get_engine_mut(
         &mut self,
         name: impl AsRef<str>,
-    ) -> Result<&mut (dyn DynamicEngine + 'static), MultiError> {
+    ) -> Result<&mut (dyn DynamicLayoutEngine + 'static), MultiError> {
         use std::ops::DerefMut;
 
         let name = name.as_ref();
@@ -151,7 +155,7 @@ impl LayoutEngine for MultiEngine {
     ) -> Result<(), Self::Error> {
         let name = name.as_ref();
         let engine = self.get_engine_mut(name)?;
-        engine.add_filter(name, f.into())
+        engine.add_filter(name, f.into()).map_err(Into::into)
     }
 
     fn add_function(
@@ -161,7 +165,7 @@ impl LayoutEngine for MultiEngine {
     ) -> Result<(), Self::Error> {
         let name = name.as_ref();
         let engine = self.get_engine_mut(name)?;
-        engine.add_function(name, f.into())
+        engine.add_function(name, f.into()).map_err(Into::into)
     }
 
     fn add_test(
@@ -171,7 +175,7 @@ impl LayoutEngine for MultiEngine {
     ) -> Result<(), Self::Error> {
         let name = name.as_ref();
         let engine = self.get_engine_mut(name)?;
-        engine.add_test(name, f.into())
+        engine.add_test(name, f.into()).map_err(Into::into)
     }
 
     fn render(
@@ -182,68 +186,13 @@ impl LayoutEngine for MultiEngine {
         let name = name.as_ref();
         let engine = self.get_engine_ref(name)?;
         let context = crate::util::value::to_value(context)?;
-        engine.render(name, context)
+        engine.render(name, context).map_err(Into::into)
     }
 }
 
 impl Default for MultiEngine {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-/// A trait that allows to store [`LayoutEngine`] in containers such as
-/// [`HashMap`].
-pub trait DynamicEngine {
-    /// Calls [`LayoutEngine::add_layouts`].
-    fn add_layouts(&mut self, layouts: &[(&str, &str)]) -> Result<(), MultiError>;
-
-    /// Calls [`LayoutEngine::add_filter`].
-    fn add_filter(&mut self, name: &str, f: LayoutFilter) -> Result<(), MultiError>;
-
-    /// Calls [`LayoutEngine::add_function`].
-    fn add_function(&mut self, name: &str, f: LayoutFunction) -> Result<(), MultiError>;
-
-    /// Calls [`LayoutEngine::add_test`].
-    fn add_test(&mut self, name: &str, f: LayoutTest) -> Result<(), MultiError>;
-
-    /// Calls [`LayoutEngine::render`].
-    fn render(&self, name: &str, context: LayoutValue) -> Result<String, MultiError>;
-}
-
-impl<T> DynamicEngine for T
-where
-    T: LayoutEngine,
-{
-    fn add_layouts(&mut self, layouts: &[(&str, &str)]) -> Result<(), MultiError> {
-        self.add_layouts(layouts.iter().map(|v| v.to_owned()))
-            .map_err(|e| MultiError::Boxed(Box::new(e)))
-    }
-
-    fn add_filter(&mut self, name: &str, f: LayoutFilter) -> Result<(), MultiError> {
-        self.add_filter(name, f)
-            .map_err(|e| MultiError::Boxed(Box::new(e)))
-    }
-
-    fn add_function(&mut self, name: &str, f: LayoutFunction) -> Result<(), MultiError> {
-        self.add_function(name, f)
-            .map_err(|e| MultiError::Boxed(Box::new(e)))
-    }
-
-    fn add_test(&mut self, name: &str, f: LayoutTest) -> Result<(), MultiError> {
-        self.add_test(name, f)
-            .map_err(|e| MultiError::Boxed(Box::new(e)))
-    }
-
-    fn render(&self, name: &str, context: LayoutValue) -> Result<String, MultiError> {
-        self.render(name, context)
-            .map_err(|e| MultiError::Boxed(Box::new(e)))
-    }
-}
-
-impl std::fmt::Debug for dyn DynamicEngine {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "LayoutEngine")
     }
 }
 
