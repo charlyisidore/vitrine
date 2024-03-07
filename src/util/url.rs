@@ -679,15 +679,15 @@ pub mod path {
             }
 
             let root = if has_root {
-                Self::from(Component::RootDir.as_str())
+                String::from(Component::RootDir.as_str())
             } else {
-                Self::with_capacity(self.0.len())
+                String::with_capacity(self.0.len())
             };
 
             let result = result.iter().enumerate().fold(root, |mut p, (i, c)| {
-                p.0.push_str(c.as_str());
+                p.push_str(c.as_str());
                 if i + 1 < result.len() || has_trailing_slash {
-                    p.0.push('/');
+                    p.push('/');
                 }
                 p
             });
@@ -696,7 +696,7 @@ pub mod path {
                 return Self::from(Component::CurDir.as_str());
             }
 
-            result
+            Self(result)
         }
     }
 
