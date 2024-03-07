@@ -4,6 +4,7 @@
 
 pub mod authority;
 pub mod path;
+
 use serde::{Deserialize, Serialize};
 
 pub use self::{authority::Authority as UrlAuthority, path::Path as UrlPath};
@@ -86,38 +87,17 @@ impl Url {
         })
     }
 
-    /// Set the fragment component.
-    pub fn set_fragment(&mut self, fragment: impl AsRef<str>) {
-        let fragment = fragment.as_ref();
-        if let Some(s) = self.fragment() {
-            self.0.truncate(self.0.len() - s.len() - 1);
-        }
-        debug_assert!(self.0.find('#').is_none());
-        if !fragment.is_empty() {
-            self.0.reserve_exact(1 + fragment.len());
-            self.0.push('#');
-            self.0.push_str(fragment);
-        }
-    }
-
-    /// Create a [`Url`] like [`self`], but with given fragment.
-    pub fn with_fragment(&mut self, fragment: impl AsRef<str>) -> Self {
-        let mut url = self.clone();
-        url.set_fragment(fragment);
-        url
-    }
-
     /// Normalize the URL.
     pub fn normalize(&self) -> Self {
         let mut url = String::with_capacity(self.0.len());
-        let mut scheme: Option<String> = None;
+        let mut scheme: Option<&str> = None;
         let mut absolute = false;
         for component in self.components() {
             match component {
                 Component::Scheme(s) => {
                     url.push_str(&s.to_ascii_lowercase());
                     url.push(':');
-                    scheme = Some(s.to_ascii_lowercase());
+                    scheme = Some(s);
                 },
                 Component::Authority(s) => {
                     url.push_str("//");
@@ -130,17 +110,8 @@ impl Url {
                     absolute = true;
                 },
                 Component::Path(s) => {
-                    // Normalize path if scheme `http`, `https`, or unspecified
-                    if scheme
-                        .as_ref()
-                        .filter(|scheme| !["http", "https"].contains(&scheme.as_str()))
-                        .is_none()
-                    {
-                        let s = Path::from(s).normalize_in_url(absolute);
-                        url.push_str(s.as_str());
-                    } else {
-                        url.push_str(s);
-                    }
+                    let s = Path::from(s).normalize_in_url(absolute);
+                    url.push_str(s.as_str());
                 },
                 Component::Query(s) => {
                     if !s.is_empty() {

@@ -59,7 +59,7 @@ impl Authority {
                     authority.push('@');
                 },
                 Component::Host(s) => authority.push_str(&s.to_ascii_lowercase()),
-                Component::Port(s) => match (scheme, s) {
+                Component::Port(s) => match (scheme.to_ascii_lowercase().as_str(), s) {
                     ("ftp", "21")
                     | ("http", "80")
                     | ("https", "443")
