@@ -222,52 +222,47 @@ impl<'a> Components<'a> {
     /// Parse the URL until the predicate returns true.
     ///
     /// Returns a triplet `(position, char, component_str)`.
-    fn parse_until(&self, predicate: impl Fn(&char) -> bool) -> (usize, char, &'a str) {
+    fn parse_until(&self, predicate: impl Fn(&usize, &char) -> bool) -> (usize, char, &'a str) {
         self.url
             .char_indices()
-            .find(|(_, c)| (predicate)(c))
+            .find(|(i, c)| (predicate)(i, c))
             .map(|(i, c)| (i, c, &self.url[..i]))
             .unwrap_or((self.url.len(), '\0', self.url))
     }
 
     /// Parse the scheme, the authority, or the path component.
     fn parse_start(&mut self) -> Option<Component<'a>> {
-        if self.url.starts_with("//") {
-            self.url = &self.url[2..];
-            return self.parse_authority();
-        }
-
-        let char_index = self.url.char_indices().find(|(i, c)| match i {
+        let (i, c, component) = self.parse_until(|i, c| match i {
             0 => !c.is_ascii_alphabetic(),
             _ => !c.is_ascii_alphanumeric() && !['+', '-', '.'].contains(c),
         });
 
-        match char_index {
-            Some((i, c)) => match c {
-                ':' => {
-                    let component = &self.url[..i];
-
-                    self.url = &self.url[i + 1..];
-                    if self.url.starts_with("//") {
-                        self.url = &self.url[2..];
-                        self.state = State::Authority;
-                    } else {
-                        self.state = State::Path;
-                    }
-                    Some(Component::Scheme(component))
-                },
-                _ => self.parse_path(),
+        match c {
+            ':' => {
+                self.url = &self.url[i + 1..];
+                if self.url.starts_with("//") {
+                    self.url = &self.url[2..];
+                    self.state = State::Authority;
+                } else {
+                    self.state = State::Path;
+                }
+                Some(Component::Scheme(component))
             },
-            None => {
+            '/' if i == 0 && self.url.starts_with("//") => {
+                self.url = &self.url[2..];
+                self.parse_authority()
+            },
+            '\0' => {
                 self.state = State::End;
                 Some(Component::Path(self.url))
             },
+            _ => self.parse_path(),
         }
     }
 
     /// Parse the authority component.
     fn parse_authority(&mut self) -> Option<Component<'a>> {
-        let (i, c, component) = self.parse_until(|c| ['/', '?', '#'].contains(c));
+        let (i, c, component) = self.parse_until(|_, c| ['/', '?', '#'].contains(c));
 
         match c {
             '/' => {
@@ -294,7 +289,7 @@ impl<'a> Components<'a> {
 
     /// Parse the path component.
     fn parse_path(&mut self) -> Option<Component<'a>> {
-        let (i, c, component) = self.parse_until(|c| ['?', '#'].contains(c));
+        let (i, c, component) = self.parse_until(|_, c| ['?', '#'].contains(c));
 
         match c {
             '?' => {
@@ -314,7 +309,7 @@ impl<'a> Components<'a> {
 
     /// Parse the query component.
     fn parse_query(&mut self) -> Option<Component<'a>> {
-        let (i, c, component) = self.parse_until(|c| *c == '#');
+        let (i, c, component) = self.parse_until(|_, c| *c == '#');
 
         match c {
             '#' => {
