@@ -902,10 +902,10 @@ mod tests {
                 Component::Userinfo("User"),
                 Component::Host("example.com"),
             ]),
-            ("User@example.com:443", &[
+            ("User@[2001:db8::7]:8042", &[
                 Component::Userinfo("User"),
-                Component::Host("example.com"),
-                Component::Port("443"),
+                Component::Host("[2001:db8::7]"),
+                Component::Port("8042"),
             ]),
         ];
 
