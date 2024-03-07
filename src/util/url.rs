@@ -555,6 +555,14 @@ pub mod path {
             !self.is_absolute()
         }
 
+        /// Return an iterator over the segments of the path.
+        pub fn segments(&self) -> Segments {
+            Segments {
+                path: &self.0,
+                end: false,
+            }
+        }
+
         /// Return an iterator over the [`Component`]s of the path.
         pub fn components(&self) -> Components {
             Components { path: &self.0 }
@@ -645,6 +653,32 @@ pub mod path {
     {
         fn from(value: T) -> Self {
             Self(value.into())
+        }
+    }
+
+    /// An iterator over the segments of a [`Path`].
+    #[derive(Debug)]
+    pub struct Segments<'a> {
+        path: &'a str,
+        end: bool,
+    }
+
+    impl<'a> Iterator for Segments<'a> {
+        type Item = &'a str;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            if self.end {
+                return None;
+            }
+            let segment = if let Some(i) = self.path.find('/') {
+                let segment = &self.path[..i];
+                self.path = self.path[i + 1..].trim_start_matches('/');
+                segment
+            } else {
+                self.end = true;
+                self.path
+            };
+            Some(segment)
         }
     }
 
@@ -820,6 +854,38 @@ mod tests {
         for (input, expected) in CASES {
             let url = Url::from(input);
             let result: Vec<_> = url.components().collect();
+            assert_eq!(result, expected, "{input:?}");
+        }
+    }
+
+    #[test]
+    fn path_segments() {
+        const CASES: [(&str, &[&str]); 20] = [
+            ("", &[""]),
+            ("/", &["", ""]),
+            ("g", &["g"]),
+            ("./g", &[".", "g"]),
+            ("g/", &["g", ""]),
+            ("/g", &["", "g"]),
+            ("//g", &["", "g"]),
+            (";x", &[";x"]),
+            ("g;x", &["g;x"]),
+            (".", &["."]),
+            ("./", &[".", ""]),
+            ("..", &[".."]),
+            ("../", &["..", ""]),
+            ("../g", &["..", "g"]),
+            ("../..", &["..", ".."]),
+            ("../../", &["..", "..", ""]),
+            ("../../g", &["..", "..", "g"]),
+            ("/g/h", &["", "g", "h"]),
+            ("/b/c/d;p", &["", "b", "c", "d;p"]),
+            ("/foo//bar", &["", "foo", "bar"]),
+        ];
+
+        for (input, expected) in CASES {
+            let path = Path::from(input);
+            let result: Vec<_> = path.segments().collect();
             assert_eq!(result, expected, "{input:?}");
         }
     }
