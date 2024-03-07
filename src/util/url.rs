@@ -472,35 +472,59 @@ pub mod authority {
         End,
     }
 
+    impl<'a> Components<'a> {
+        /// Parse the userinfo, or the host component.
+        fn parse_start(&mut self) -> Option<Component<'a>> {
+            if let Some(i) = self.authority.find('@') {
+                let component = &self.authority[..i];
+                self.authority = &self.authority[i + 1..];
+                self.state = State::Host;
+                Some(Component::Userinfo(component))
+            } else {
+                self.parse_host()
+            }
+        }
+
+        /// Parse the host component.
+        fn parse_host(&mut self) -> Option<Component<'a>> {
+            let mut inside_brackets = false;
+            if let Some(i) = self.authority.find(|c| match c {
+                '[' => {
+                    inside_brackets = true;
+                    false
+                },
+                ']' => {
+                    inside_brackets = false;
+                    false
+                },
+                ':' => !inside_brackets,
+                _ => false,
+            }) {
+                let component = &self.authority[..i];
+                self.authority = &self.authority[i + 1..];
+                self.state = State::Port;
+                Some(Component::Host(component))
+            } else {
+                self.state = State::End;
+                Some(Component::Host(self.authority))
+            }
+        }
+
+        /// Parse the port component.
+        fn parse_port(&mut self) -> Option<Component<'a>> {
+            self.state = State::End;
+            Some(Component::Port(self.authority))
+        }
+    }
+
     impl<'a> Iterator for Components<'a> {
         type Item = Component<'a>;
 
         fn next(&mut self) -> Option<Self::Item> {
             match self.state {
-                State::Start => {
-                    if let Some(i) = self.authority.find('@') {
-                        let userinfo = &self.authority[..i];
-                        self.authority = &self.authority[i + 1..];
-                        self.state = State::Host;
-                        return Some(Component::Userinfo(userinfo));
-                    }
-                    self.state = State::Host;
-                    self.next()
-                },
-                State::Host => {
-                    let Some(i) = self.authority.find(':') else {
-                        self.state = State::End;
-                        return Some(Component::Host(self.authority));
-                    };
-                    let host = &self.authority[..i];
-                    self.authority = &self.authority[i + 1..];
-                    self.state = State::Port;
-                    Some(Component::Host(host))
-                },
-                State::Port => {
-                    self.state = State::End;
-                    Some(Component::Port(self.authority))
-                },
+                State::Start => self.parse_start(),
+                State::Host => self.parse_host(),
+                State::Port => self.parse_port(),
                 State::End => None,
             }
         }
@@ -853,6 +877,40 @@ mod tests {
 
         for (input, expected) in CASES {
             let url = Url::from(input);
+            let result: Vec<_> = url.components().collect();
+            assert_eq!(result, expected, "{input:?}");
+        }
+    }
+
+    #[test]
+    fn authority_components() {
+        use super::authority::{Authority, Component};
+
+        const CASES: [(&str, &[Component]); 7] = [
+            ("example.com", &[Component::Host("example.com")]),
+            ("ftp.is.co.za", &[Component::Host("ftp.is.co.za")]),
+            ("[2001:db8::7]", &[Component::Host("[2001:db8::7]")]),
+            ("192.0.2.16:80", &[
+                Component::Host("192.0.2.16"),
+                Component::Port("80"),
+            ]),
+            ("example.com:8042", &[
+                Component::Host("example.com"),
+                Component::Port("8042"),
+            ]),
+            ("User@example.com", &[
+                Component::Userinfo("User"),
+                Component::Host("example.com"),
+            ]),
+            ("User@example.com:443", &[
+                Component::Userinfo("User"),
+                Component::Host("example.com"),
+                Component::Port("443"),
+            ]),
+        ];
+
+        for (input, expected) in CASES {
+            let url = Authority::from(input);
             let result: Vec<_> = url.components().collect();
             assert_eq!(result, expected, "{input:?}");
         }
