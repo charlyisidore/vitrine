@@ -581,12 +581,12 @@ pub mod path {
 
         /// Return an iterator over the segments of the path.
         pub fn segments(&self) -> Segments {
-            Segments { path: &self.0 }
+            Segments(&self.0)
         }
 
         /// Return an iterator over the [`Component`]s of the path.
         pub fn components(&self) -> Components {
-            Components { path: &self.0 }
+            Components(self.segments())
         }
 
         /// Return the file name, if any.
@@ -679,24 +679,22 @@ pub mod path {
 
     /// An iterator over the segments of a [`Path`].
     #[derive(Debug)]
-    pub struct Segments<'a> {
-        path: &'a str,
-    }
+    pub struct Segments<'a>(&'a str);
 
     impl<'a> Iterator for Segments<'a> {
         type Item = &'a str;
 
         fn next(&mut self) -> Option<Self::Item> {
-            if self.path.is_empty() {
+            if self.0.is_empty() {
                 return None;
             }
-            if let Some(i) = self.path.find('/') {
-                let segment = &self.path[..i + 1];
-                self.path = self.path[i + 1..].trim_start_matches('/');
+            if let Some(i) = self.0.find('/') {
+                let segment = &self.0[..i + 1];
+                self.0 = self.0[i + 1..].trim_start_matches('/');
                 Some(segment)
             } else {
-                let segment = self.path;
-                self.path = &self.path[self.path.len()..];
+                let segment = self.0;
+                self.0 = &self.0[self.0.len()..];
                 Some(segment)
             }
         }
@@ -704,9 +702,7 @@ pub mod path {
 
     /// An iterator over the [`Component`]s of a [`Path`].
     #[derive(Debug)]
-    pub struct Components<'a> {
-        path: &'a str,
-    }
+    pub struct Components<'a>(Segments<'a>);
 
     /// An URL path component.
     #[derive(Debug, PartialEq)]
@@ -725,27 +721,12 @@ pub mod path {
         type Item = Component<'a>;
 
         fn next(&mut self) -> Option<Self::Item> {
-            if self.path.is_empty() {
-                return None;
-            }
-            if self.path.starts_with('/') {
-                self.path = self.path.trim_start_matches('/');
-                return Some(Component::RootDir);
-            }
-            let segment = match self.path.find('/') {
-                Some(i) => {
-                    let (segment, rest) = self.path.split_at(i);
-                    self.path = rest.trim_start_matches('/');
-                    segment
-                },
-                None => std::mem::take(&mut self.path),
-            };
-            match segment {
-                "" => None,
-                "." => Some(Component::CurDir),
-                ".." => Some(Component::ParentDir),
-                segment => Some(Component::Normal(segment)),
-            }
+            self.0.next().map(|segment| match segment {
+                "/" => Component::RootDir,
+                "." | "./" => Component::CurDir,
+                ".." | "../" => Component::ParentDir,
+                s => Component::Normal(s.trim_end_matches('/')),
+            })
         }
     }
 
