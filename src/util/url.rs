@@ -692,7 +692,7 @@ pub mod path {
             }
             if let Some(i) = self.path.find('/') {
                 let segment = &self.path[..i + 1];
-                self.path = self.path[i..].trim_start_matches('/');
+                self.path = self.path[i + 1..].trim_start_matches('/');
                 Some(segment)
             } else {
                 let segment = self.path;
