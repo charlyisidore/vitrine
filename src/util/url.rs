@@ -936,7 +936,7 @@ mod tests {
     fn path_components() {
         use super::path::Component;
 
-        const CASES: [(&str, &[Component]); 20] = [
+        const CASES: [(&str, &[Component]); 21] = [
             ("", &[]),
             ("/", &[Component::RootDir]),
             ("g", &[Component::Normal("g")]),
@@ -973,6 +973,13 @@ mod tests {
                 Component::RootDir,
                 Component::Normal("foo"),
                 Component::Normal("bar"),
+            ]),
+            ("/Chapters/Chapter1/Sections/Section1.htm", &[
+                Component::RootDir,
+                Component::Normal("Chapters"),
+                Component::Normal("Chapter1"),
+                Component::Normal("Sections"),
+                Component::Normal("Section1.htm"),
             ]),
         ];
 
