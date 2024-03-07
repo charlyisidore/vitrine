@@ -609,6 +609,47 @@ pub mod path {
             })
         }
 
+        /// Remove dot segments.
+        pub fn remove_dot_segments(&self) -> Self {
+            let mut input = self.0.clone();
+            let mut output = String::new();
+            while !input.is_empty() {
+                if let Some(rest) = input
+                    .strip_prefix("../")
+                    .or_else(|| input.strip_prefix("./"))
+                {
+                    input = rest.into();
+                } else if let Some(rest) = input
+                    .strip_prefix("/./")
+                    .or_else(|| input.strip_prefix("/.").filter(|s| s.is_empty()))
+                {
+                    input = format!("/{}", rest);
+                } else if let Some(rest) = input
+                    .strip_prefix("/../")
+                    .or_else(|| input.strip_prefix("/..").filter(|s| s.is_empty()))
+                {
+                    input = format!("/{}", rest);
+                    if let Some((rest, _)) = output.rsplit_once('/') {
+                        output = rest.into();
+                    } else {
+                        output.clear();
+                    }
+                } else if [".", ".."].contains(&input.as_str()) {
+                    input.clear();
+                } else {
+                    let i = input
+                        .char_indices()
+                        .find(|(i, c)| *i != 0 && *c == '/')
+                        .map(|(i, _)| i)
+                        .unwrap_or(input.len());
+                    let (prefix, suffix) = input.split_at(i);
+                    output.push_str(prefix);
+                    input = suffix.into();
+                }
+            }
+            Self(output)
+        }
+
         /// Normalize the path.
         pub fn normalize(&self, absolute: bool) -> Self {
             if self.0.is_empty() {
@@ -1037,6 +1078,49 @@ mod tests {
         for (input, expected) in CASES {
             let url = Url::from(input).normalize();
             let result = url.as_str();
+            assert_eq!(result, expected, "{input:?}");
+        }
+    }
+
+    #[test]
+    fn path_remove_dot_segments() {
+        const CASES: [(&str, &str); 31] = [
+            ("", ""),
+            (".", ""),
+            ("./", ""),
+            ("..", ""),
+            ("../", ""),
+            ("/", "/"),
+            ("/.", "/"),
+            ("/..", "/"),
+            ("./..", ""),
+            ("./../", ""),
+            ("../..", ""),
+            ("../../", ""),
+            ("foo", "foo"),
+            ("./foo", "foo"),
+            ("./foo/", "foo/"),
+            ("../foo", "foo"),
+            ("../foo/", "foo/"),
+            ("foo/.", "foo/"),
+            ("foo/./", "foo/"),
+            ("foo/./.", "foo/"),
+            ("foo/././", "foo/"),
+            ("foo/././bar", "foo/bar"),
+            ("foo/././bar/", "foo/bar/"),
+            ("foo/..", "/"),
+            ("foo/../", "/"),
+            ("foo/../..", "/"),
+            ("foo/../../", "/"),
+            ("foo/../../bar", "/bar"),
+            ("foo/../../bar/", "/bar/"),
+            ("/a/b/c/./../../g", "/a/g"),
+            ("mid/content=5/../6", "mid/6"),
+        ];
+
+        for (input, expected) in CASES {
+            let path = Path::from(input).remove_dot_segments();
+            let result = path.as_str();
             assert_eq!(result, expected, "{input:?}");
         }
     }
