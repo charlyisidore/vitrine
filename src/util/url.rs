@@ -1084,7 +1084,7 @@ mod tests {
 
     #[test]
     fn path_remove_dot_segments() {
-        const CASES: [(&str, &str); 31] = [
+        const CASES: [(&str, &str); 35] = [
             ("", ""),
             (".", ""),
             ("./", ""),
@@ -1100,8 +1100,12 @@ mod tests {
             ("foo", "foo"),
             ("./foo", "foo"),
             ("./foo/", "foo/"),
+            ("././foo", "foo"),
+            ("././foo/", "foo/"),
             ("../foo", "foo"),
             ("../foo/", "foo/"),
+            ("../../foo", "foo"),
+            ("../../foo/", "foo/"),
             ("foo/.", "foo/"),
             ("foo/./", "foo/"),
             ("foo/./.", "foo/"),
