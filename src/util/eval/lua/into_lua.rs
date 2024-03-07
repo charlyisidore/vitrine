@@ -72,11 +72,19 @@ macro_rules! impl_into_lua_path {
 impl_into_lua_path! { &Path }
 impl_into_lua_path! { PathBuf }
 
-impl IntoLua for crate::util::url::Url {
-    fn into_lua(self, lua: &Lua) -> Result<mlua::Value, LuaError> {
-        Ok(mlua::Value::String(lua.create_string(self.into_string())?))
-    }
+/// Implements [`IntoLua`] for url types.
+macro_rules! impl_into_lua_url {
+    ($ty:ty) => {
+        impl IntoLua for $ty {
+            fn into_lua(self, lua: &Lua) -> Result<mlua::Value, LuaError> {
+                Ok(mlua::Value::String(lua.create_string(self.into_string())?))
+            }
+        }
+    };
 }
+
+impl_into_lua_url! { crate::util::url::Url }
+impl_into_lua_url! { crate::util::url::UrlPath }
 
 impl<T> IntoLua for Option<T>
 where

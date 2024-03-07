@@ -98,6 +98,7 @@ macro_rules! impl_from_rhai_string {
 impl_from_rhai_string! { String }
 impl_from_rhai_string! { PathBuf }
 impl_from_rhai_string! { crate::util::url::Url }
+impl_from_rhai_string! { crate::util::url::UrlPath }
 
 impl<T> FromRhai for Option<T>
 where

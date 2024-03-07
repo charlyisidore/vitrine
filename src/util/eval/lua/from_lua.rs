@@ -73,6 +73,7 @@ macro_rules! impl_from_lua_string {
 
 impl_from_lua_string! { PathBuf }
 impl_from_lua_string! { crate::util::url::Url }
+impl_from_lua_string! { crate::util::url::UrlPath }
 
 impl<T> FromLua for Option<T>
 where

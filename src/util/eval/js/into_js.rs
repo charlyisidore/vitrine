@@ -126,11 +126,19 @@ macro_rules! impl_into_js_path {
 impl_into_js_path! { &Path }
 impl_into_js_path! { PathBuf }
 
-impl IntoJs for crate::util::url::Url {
-    fn into_js(self) -> Result<JsValueFacade, JsError> {
-        Ok(JsValueFacade::new_string(self.into_string()))
-    }
+/// Implements [`IntoJs`] for url types.
+macro_rules! impl_into_js_url {
+    ($ty:ty) => {
+        impl IntoJs for $ty {
+            fn into_js(self) -> Result<JsValueFacade, JsError> {
+                Ok(JsValueFacade::new_string(self.into_string()))
+            }
+        }
+    };
 }
+
+impl_into_js_url! { crate::util::url::Url }
+impl_into_js_url! { crate::util::url::UrlPath }
 
 impl<T> IntoJs for Option<T>
 where

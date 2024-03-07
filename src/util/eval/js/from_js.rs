@@ -119,6 +119,7 @@ macro_rules! impl_from_js_string {
 impl_from_js_string! { String }
 impl_from_js_string! { PathBuf }
 impl_from_js_string! { crate::util::url::Url }
+impl_from_js_string! { crate::util::url::UrlPath }
 
 impl<T> FromJs for Option<T>
 where
