@@ -1,7 +1,9 @@
 //! Parse and manipulate URL paths.
 
+use serde::{Deserialize, Serialize};
+
 /// An URL path.
-#[derive(Clone, Debug, Default, Hash, PartialEq)]
+#[derive(Clone, Debug, Default, Hash, PartialEq, Serialize, Deserialize)]
 pub struct Path(String);
 
 impl Path {
