@@ -194,7 +194,7 @@ mod tests {
     #[test]
     #[cfg(unix)]
     fn normalize_path_unix() {
-        const CASES: [(&str, &str); 67] = [
+        const CASES: [(&str, &str); 66] = [
             ("", "."),
             ("/", "/"),
             ("/.", "/"),
@@ -223,7 +223,6 @@ mod tests {
             ("../../foo", "../../foo"),
             ("../foo/../bar", "../bar"),
             ("../../foo/../bar/./baz/boom/..", "../../bar/baz"),
-            ("/..", "/"),
             ("/..", "/"),
             ("/../", "/"),
             ("/..//", "/"),
