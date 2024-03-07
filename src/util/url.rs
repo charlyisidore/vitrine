@@ -653,14 +653,11 @@ pub mod path {
         /// Normalize the path.
         pub fn normalize(&self, absolute: bool) -> Self {
             if self.0.is_empty() {
-                return Self::from(if absolute {
-                    Component::RootDir.as_str()
-                } else {
-                    Component::CurDir.as_str()
-                });
+                return Self::from(if absolute { "/" } else { "." });
             }
 
             let has_root = absolute || self.is_absolute();
+            let has_trailing_slash = self.0.ends_with('/');
             let mut result: Vec<Component> = Vec::new();
 
             for component in self.components() {
@@ -689,7 +686,7 @@ pub mod path {
 
             let result = result.iter().enumerate().fold(root, |mut p, (i, c)| {
                 p.0.push_str(c.as_str());
-                if i + 1 < result.len() || !c.as_str().contains('.') {
+                if i + 1 < result.len() || has_trailing_slash {
                     p.0.push('/');
                 }
                 p
@@ -1033,10 +1030,27 @@ mod tests {
 
     #[test]
     fn normalize_url() {
-        const CASES: [(&str, &str); 18] = [
+        const CASES: [(&str, &str); 31] = [
+            ("", "."),
+            (".", "."),
+            ("..", ".."),
+            ("../", "../"),
+            ("foo", "foo"),
+            ("foo/", "foo/"),
+            ("./foo", "foo"),
+            ("./foo/", "foo/"),
+            ("../foo", "../foo"),
+            ("../foo/", "../foo/"),
+            ("/foo//bar", "/foo/bar"),
+            ("/foo//bar/", "/foo/bar/"),
+            ("foo?", "foo"),
+            ("foo#", "foo"),
+            ("foo?bar", "foo?bar"),
+            ("foo#bar", "foo#bar"),
+            ("foo?bar#baz", "foo?bar#baz"),
             (
                 "HTTPS://User@Example.COM/Foo",
-                "https://User@example.com/Foo/",
+                "https://User@example.com/Foo",
             ),
             (
                 "FTP://User@ftp.Example.COM:21/Foo",
@@ -1044,13 +1058,13 @@ mod tests {
             ),
             (
                 "https://example.com/foo/./bar/baz/../qux",
-                "https://example.com/foo/bar/qux/",
+                "https://example.com/foo/bar/qux",
             ),
             ("https://example.com", "https://example.com/"),
             ("http://example.com:80/", "http://example.com/"),
             ("https://example.com:443/", "https://example.com/"),
             ("ftp://ftp.example.com:21/foo", "ftp://ftp.example.com/foo"),
-            ("https://example.com/foo", "https://example.com/foo/"),
+            ("https://example.com/foo", "https://example.com/foo"),
             (
                 "https://example.com/foo/bar.html",
                 "https://example.com/foo/bar.html",
@@ -1065,14 +1079,10 @@ mod tests {
             ),
             (
                 "https://example.com/foo//bar",
-                "https://example.com/foo/bar/",
+                "https://example.com/foo/bar",
             ),
-            ("https://example.com/foo?", "https://example.com/foo/"),
-            ("https://example.com/foo#", "https://example.com/foo/"),
-            ("", "."),
-            ("foo", "foo/"),
-            ("./foo", "foo/"),
-            ("../foo", "../foo/"),
+            ("https://example.com/foo?", "https://example.com/foo"),
+            ("https://example.com/foo#", "https://example.com/foo"),
         ];
 
         for (input, expected) in CASES {
