@@ -42,16 +42,6 @@ impl Url {
         self.0
     }
 
-    /// Check if the URL is absolute.
-    pub fn is_absolute(&self) -> bool {
-        self.scheme().is_some()
-    }
-
-    /// Check if the URL is relative.
-    pub fn is_relative(&self) -> bool {
-        !self.is_absolute()
-    }
-
     /// Return an iterator over the [`Component`]s of the URL.
     pub fn components(&self) -> Components {
         Components {
@@ -214,13 +204,135 @@ pub enum Component<'a> {
 /// URL parse state.
 #[derive(Debug)]
 enum State {
+    /// Parsing the scheme, the authority, or the path component.
     Start,
-    AuthorityOrPath,
+    /// Parsing the authority component.
     Authority,
+    /// Parsing the path component.
     Path,
+    /// Parsing the query component.
     Query,
+    /// Parsing the fragment component.
     Fragment,
+    /// Finished parsing.
     End,
+}
+
+impl<'a> Components<'a> {
+    /// Parse the URL until the predicate returns true.
+    ///
+    /// Returns a triplet `(position, char, component_str)`.
+    fn parse_until(&self, predicate: impl Fn(&char) -> bool) -> (usize, char, &'a str) {
+        self.url
+            .char_indices()
+            .find(|(_, c)| (predicate)(c))
+            .map(|(i, c)| (i, c, &self.url[..i]))
+            .unwrap_or((self.url.len(), '\0', self.url))
+    }
+
+    /// Parse the scheme, the authority, or the path component.
+    fn parse_start(&mut self) -> Option<Component<'a>> {
+        if self.url.starts_with("//") {
+            self.url = &self.url[2..];
+            return self.parse_authority();
+        }
+
+        let char_index = self.url.char_indices().find(|(i, c)| match i {
+            0 => !c.is_ascii_alphabetic(),
+            _ => !c.is_ascii_alphanumeric() && !['+', '-', '.'].contains(c),
+        });
+
+        match char_index {
+            Some((i, c)) => match c {
+                ':' => {
+                    let component = &self.url[..i];
+
+                    self.url = &self.url[i + 1..];
+                    if self.url.starts_with("//") {
+                        self.url = &self.url[2..];
+                        self.state = State::Authority;
+                    } else {
+                        self.state = State::Path;
+                    }
+                    Some(Component::Scheme(component))
+                },
+                _ => self.parse_path(),
+            },
+            None => {
+                self.state = State::End;
+                Some(Component::Path(self.url))
+            },
+        }
+    }
+
+    /// Parse the authority component.
+    fn parse_authority(&mut self) -> Option<Component<'a>> {
+        let (i, c, component) = self.parse_until(|c| ['/', '?', '#'].contains(c));
+
+        match c {
+            '/' => {
+                self.url = &self.url[i..];
+                self.state = State::Path;
+            },
+            '?' => {
+                self.url = &self.url[i + 1..];
+                self.state = State::Query;
+            },
+            '#' => {
+                self.url = &self.url[i + 1..];
+                self.state = State::Fragment;
+            },
+            '\0' => {
+                self.url = &self.url[self.url.len()..];
+                self.state = State::Path;
+            },
+            _ => unreachable!(),
+        }
+
+        Some(Component::Authority(component))
+    }
+
+    /// Parse the path component.
+    fn parse_path(&mut self) -> Option<Component<'a>> {
+        let (i, c, component) = self.parse_until(|c| ['?', '#'].contains(c));
+
+        match c {
+            '?' => {
+                self.url = &self.url[i + 1..];
+                self.state = State::Query;
+            },
+            '#' => {
+                self.url = &self.url[i + 1..];
+                self.state = State::Fragment;
+            },
+            '\0' => self.state = State::End,
+            _ => unreachable!(),
+        }
+
+        Some(Component::Path(component))
+    }
+
+    /// Parse the query component.
+    fn parse_query(&mut self) -> Option<Component<'a>> {
+        let (i, c, component) = self.parse_until(|c| *c == '#');
+
+        match c {
+            '#' => {
+                self.url = &self.url[i + 1..];
+                self.state = State::Fragment;
+            },
+            '\0' => self.state = State::End,
+            _ => unreachable!(),
+        }
+
+        Some(Component::Query(component))
+    }
+
+    /// Parse the fragment component.
+    fn parse_fragment(&mut self) -> Option<Component<'a>> {
+        self.state = State::End;
+        Some(Component::Fragment(self.url))
+    }
 }
 
 impl<'a> Iterator for Components<'a> {
@@ -228,103 +340,11 @@ impl<'a> Iterator for Components<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.state {
-            State::Start => {
-                let Some((i, c)) = self
-                    .url
-                    .char_indices()
-                    .find(|(_, c)| [':', '/', '?', '#'].contains(c))
-                else {
-                    self.state = State::End;
-                    return Some(Component::Path(self.url));
-                };
-                match c {
-                    ':' => {
-                        let scheme = &self.url[..i];
-                        self.url = &self.url[i + 1..];
-                        self.state = State::AuthorityOrPath;
-                        Some(Component::Scheme(scheme))
-                    },
-                    '/' => {
-                        self.state = State::Path;
-                        self.next()
-                    },
-                    '?' | '#' => {
-                        let path = &self.url[..i];
-                        self.url = &self.url[i + 1..];
-                        self.state = match c {
-                            '?' => State::Query,
-                            '#' => State::Fragment,
-                            _ => unreachable!(),
-                        };
-                        Some(Component::Path(path))
-                    },
-                    _ => unreachable!(),
-                }
-            },
-            State::AuthorityOrPath => {
-                if self.url.starts_with("//") {
-                    self.url = &self.url[2..];
-                    self.state = State::Authority;
-                } else {
-                    self.state = State::Path;
-                };
-                self.next()
-            },
-            State::Authority => {
-                let (i, c) = self
-                    .url
-                    .char_indices()
-                    .find(|(_, c)| ['/', '?', '#'].contains(c))
-                    .unwrap_or((self.url.len(), '\0'));
-                let authority = &self.url[..i];
-                match c {
-                    '?' => {
-                        self.url = &self.url[i + 1..];
-                        self.state = State::Query;
-                    },
-                    '#' => {
-                        self.url = &self.url[i + 1..];
-                        self.state = State::Fragment;
-                    },
-                    _ => {
-                        self.url = &self.url[i..];
-                        self.state = State::Path;
-                    },
-                }
-                Some(Component::Authority(authority))
-            },
-            State::Path => {
-                let Some((i, c)) = self
-                    .url
-                    .char_indices()
-                    .find(|(_, c)| ['?', '#'].contains(c))
-                else {
-                    self.state = State::End;
-                    return Some(Component::Path(self.url));
-                };
-                let path = &self.url[..i];
-                self.url = &self.url[i + 1..];
-                self.state = match c {
-                    '?' => State::Query,
-                    '#' => State::Fragment,
-                    _ => unreachable!(),
-                };
-                Some(Component::Path(path))
-            },
-            State::Query => {
-                let Some(i) = self.url.find('#') else {
-                    self.state = State::End;
-                    return Some(Component::Query(self.url));
-                };
-                let query = &self.url[..i];
-                self.url = &self.url[i + 1..];
-                self.state = State::Fragment;
-                Some(Component::Query(query))
-            },
-            State::Fragment => {
-                self.state = State::End;
-                Some(Component::Fragment(self.url))
-            },
+            State::Start => self.parse_start(),
+            State::Authority => self.parse_authority(),
+            State::Path => self.parse_path(),
+            State::Query => self.parse_query(),
+            State::Fragment => self.parse_fragment(),
             State::End => None,
         }
     }
@@ -342,6 +362,7 @@ impl Component<'_> {
         }
     }
 }
+
 /// Parse and manipulate URL authority components.
 pub mod authority {
     /// An URL authority component.
@@ -655,6 +676,9 @@ pub mod path {
         type Item = Component<'a>;
 
         fn next(&mut self) -> Option<Self::Item> {
+            if self.path.is_empty() {
+                return None;
+            }
             if self.path.starts_with('/') {
                 self.path = self.path.trim_start_matches('/');
                 return Some(Component::RootDir);
@@ -697,7 +721,7 @@ mod tests {
     fn url_components() {
         use super::Component;
 
-        const CASES: [(&str, &[Component]); 36] = [
+        const CASES: [(&str, &[Component]); 37] = [
             ("https://example.com", &[
                 Component::Scheme("https"),
                 Component::Authority("example.com"),
@@ -766,7 +790,7 @@ mod tests {
             ("./g", &[Component::Path("./g")]),
             ("g/", &[Component::Path("g/")]),
             ("/g", &[Component::Path("/g")]),
-            ("//g", &[Component::Path("//g")]),
+            ("//g", &[Component::Authority("g"), Component::Path("")]),
             ("?y", &[Component::Path(""), Component::Query("y")]),
             ("g?y", &[Component::Path("g"), Component::Query("y")]),
             ("#s", &[Component::Path(""), Component::Fragment("s")]),
@@ -792,6 +816,10 @@ mod tests {
             ("../..", &[Component::Path("../..")]),
             ("../../", &[Component::Path("../../")]),
             ("../../g", &[Component::Path("../../g")]),
+            ("//example.com", &[
+                Component::Authority("example.com"),
+                Component::Path(""),
+            ]),
         ];
 
         for (input, expected) in CASES {
