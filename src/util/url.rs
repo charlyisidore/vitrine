@@ -914,7 +914,7 @@ mod tests {
 
     #[test]
     fn path_segments() {
-        const CASES: [(&str, &[&str]); 20] = [
+        const CASES: [(&str, &[&str]); 21] = [
             ("", &[]),
             ("/", &["/"]),
             ("g", &["g"]),
@@ -935,6 +935,13 @@ mod tests {
             ("/g/h", &["/", "g/", "h"]),
             ("/b/c/d;p", &["/", "b/", "c/", "d;p"]),
             ("/foo//bar", &["/", "foo/", "bar"]),
+            ("/Chapters/Chapter1/Sections/Section1.htm", &[
+                "/",
+                "Chapters/",
+                "Chapter1/",
+                "Sections/",
+                "Section1.htm",
+            ]),
         ];
 
         for (input, expected) in CASES {
