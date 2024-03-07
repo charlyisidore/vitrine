@@ -581,10 +581,7 @@ pub mod path {
 
         /// Return an iterator over the segments of the path.
         pub fn segments(&self) -> Segments {
-            Segments {
-                path: &self.0,
-                end: false,
-            }
+            Segments { path: &self.0 }
         }
 
         /// Return an iterator over the [`Component`]s of the path.
@@ -684,25 +681,24 @@ pub mod path {
     #[derive(Debug)]
     pub struct Segments<'a> {
         path: &'a str,
-        end: bool,
     }
 
     impl<'a> Iterator for Segments<'a> {
         type Item = &'a str;
 
         fn next(&mut self) -> Option<Self::Item> {
-            if self.end {
+            if self.path.is_empty() {
                 return None;
             }
-            let segment = if let Some(i) = self.path.find('/') {
-                let segment = &self.path[..i];
-                self.path = self.path[i + 1..].trim_start_matches('/');
-                segment
+            if let Some(i) = self.path.find('/') {
+                let segment = &self.path[..i + 1];
+                self.path = self.path[i..].trim_start_matches('/');
+                Some(segment)
             } else {
-                self.end = true;
-                self.path
-            };
-            Some(segment)
+                let segment = self.path;
+                self.path = &self.path[self.path.len()..];
+                Some(segment)
+            }
         }
     }
 
@@ -919,26 +915,26 @@ mod tests {
     #[test]
     fn path_segments() {
         const CASES: [(&str, &[&str]); 20] = [
-            ("", &[""]),
-            ("/", &["", ""]),
+            ("", &[]),
+            ("/", &["/"]),
             ("g", &["g"]),
-            ("./g", &[".", "g"]),
-            ("g/", &["g", ""]),
-            ("/g", &["", "g"]),
-            ("//g", &["", "g"]),
+            ("./g", &["./", "g"]),
+            ("g/", &["g/"]),
+            ("/g", &["/", "g"]),
+            ("//g", &["/", "g"]),
             (";x", &[";x"]),
             ("g;x", &["g;x"]),
             (".", &["."]),
-            ("./", &[".", ""]),
+            ("./", &["./"]),
             ("..", &[".."]),
-            ("../", &["..", ""]),
-            ("../g", &["..", "g"]),
-            ("../..", &["..", ".."]),
-            ("../../", &["..", "..", ""]),
-            ("../../g", &["..", "..", "g"]),
-            ("/g/h", &["", "g", "h"]),
-            ("/b/c/d;p", &["", "b", "c", "d;p"]),
-            ("/foo//bar", &["", "foo", "bar"]),
+            ("../", &["../"]),
+            ("../g", &["../", "g"]),
+            ("../..", &["../", ".."]),
+            ("../../", &["../", "../"]),
+            ("../../g", &["../", "../", "g"]),
+            ("/g/h", &["/", "g/", "h"]),
+            ("/b/c/d;p", &["/", "b/", "c/", "d;p"]),
+            ("/foo//bar", &["/", "foo/", "bar"]),
         ];
 
         for (input, expected) in CASES {
