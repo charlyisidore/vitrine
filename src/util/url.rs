@@ -61,6 +61,14 @@ impl Url {
         })
     }
 
+    /// Return the authority component, if any.
+    pub fn authority(&self) -> Option<&str> {
+        self.components().find_map(|component| match component {
+            Component::Authority(s) => Some(s),
+            _ => None,
+        })
+    }
+
     /// Return the path component.
     pub fn path(&self) -> &str {
         self.components()
@@ -101,12 +109,8 @@ impl Url {
                 },
                 Component::Authority(s) => {
                     url.push_str("//");
-                    if let Some(scheme) = scheme.as_ref() {
-                        let s = Authority::from(s).normalize(scheme);
-                        url.push_str(s.as_str());
-                    } else {
-                        url.push_str(s);
-                    }
+                    let s = Authority::from(s).normalize(scheme);
+                    url.push_str(s.as_str());
                     absolute = true;
                 },
                 Component::Path(s) => {

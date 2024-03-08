@@ -57,55 +57,35 @@ impl Path {
             })
     }
 
-    /// Join a path to `self`.
-    pub fn join(&self, path: impl AsRef<str>) -> Self {
-        let path = path.as_ref();
-        Self(if self.0.ends_with('/') {
-            format!("{}{}", self.0, path)
+    /// Remove the last segment from `self`.
+    pub fn pop(&mut self) -> bool {
+        if self.0.is_empty() {
+            false
+        } else if let Some(len) = self.0.trim_end_matches('/').rfind('/') {
+            self.0.truncate(len + 1);
+            true
+        } else if !self.0.starts_with('/') {
+            self.0.clear();
+            true
         } else {
-            format!("{}/{}", self.0, path)
-        })
+            false
+        }
     }
 
-    /// Remove dot segments.
-    pub fn remove_dot_segments(&self) -> Self {
-        let mut input = self.0.clone();
-        let mut output = String::new();
-        while !input.is_empty() {
-            if let Some(rest) = input
-                .strip_prefix("../")
-                .or_else(|| input.strip_prefix("./"))
-            {
-                input = rest.into();
-            } else if let Some(rest) = input
-                .strip_prefix("/./")
-                .or_else(|| input.strip_prefix("/.").filter(|s| s.is_empty()))
-            {
-                input = format!("/{}", rest);
-            } else if let Some(rest) = input
-                .strip_prefix("/../")
-                .or_else(|| input.strip_prefix("/..").filter(|s| s.is_empty()))
-            {
-                input = format!("/{}", rest);
-                if let Some((rest, _)) = output.rsplit_once('/') {
-                    output = rest.into();
-                } else {
-                    output.clear();
-                }
-            } else if [".", ".."].contains(&input.as_str()) {
-                input.clear();
-            } else {
-                let i = input
-                    .char_indices()
-                    .find(|(i, c)| *i != 0 && *c == '/')
-                    .map(|(i, _)| i)
-                    .unwrap_or(input.len());
-                let (prefix, suffix) = input.split_at(i);
-                output.push_str(prefix);
-                input = suffix.into();
-            }
+    /// Append a segment to `self`.
+    pub fn push(&mut self, segment: impl AsRef<str>) {
+        let segment = segment.as_ref();
+        if !self.0.is_empty() && !self.0.ends_with('/') && !segment.starts_with('/') {
+            self.0.push('/');
         }
-        Self(output)
+        self.0.push_str(segment);
+    }
+
+    /// Append a segment to `self` and returns the result.
+    pub fn join(&self, segment: impl AsRef<str>) -> Self {
+        let mut path = self.clone();
+        path.push(segment);
+        path
     }
 
     /// Normalize the path.
@@ -113,51 +93,10 @@ impl Path {
         if self.0.is_empty() {
             return Self::new();
         }
-
-        let has_root = self.0.starts_with('/');
-        let has_trailing_slash = self.0.ends_with('/');
-        let mut result: Vec<Component> = Vec::new();
-
-        for component in self.components() {
-            match component {
-                Component::Normal(_) => result.push(component),
-                Component::ParentDir => {
-                    if !has_root && result.is_empty()
-                        || result
-                            .last()
-                            .map_or(false, |c| matches!(c, Component::ParentDir))
-                    {
-                        result.push(component);
-                    } else {
-                        result.pop();
-                    }
-                },
-                Component::RootDir | Component::CurDir => {},
-            }
-        }
-
-        let root = if has_root {
-            String::from(Component::RootDir.as_str())
-        } else {
-            String::with_capacity(self.0.len())
-        };
-
-        let result = result.iter().enumerate().fold(root, |mut p, (i, c)| {
-            p.push_str(c.as_str());
-            if i + 1 < result.len() || has_trailing_slash {
-                p.push('/');
-            }
-            p
-        });
-
-        if result.is_empty() {
-            return Self::from(Component::CurDir.as_str());
-        }
-
-        Self(result)
+        self.normalize_in_url(false)
     }
 
-    /// Normalize the path.
+    /// Normalize the path within a URL.
     pub(super) fn normalize_in_url(&self, absolute: bool) -> Self {
         if self.0.is_empty() {
             return Self::from(
@@ -220,6 +159,12 @@ impl std::fmt::Display for Path {
     }
 }
 
+impl AsRef<str> for Path {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
 impl<T> From<T> for Path
 where
     T: Into<String>,
@@ -277,7 +222,11 @@ impl<'a> Iterator for Components<'a> {
             "/" => Component::RootDir,
             "." | "./" => Component::CurDir,
             ".." | "../" => Component::ParentDir,
-            s => Component::Normal(s.trim_end_matches('/')),
+            s => {
+                let s = s.strip_suffix('/').unwrap_or(s);
+                debug_assert!(!s.ends_with('/'));
+                Component::Normal(s)
+            },
         })
     }
 }
@@ -403,6 +352,30 @@ mod tests {
     }
 
     #[test]
+    fn pop() {
+        const CASES: [(&str, &str); 12] = [
+            ("", ""),
+            ("foo", ""),
+            ("foo/", ""),
+            ("foo/bar", "foo/"),
+            ("foo/bar/", "foo/"),
+            ("foo/../bar", "foo/../"),
+            ("/", "/"),
+            ("/foo", "/"),
+            ("/foo/", "/"),
+            ("/foo/bar", "/foo/"),
+            ("/foo/bar/", "/foo/"),
+            ("/foo/../bar", "/foo/../"),
+        ];
+
+        for (input, expected) in CASES {
+            let mut result = Path::from(input);
+            result.pop();
+            assert_eq!(result.as_str(), expected, "{input:?}");
+        }
+    }
+
+    #[test]
     fn normalize() {
         const CASES: [(&str, &str); 66] = [
             ("", ""),
@@ -475,53 +448,6 @@ mod tests {
 
         for (input, expected) in CASES {
             let path = Path::from(input).normalize();
-            let result = path.as_str();
-            assert_eq!(result, expected, "{input:?}");
-        }
-    }
-
-    #[test]
-    fn remove_dot_segments() {
-        const CASES: [(&str, &str); 35] = [
-            ("", ""),
-            (".", ""),
-            ("./", ""),
-            ("..", ""),
-            ("../", ""),
-            ("/", "/"),
-            ("/.", "/"),
-            ("/..", "/"),
-            ("./..", ""),
-            ("./../", ""),
-            ("../..", ""),
-            ("../../", ""),
-            ("foo", "foo"),
-            ("./foo", "foo"),
-            ("./foo/", "foo/"),
-            ("././foo", "foo"),
-            ("././foo/", "foo/"),
-            ("../foo", "foo"),
-            ("../foo/", "foo/"),
-            ("../../foo", "foo"),
-            ("../../foo/", "foo/"),
-            ("foo/.", "foo/"),
-            ("foo/./", "foo/"),
-            ("foo/./.", "foo/"),
-            ("foo/././", "foo/"),
-            ("foo/././bar", "foo/bar"),
-            ("foo/././bar/", "foo/bar/"),
-            ("foo/..", "/"),
-            ("foo/../", "/"),
-            ("foo/../..", "/"),
-            ("foo/../../", "/"),
-            ("foo/../../bar", "/bar"),
-            ("foo/../../bar/", "/bar/"),
-            ("/a/b/c/./../../g", "/a/g"),
-            ("mid/content=5/../6", "mid/6"),
-        ];
-
-        for (input, expected) in CASES {
-            let path = Path::from(input).remove_dot_segments();
             let result = path.as_str();
             assert_eq!(result, expected, "{input:?}");
         }

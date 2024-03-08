@@ -10,7 +10,7 @@ impl Authority {
         &self.0
     }
 
-    /// Consume the [`Path`] and return the inner [`String`].
+    /// Consume the [`Authority`] and return the inner [`String`].
     pub fn into_string(self) -> String {
         self.0
     }
@@ -23,7 +23,7 @@ impl Authority {
         }
     }
 
-    /// Return the user info component, if any.
+    /// Return the userinfo component, if any.
     pub fn userinfo(&self) -> Option<&str> {
         self.components().find_map(|component| match component {
             Component::Userinfo(s) => Some(s),
@@ -50,8 +50,12 @@ impl Authority {
     }
 
     /// Normalize the authority component.
-    pub fn normalize(&self, scheme: &str) -> Self {
-        let mut authority = String::with_capacity(self.0.len());
+    ///
+    /// This method transforms the host into lowercase, and removes the port
+    /// component when it matches the default port of the specified scheme. The
+    /// userinfo component is untouched.
+    pub fn normalize(&self, scheme: Option<&str>) -> Self {
+        let mut authority = String::new();
         for component in self.components() {
             match component {
                 Component::Userinfo(s) => {
@@ -59,20 +63,40 @@ impl Authority {
                     authority.push('@');
                 },
                 Component::Host(s) => authority.push_str(&s.to_ascii_lowercase()),
-                Component::Port(s) => match (scheme.to_ascii_lowercase().as_str(), s) {
-                    ("ftp", "21")
-                    | ("http", "80")
-                    | ("https", "443")
-                    | ("ws", "80")
-                    | ("wss", "443") => {},
-                    _ => {
+                Component::Port(s) => {
+                    if !s.is_empty()
+                        && scheme
+                            .filter(|scheme| {
+                                matches!(
+                                    (scheme.to_ascii_lowercase().as_str(), s),
+                                    ("ftp", "21")
+                                        | ("http", "80")
+                                        | ("https", "443")
+                                        | ("ws", "80")
+                                        | ("wss", "443")
+                                )
+                            })
+                            .is_none()
+                    {
                         authority.push(':');
                         authority.push_str(s);
-                    },
+                    }
                 },
             }
         }
         Self(authority)
+    }
+}
+
+impl std::fmt::Display for Authority {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl AsRef<str> for Authority {
+    fn as_ref(&self) -> &str {
+        &self.0
     }
 }
 
@@ -85,14 +109,14 @@ where
     }
 }
 
-/// An iterator over the [`Component`]s of a [`Authority`].
+/// An iterator over the [`Component`]s of an [`Authority`].
 #[derive(Debug)]
 pub struct Components<'a> {
     authority: &'a str,
     state: State,
 }
 
-/// An URL path component.
+/// An URL authority component.
 #[derive(Debug, PartialEq)]
 pub enum Component<'a> {
     /// User information component (before `@`).
@@ -106,9 +130,13 @@ pub enum Component<'a> {
 /// Authority parse state.
 #[derive(Debug)]
 enum State {
+    /// Parsing the userinfo or host component.
     Start,
+    /// Parsing the host component.
     Host,
+    /// Parsing the port component.
     Port,
+    /// Finished parsing.
     End,
 }
 
@@ -187,7 +215,7 @@ mod tests {
 
     #[test]
     fn components() {
-        const CASES: [(&str, &[Component]); 7] = [
+        const CASES: [(&str, &[Component]); 8] = [
             ("example.com", &[Component::Host("example.com")]),
             ("ftp.is.co.za", &[Component::Host("ftp.is.co.za")]),
             ("[2001:db8::7]", &[Component::Host("[2001:db8::7]")]),
@@ -208,12 +236,34 @@ mod tests {
                 Component::Host("[2001:db8::7]"),
                 Component::Port("8042"),
             ]),
+            ("example.com:", &[
+                Component::Host("example.com"),
+                Component::Port(""),
+            ]),
         ];
 
         for (input, expected) in CASES {
-            let url = Authority::from(input);
-            let result: Vec<_> = url.components().collect();
+            let authority = Authority::from(input);
+            let result: Vec<_> = authority.components().collect();
             assert_eq!(result, expected, "{input:?}");
+        }
+    }
+
+    #[test]
+    fn normalize() {
+        const CASES: [(Option<&str>, &str, &str); 6] = [
+            (None, "EXAMPLE.com", "example.com"),
+            (None, "example.com", "example.com"),
+            (None, "example.com:", "example.com"),
+            (Some("http"), "example.com:80", "example.com"),
+            (Some("http"), "example.com:8000", "example.com:8000"),
+            (Some("https"), "example.com:443", "example.com"),
+        ];
+
+        for (scheme, input, expected) in CASES {
+            let authority = Authority::from(input);
+            let result = authority.normalize(scheme);
+            assert_eq!(result.as_str(), expected, "{input:?}");
         }
     }
 }
