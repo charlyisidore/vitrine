@@ -96,6 +96,20 @@ impl Path {
         self.normalize_in_url(false)
     }
 
+    /// Convert the URL path to a [`std::path::PathBuf`].
+    pub fn to_std_path_buf(&self) -> std::path::PathBuf {
+        let mut path = std::path::PathBuf::new();
+        for component in self.components() {
+            match component {
+                Component::RootDir => path.push(std::path::Component::RootDir),
+                Component::CurDir => path.push(std::path::Component::CurDir),
+                Component::ParentDir => path.push(std::path::Component::ParentDir),
+                Component::Normal(s) => path.push(s),
+            }
+        }
+        path
+    }
+
     /// Normalize the path within a URL.
     pub(super) fn normalize_in_url(&self, absolute: bool) -> Self {
         if self.0.is_empty() {
@@ -449,6 +463,29 @@ mod tests {
         for (input, expected) in CASES {
             let path = Path::from(input).normalize();
             let result = path.as_str();
+            assert_eq!(result, expected, "{input:?}");
+        }
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn to_std_path_buf() {
+        const CASES: [(&str, &str); 10] = [
+            ("", ""),
+            (".", "."),
+            ("..", ".."),
+            ("foo", "foo"),
+            ("foo/bar", "foo/bar"),
+            ("foo/./bar", "foo/./bar"),
+            ("foo/../bar", "foo/../bar"),
+            ("/", "/"),
+            ("/foo", "/foo"),
+            ("/foo/bar", "/foo/bar"),
+        ];
+
+        for (input, expected) in CASES {
+            let result = Path::from(input).to_std_path_buf();
+            let expected = std::path::PathBuf::from(expected);
             assert_eq!(result, expected, "{input:?}");
         }
     }
