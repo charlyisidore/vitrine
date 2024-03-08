@@ -18,7 +18,7 @@ use crate::util::{function::Function, value::Value};
 pub enum LayoutError {
     /// Boxed error.
     #[error(transparent)]
-    Boxed(#[from] Box<dyn std::error::Error>),
+    Boxed(#[from] Box<dyn std::error::Error + Send + Sync>),
 }
 
 /// Type used for maps.
@@ -54,7 +54,7 @@ pub type LayoutTest = Function<(Value, Vec<Value>, Map<String, Value>), bool>;
 /// A trait for layout engines.
 pub trait LayoutEngine {
     /// Error type.
-    type Error: std::error::Error + 'static;
+    type Error: std::error::Error + Send + Sync + 'static;
 
     /// Add layouts from an iterator of `(name, source)` pairs.
     fn add_layouts(
