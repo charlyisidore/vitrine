@@ -95,6 +95,96 @@ impl Url {
         })
     }
 
+    /// Replace the scheme component.
+    pub fn set_scheme(&mut self, scheme: Option<&str>) {
+        self.0 = Self::str_from_components(
+            scheme,
+            self.authority(),
+            self.path(),
+            self.query(),
+            self.fragment(),
+        )
+    }
+
+    /// Replace the authority component.
+    pub fn set_authority(&mut self, authority: Option<&str>) {
+        self.0 = Self::str_from_components(
+            self.scheme(),
+            authority,
+            self.path(),
+            self.query(),
+            self.fragment(),
+        )
+    }
+
+    /// Replace the path component.
+    pub fn set_path(&mut self, path: &str) {
+        self.0 = Self::str_from_components(
+            self.scheme(),
+            self.authority(),
+            path,
+            self.query(),
+            self.fragment(),
+        )
+    }
+
+    /// Replace the query component.
+    pub fn set_query(&mut self, query: Option<&str>) {
+        self.0 = Self::str_from_components(
+            self.scheme(),
+            self.authority(),
+            self.path(),
+            query,
+            self.fragment(),
+        )
+    }
+
+    /// Replace the fragment component.
+    pub fn set_fragment(&mut self, fragment: Option<&str>) {
+        self.0 = Self::str_from_components(
+            self.scheme(),
+            self.authority(),
+            self.path(),
+            self.query(),
+            fragment,
+        )
+    }
+
+    /// Return a [`Url`] with the scheme component replaced.
+    pub fn with_scheme(&self, scheme: Option<&str>) -> Self {
+        let mut url = self.clone();
+        url.set_scheme(scheme);
+        url
+    }
+
+    /// Return a [`Url`] with the scheme component replaced.
+    pub fn with_authority(&self, authority: Option<&str>) -> Self {
+        let mut url = self.clone();
+        url.set_authority(authority);
+        url
+    }
+
+    /// Return a [`Url`] with the scheme component replaced.
+    pub fn with_path(&self, path: &str) -> Self {
+        let mut url = self.clone();
+        url.set_path(path);
+        url
+    }
+
+    /// Return a [`Url`] with the scheme component replaced.
+    pub fn with_query(&self, query: Option<&str>) -> Self {
+        let mut url = self.clone();
+        url.set_query(query);
+        url
+    }
+
+    /// Return a [`Url`] with the scheme component replaced.
+    pub fn with_fragment(&self, fragment: Option<&str>) -> Self {
+        let mut url = self.clone();
+        url.set_fragment(fragment);
+        url
+    }
+
     /// Normalize the URL.
     pub fn normalize(&self) -> Self {
         let mut url = String::with_capacity(self.0.len());
@@ -132,6 +222,35 @@ impl Url {
             }
         }
         Self(url)
+    }
+
+    /// Create a URL string from given components.
+    fn str_from_components(
+        scheme: Option<&str>,
+        authority: Option<&str>,
+        path: &str,
+        query: Option<&str>,
+        fragment: Option<&str>,
+    ) -> String {
+        let mut url = String::new();
+        if let Some(s) = scheme {
+            url.push_str(s);
+            url.push(':');
+        }
+        if let Some(s) = authority {
+            url.push_str("//");
+            url.push_str(s);
+        }
+        url.push_str(path);
+        if let Some(s) = query {
+            url.push('?');
+            url.push_str(s);
+        }
+        if let Some(s) = fragment {
+            url.push('#');
+            url.push_str(s);
+        }
+        url
     }
 }
 
