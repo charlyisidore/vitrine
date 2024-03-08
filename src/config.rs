@@ -15,6 +15,7 @@ use vitrine_derive::VitrineNoop;
 use crate::util::{
     layout::{LayoutFilter, LayoutFunction, LayoutTest},
     path::PathExt,
+    url::Url,
     value::Value,
 };
 
@@ -93,7 +94,7 @@ pub struct Config {
     /// Base URL of the site.
     #[serde(default)]
     #[vitrine(default)]
-    pub base_url: String,
+    pub base_url: Url,
 
     /// Directory of input files.
     #[serde(default = "default_input_dir")]
