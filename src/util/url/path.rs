@@ -88,6 +88,16 @@ impl Path {
         path
     }
 
+    /// Remove a prefix.
+    pub fn strip_prefix(&self, prefix: impl AsRef<str>) -> Option<Self> {
+        self.0.strip_prefix(prefix.as_ref()).map(Self::from)
+    }
+
+    /// Remove a suffix.
+    pub fn strip_suffix(&self, suffix: impl AsRef<str>) -> Option<Self> {
+        self.0.strip_suffix(suffix.as_ref()).map(Self::from)
+    }
+
     /// Normalize the path.
     pub fn normalize(&self) -> Self {
         if self.0.is_empty() {
@@ -385,6 +395,26 @@ mod tests {
         for (input, expected) in CASES {
             let mut result = Path::from(input);
             result.pop();
+            assert_eq!(result.as_str(), expected, "{input:?}");
+        }
+    }
+
+    #[test]
+    fn push() {
+        const CASES: [(&str, &str, &str); 8] = [
+            ("", "foo", "foo"),
+            ("", "foo/", "foo/"),
+            ("..", "foo", "../foo"),
+            ("foo", "bar", "foo/bar"),
+            ("foo/", "bar", "foo/bar"),
+            ("/", "foo", "/foo"),
+            ("/", "foo/", "/foo/"),
+            ("/foo", "bar", "/foo/bar"),
+        ];
+
+        for (input, segment, expected) in CASES {
+            let mut result = Path::from(input);
+            result.push(segment);
             assert_eq!(result.as_str(), expected, "{input:?}");
         }
     }
