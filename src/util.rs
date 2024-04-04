@@ -9,6 +9,7 @@ pub mod iter;
 pub mod layout;
 pub mod optimize;
 pub mod path;
+pub mod pipeline;
 pub mod transform;
 pub mod url;
 pub mod value;
