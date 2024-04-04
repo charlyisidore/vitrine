@@ -52,17 +52,12 @@ where
 /// Otherwise, it returns [`None`].
 pub fn extract(source: &str) -> Option<(&str, &str, &str)> {
     // Source must start with known delimiter
-    let Some(delimiter) = [TOML_DELIMITER, YAML_DELIMITER]
+    let delimiter = [TOML_DELIMITER, YAML_DELIMITER]
         .into_iter()
-        .find(|delimiter| source.starts_with(delimiter))
-    else {
-        return None;
-    };
+        .find(|delimiter| source.starts_with(delimiter))?;
 
     // Extract the rest of the first line in `format`
-    let Some((format, source)) = source[delimiter.len()..].split_once('\n') else {
-        return None;
-    };
+    let (format, source) = source[delimiter.len()..].split_once('\n')?;
 
     // Check if a format is specified, otherwise determine according to the
     // delimiter
@@ -78,22 +73,17 @@ pub fn extract(source: &str) -> Option<(&str, &str, &str)> {
     };
 
     // Find the second delimiter
-    let Some(data_end) = source.find(&format!("\n{delimiter}")) else {
-        return None;
-    };
+    let data_end = source.find(&format!("\n{delimiter}"))?;
 
     let data = &source[..data_end + 1];
     let content = &source[data_end + 1 + delimiter.len()..];
 
     // The second delimiter must end with eof or new line
-    let Some(content) = content
+    let content = content
         .is_empty()
         .then_some(content)
         .or_else(|| content.strip_prefix('\n'))
-        .or_else(|| content.strip_prefix("\r\n"))
-    else {
-        return None;
-    };
+        .or_else(|| content.strip_prefix("\r\n"))?;
 
     Some((format, data, content))
 }
