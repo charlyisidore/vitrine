@@ -35,7 +35,7 @@ impl DirWalker {
     }
 
     /// Register a predicate to filter directories and files during the walk.
-    pub fn filter_entry<P>(&mut self, predicate: P) -> &mut Self
+    pub fn filter_entry<P>(mut self, predicate: P) -> Self
     where
         P: Fn(&DirEntry) -> bool + Send + Sync + 'static,
     {
