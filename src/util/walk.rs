@@ -11,6 +11,7 @@ use ignore::WalkBuilder;
 ///
 /// This walker creates a recursive directory iterator that filters hidden files
 /// and paths specified in `.gitignore` files.
+#[derive(Debug)]
 pub struct DirWalker {
     /// Builds a recursive directory iterator.
     builder: WalkBuilder,

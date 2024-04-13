@@ -1,4 +1,8 @@
 //! Execute pipelines.
+//!
+//! This module provides a framework that allows organizing the site builder
+//! into a pipeline of tasks. A task uses receivers and senders to communicate
+//! elements from and to other tasks.
 
 use std::sync::mpsc::channel;
 pub use std::sync::mpsc::{Receiver, SendError, Sender};
