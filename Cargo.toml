@@ -1,6 +1,6 @@
 [package]
 name = "vitrine"
-version = "0.1.27"
+version = "0.1.28"
 authors = ["Charly Lersteau"]
 edition = "2021"
 description = "A scriptable static site generator"
@@ -18,21 +18,21 @@ categories = [
 members = ["vitrine_derive"]
 
 [dependencies]
-anyhow = "1.0.80"
-axum = "0.7.4"
-chrono = { version = "0.4.34", features = ["serde"] }
-clap = { version = "4.5.1", features = ["derive"] }
+anyhow = "1.0.82"
+axum = "0.7.5"
+chrono = { version = "0.4.37", features = ["serde"] }
+clap = { version = "4.5.4", features = ["derive"] }
 futures = "0.3.30"
 globset = "0.4.14"
 grass = "0.13.2"
 katex = { version = "0.4.6", default-features = false, features = ["duktape"] }
-lightningcss = "1.0.0-alpha.54"
-lol_html = "1.2.0"
+lightningcss = "1.0.0-alpha.55"
+lol_html = "1.2.1"
 markdown-it = "0.6.0"
 markdown-it-footnote = "0.2.0"
 minify-html = "0.15.0"
 minify-js = "0.5.6"
-mlua = { version = "0.9.6", features = [
+mlua = { version = "0.9.7", features = [
     "lua51",
     "send",
     "serialize",
@@ -40,13 +40,15 @@ mlua = { version = "0.9.6", features = [
 ] }
 notify-debouncer-full = { version = "0.3.1", default-features = false }
 quick-xml = { version = "0.31.0", features = ["serialize"] }
-quickjs_runtime = { version = "0.12.1", default-features = false }
-rhai = { version = "1.17.1", features = ["serde", "sync"] }
+quickjs_runtime = { version = "0.13.3", features = [
+    "bellard",
+], default-features = false }
+rhai = { version = "1.18.0", features = ["serde", "sync"] }
 serde = { version = "1.0.197", features = ["derive"] }
-serde_json = "1.0.114"
-serde_yaml = "0.9.32"
+serde_json = "1.0.115"
+serde_yaml = "0.9.34"
 slug = "0.1.5"
-swc_core = { version = "0.90.15", features = [
+swc_core = { version = "0.90.30", features = [
     "common",
     "ecma_codegen",
     "ecma_parser",
@@ -55,9 +57,9 @@ swc_core = { version = "0.90.15", features = [
 ] }
 syntect = "5.2.0"
 tera = "1.19.1"
-thiserror = "1.0.57"
-tokio = { version = "1.36.0", features = ["macros", "rt-multi-thread"] }
-toml = "0.8.10"
+thiserror = "1.0.58"
+tokio = { version = "1.37.0", features = ["macros", "rt-multi-thread"] }
+toml = "0.8.12"
 tower-http = { version = "0.5.2", features = ["fs"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
