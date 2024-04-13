@@ -1,465 +1,107 @@
 //! Execute pipelines.
 
 use std::sync::mpsc::channel;
-pub use std::sync::mpsc::{Receiver, Sender};
+pub use std::sync::mpsc::{Receiver, SendError, Sender};
 
 /// A pipeline.
-///
-/// # Example
-///
-/// ```
-/// use std::collections::BTreeSet;
-///
-/// use vitrine::util::pipeline::Pipeline;
-///
-/// let (p1, p2) = Pipeline::from_iter(["1", "two", "2", "NaN", "4", "four", "5"])
-///     .pipe(|rx, tx| {
-///         for s in rx {
-///             if let Ok(t) = s.parse() {
-///                 tx.send(t).unwrap();
-///             }
-///         }
-///     })
-///     .fork(|rx, (tx_even, tx_odd)| {
-///         for t in rx {
-///             if t % 2 == 0 {
-///                 tx_even.send(t).unwrap();
-///             } else {
-///                 tx_odd.send(t).unwrap();
-///             }
-///         }
-///     });
-///
-/// let p1 = p1.map(|t| t / 2);
-///
-/// let result: BTreeSet<i32> = Pipeline::merge((p1, p2), |(rx1, rx2), tx| {
-///     for t in rx1.into_iter().chain(rx2) {
-///         tx.send(t).unwrap();
-///     }
-/// })
-/// .into_iter()
-/// .collect();
-///
-/// assert_eq!(BTreeSet::from([1, 2, 5]), result);
-/// ```
 #[derive(Debug)]
 pub struct Pipeline<T>(Receiver<T>);
 
 impl<T> Pipeline<T> {
-    /// Create a pipeline from a closure.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::collections::BTreeSet;
-    ///
-    /// use vitrine::util::pipeline::Pipeline;
-    ///
-    /// let result: BTreeSet<i32> = Pipeline::new(|tx| {
-    ///     for t in 1..=3 {
-    ///         tx.send(t).unwrap();
-    ///     }
-    /// })
-    /// .into_iter()
-    /// .collect();
-    ///
-    /// assert_eq!(BTreeSet::from([1, 2, 3]), result);
-    /// ```
-    pub fn new(f: impl FnOnce(Sender<T>)) -> Self {
+    /// Create a pipeline from a task that takes one sender.
+    pub fn new<E, F>(f: F) -> Result<Self, E>
+    where
+        F: Task<(), (T,), E>,
+    {
         let (tx, rx) = channel();
-        (f)(tx);
-        Self(rx)
-    }
-
-    /// Create a pipeline from a fallible closure.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::{collections::BTreeSet, sync::mpsc::SendError};
-    ///
-    /// use vitrine::util::pipeline::Pipeline;
-    ///
-    /// let result: BTreeSet<i32> = Pipeline::new_try(|tx| {
-    ///     for t in 1..=3 {
-    ///         tx.send(t)?;
-    ///     }
-    ///     Ok::<(), SendError<i32>>(())
-    /// })
-    /// .unwrap()
-    /// .into_iter()
-    /// .collect();
-    ///
-    /// assert_eq!(BTreeSet::from([1, 2, 3]), result);
-    /// ```
-    pub fn new_try<E>(f: impl FnOnce(Sender<T>) -> Result<(), E>) -> Result<Self, E> {
-        let (tx, rx) = channel();
-        (f)(tx)?;
+        f.process((), (tx,))?;
         Ok(Self(rx))
     }
 
-    /// Call a closure that takes one receiver and one sender.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::collections::BTreeSet;
-    ///
-    /// use vitrine::util::pipeline::Pipeline;
-    ///
-    /// let result: BTreeSet<i32> = Pipeline::from_iter([1, 2, 3])
-    ///     .pipe(|rx, tx| {
-    ///         for t in rx {
-    ///             tx.send(2 * t).unwrap();
-    ///         }
-    ///     })
-    ///     .into_iter()
-    ///     .collect();
-    ///
-    /// assert_eq!(BTreeSet::from([2, 4, 6]), result);
-    /// ```
-    pub fn pipe<U>(self, f: impl FnOnce(Receiver<T>, Sender<U>)) -> Pipeline<U> {
+    /// Call a task that takes one receiver and one sender.
+    pub fn pipe<U, E, F>(self, f: F) -> Result<Pipeline<U>, E>
+    where
+        F: Task<(T,), (U,), E>,
+    {
         let (tx, rx) = channel();
-        (f)(self.0, tx);
-        Pipeline(rx)
-    }
-
-    /// Call a fallible closure that takes one receiver and one sender.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::{collections::BTreeSet, sync::mpsc::SendError};
-    ///
-    /// use vitrine::util::pipeline::Pipeline;
-    ///
-    /// let result: BTreeSet<i32> = Pipeline::from_iter([1, 2, 3])
-    ///     .pipe_try(|rx, tx| {
-    ///         for t in rx {
-    ///             tx.send(2 * t)?;
-    ///         }
-    ///         Ok::<(), SendError<i32>>(())
-    ///     })
-    ///     .unwrap()
-    ///     .into_iter()
-    ///     .collect();
-    ///
-    /// assert_eq!(BTreeSet::from([2, 4, 6]), result);
-    /// ```
-    pub fn pipe_try<E, U>(
-        self,
-        f: impl FnOnce(Receiver<T>, Sender<U>) -> Result<(), E>,
-    ) -> Result<Pipeline<U>, E> {
-        let (tx, rx) = channel();
-        (f)(self.0, tx)?;
+        f.process((self.0,), (tx,))?;
         Ok(Pipeline(rx))
     }
 
-    /// Call a closure that merges multiple pipelines into one pipeline.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::collections::BTreeSet;
-    ///
-    /// use vitrine::util::pipeline::Pipeline;
-    ///
-    /// let p1 = Pipeline::from_iter([1, 2, 3]);
-    /// let p2 = Pipeline::from_iter([4, 5, 6]);
-    ///
-    /// let result: BTreeSet<i32> = Pipeline::merge((p1, p2), |(rx1, rx2), tx| {
-    ///     for t in rx1.iter().chain(rx2.iter()) {
-    ///         tx.send(t).unwrap();
-    ///     }
-    /// })
-    /// .into_iter()
-    /// .collect();
-    ///
-    /// assert_eq!(BTreeSet::from([1, 2, 3, 4, 5, 6]), result);
-    /// ```
-    pub fn merge<P>(p: P, f: impl FnOnce(P::ReceiverTuple, Sender<T>)) -> Self
+    /// Call a task that takes one receiver and multiple senders.
+    pub fn fork<S, E, F>(self, f: F) -> Result<<Self as Fork<T, S>>::Output, E>
     where
-        P: Merge,
+        Self: Fork<T, S>,
+        F: Task<(T,), S, E>,
+        S: Tuple,
+    {
+        Fork::fork(self, f)
+    }
+
+    /// Call a task that takes multiple receivers and one sender.
+    pub fn merge<R, E, P, F>(p: P, f: F) -> Result<Self, E>
+    where
+        P: Merge<R, T>,
+        F: Task<R, (T,), E>,
+        R: Tuple,
     {
         P::merge(p, f)
     }
 
-    /// Call a fallible closure that merges multiple pipelines into one
-    /// pipeline.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::{collections::BTreeSet, sync::mpsc::SendError};
-    ///
-    /// use vitrine::util::pipeline::Pipeline;
-    ///
-    /// let p1 = Pipeline::from_iter([1, 2, 3]);
-    /// let p2 = Pipeline::from_iter([4, 5, 6]);
-    ///
-    /// let result: BTreeSet<i32> = Pipeline::merge_try((p1, p2), |(rx1, rx2), tx| {
-    ///     for t in rx1.iter().chain(rx2.iter()) {
-    ///         tx.send(t)?;
-    ///     }
-    ///     Ok::<(), SendError<i32>>(())
-    /// })
-    /// .unwrap()
-    /// .into_iter()
-    /// .collect();
-    ///
-    /// assert_eq!(BTreeSet::from([1, 2, 3, 4, 5, 6]), result);
-    /// ```
-    pub fn merge_try<E, P>(
-        p: P,
-        f: impl FnOnce(P::ReceiverTuple, Sender<T>) -> Result<(), E>,
-    ) -> Result<Self, E>
-    where
-        P: MergeTry,
-    {
-        P::merge_try(p, f)
-    }
-
-    /// Call a closure that forks a pipeline into multiple pipelines.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::collections::BTreeSet;
-    ///
-    /// use vitrine::util::pipeline::Pipeline;
-    ///
-    /// let (p1, p2) = Pipeline::from_iter([1, 2, 3]).fork(|rx, (tx_even, tx_odd)| {
-    ///     for t in rx {
-    ///         if t % 2 == 0 {
-    ///             tx_even.send(t).unwrap();
-    ///         } else {
-    ///             tx_odd.send(t).unwrap();
-    ///         }
-    ///     }
-    /// });
-    ///
-    /// let evens: BTreeSet<i32> = p1.into_iter().collect();
-    /// let odds: BTreeSet<i32> = p2.into_iter().collect();
-    ///
-    /// assert_eq!(BTreeSet::from([2]), evens);
-    /// assert_eq!(BTreeSet::from([1, 3]), odds);
-    /// ```
-    pub fn fork<P>(self, f: impl FnOnce(Receiver<T>, P)) -> P::PipelineTuple
-    where
-        P: Fork,
-    {
-        P::fork(self, f)
-    }
-
-    /// Call a fallible closure that forks a pipeline into multiple pipelines.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::{collections::BTreeSet, sync::mpsc::SendError};
-    ///
-    /// use vitrine::util::pipeline::Pipeline;
-    ///
-    /// let (p1, p2) = Pipeline::from_iter([1, 2, 3])
-    ///     .fork_try(|rx, (tx_even, tx_odd)| {
-    ///         for t in rx {
-    ///             if t % 2 == 0 {
-    ///                 tx_even.send(t)?;
-    ///             } else {
-    ///                 tx_odd.send(t)?;
-    ///             }
-    ///         }
-    ///         Ok::<(), SendError<i32>>(())
-    ///     })
-    ///     .unwrap();
-    ///
-    /// let evens: BTreeSet<i32> = p1.into_iter().collect();
-    /// let odds: BTreeSet<i32> = p2.into_iter().collect();
-    ///
-    /// assert_eq!(BTreeSet::from([2]), evens);
-    /// assert_eq!(BTreeSet::from([1, 3]), odds);
-    /// ```
-    pub fn fork_try<E, P>(
-        self,
-        f: impl FnOnce(Receiver<T>, P) -> Result<(), E>,
-    ) -> Result<P::PipelineTuple, E>
-    where
-        P: ForkTry,
-    {
-        P::fork_try(self, f)
-    }
-
     /// Call a closure on each element of the pipeline.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::collections::BTreeSet;
-    ///
-    /// use vitrine::util::pipeline::Pipeline;
-    ///
-    /// let result: BTreeSet<i32> = Pipeline::from_iter([1, 2, 3])
-    ///     .map(|x| 2 * x)
-    ///     .into_iter()
-    ///     .collect();
-    ///
-    /// assert_eq!(BTreeSet::from([2, 4, 6]), result);
-    /// ```
     pub fn map<U>(self, mut f: impl FnMut(T) -> U) -> Pipeline<U> {
-        self.pipe(|rx, tx| {
-            for t in rx {
-                tx.send((f)(t)).unwrap();
-            }
-        })
-    }
-
-    /// Call a fallible closure on each element of the pipeline.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::collections::BTreeSet;
-    ///
-    /// use vitrine::util::pipeline::Pipeline;
-    ///
-    /// let result: BTreeSet<i32> = Pipeline::from_iter([1, 2, 3])
-    ///     .map_try(|x| Ok::<_, ()>(2 * x))
-    ///     .unwrap()
-    ///     .into_iter()
-    ///     .collect();
-    ///
-    /// assert_eq!(BTreeSet::from([2, 4, 6]), result);
-    /// ```
-    pub fn map_try<E, U>(self, mut f: impl FnMut(T) -> Result<U, E>) -> Result<Pipeline<U>, E> {
-        self.pipe_try(|rx, tx| {
-            for t in rx {
-                tx.send((f)(t)?).unwrap();
-            }
-            Ok(())
-        })
+        self.pipe(
+            |rx: Receiver<T>, tx: Sender<U>| -> Result<(), SendError<U>> {
+                for t in rx {
+                    tx.send((f)(t))?;
+                }
+                Ok(())
+            },
+        )
+        .unwrap()
     }
 
     /// Call a closure to determine if an element should be sent to the next
     /// stage.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::collections::BTreeSet;
-    ///
-    /// use vitrine::util::pipeline::Pipeline;
-    ///
-    /// let result: BTreeSet<i32> = Pipeline::from_iter([0i32, 1, 2])
-    ///     .filter(|x| x.is_positive())
-    ///     .into_iter()
-    ///     .collect();
-    ///
-    /// assert_eq!(BTreeSet::from([1, 2]), result);
-    /// ```
     pub fn filter(self, mut f: impl FnMut(&T) -> bool) -> Self {
-        self.pipe(|rx, tx| {
-            for t in rx {
-                if (f)(&t) {
-                    tx.send(t).unwrap();
+        self.pipe(
+            |rx: Receiver<T>, tx: Sender<T>| -> Result<(), SendError<T>> {
+                for t in rx {
+                    if (f)(&t) {
+                        tx.send(t)?;
+                    }
                 }
-            }
-        })
-    }
-
-    /// Call a fallible closure to determine if an element should be sent to the
-    /// next stage.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::collections::BTreeSet;
-    ///
-    /// use vitrine::util::pipeline::Pipeline;
-    ///
-    /// let result: BTreeSet<i32> = Pipeline::from_iter([0i32, 1, 2])
-    ///     .filter_try(|x| Ok::<_, ()>(x.is_positive()))
-    ///     .unwrap()
-    ///     .into_iter()
-    ///     .collect();
-    ///
-    /// assert_eq!(BTreeSet::from([1, 2]), result);
-    /// ```
-    pub fn filter_try<E>(self, mut f: impl FnMut(&T) -> Result<bool, E>) -> Result<Self, E> {
-        self.pipe_try(|rx, tx| {
-            for t in rx {
-                if (f)(&t)? {
-                    tx.send(t).unwrap();
-                }
-            }
-            Ok(())
-        })
+                Ok(())
+            },
+        )
+        .unwrap()
     }
 
     /// Call a closure to both filter and map elements.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::collections::BTreeSet;
-    ///
-    /// use vitrine::util::pipeline::Pipeline;
-    ///
-    /// let result: BTreeSet<i32> = Pipeline::from_iter(["1", "two", "NaN", "four", "5"])
-    ///     .filter_map(|s| s.parse().ok())
-    ///     .into_iter()
-    ///     .collect();
-    ///
-    /// assert_eq!(BTreeSet::from([1, 5]), result);
-    /// ```
     pub fn filter_map<U>(self, mut f: impl FnMut(T) -> Option<U>) -> Pipeline<U> {
-        self.pipe(|rx, tx| {
-            for t in rx {
-                if let Some(u) = (f)(t) {
-                    tx.send(u).unwrap();
+        self.pipe(
+            |rx: Receiver<T>, tx: Sender<U>| -> Result<(), SendError<U>> {
+                for t in rx {
+                    if let Some(u) = (f)(t) {
+                        tx.send(u)?;
+                    }
                 }
-            }
-        })
-    }
-
-    /// Call a fallible closure to both filter and map elements.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use std::collections::BTreeSet;
-    ///
-    /// use vitrine::util::pipeline::Pipeline;
-    ///
-    /// let result: BTreeSet<i32> = Pipeline::from_iter(["1", "two", "NaN", "four", "5"])
-    ///     .filter_map_try(|s| Ok::<_, ()>(s.parse().ok()))
-    ///     .unwrap()
-    ///     .into_iter()
-    ///     .collect();
-    ///
-    /// assert_eq!(BTreeSet::from([1, 5]), result);
-    /// ```
-    pub fn filter_map_try<E, U>(
-        self,
-        mut f: impl FnMut(T) -> Result<Option<U>, E>,
-    ) -> Result<Pipeline<U>, E> {
-        self.pipe_try(|rx, tx| {
-            for t in rx {
-                if let Some(u) = (f)(t)? {
-                    tx.send(u).unwrap();
-                }
-            }
-            Ok(())
-        })
+                Ok(())
+            },
+        )
+        .unwrap()
     }
 }
 
 impl<T> FromIterator<T> for Pipeline<T> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        Self::new(|tx| {
+        Self::new(|tx: Sender<T>| -> Result<(), SendError<T>> {
             for t in iter {
-                tx.send(t).unwrap();
+                tx.send(t)?;
             }
+            Ok(())
         })
+        .unwrap()
     }
 }
 
@@ -484,153 +126,153 @@ impl<T> Iterator for IntoIter<T> {
     }
 }
 
-/// A trait to merge multiple pipelines into one pipeline.
-pub trait Merge {
-    /// Types of element receivers.
-    type ReceiverTuple;
+/// A trait to fork one pipeline into multiple pipelines.
+pub trait Fork<T, S>
+where
+    S: Tuple,
+{
+    /// Type of the [`Fork::fork`] method.
+    type Output;
 
-    /// Merge multiple pipelines into one pipeline.
-    fn merge<T>(p: Self, f: impl FnOnce(Self::ReceiverTuple, Sender<T>)) -> Pipeline<T>;
+    /// Fork one pipeline into multiple pipelines.
+    fn fork<F, E>(self, f: F) -> Result<Self::Output, E>
+    where
+        F: Task<(T,), S, E>;
 }
 
-/// Implements [`Merge`].
-macro_rules! impl_merge {
-    ($($t:ident $p:ident),*) => {
-        impl <$($t),*> Merge for ($(Pipeline<$t>,)*) {
-            type ReceiverTuple = ($(Receiver<$t>,)*);
+/// Implements [`Fork`] for closures.
+macro_rules! impl_fork {
+    ($($t:ident $r:ident $s:ident),*) => {
+        impl <T, $($t,)*> Fork<T, ($($t,)*)> for Pipeline<T> {
+            type Output = ($(Pipeline<$t>,)*);
 
-            fn merge<T>(
-                p: Self,
-                f: impl FnOnce(Self::ReceiverTuple, Sender<T>),
-            ) -> Pipeline<T> {
-                let ($($p,)*) = p;
-                let (tx, rx) = channel();
-                (f)(($($p.0,)*), tx);
-                Pipeline(rx)
+            fn fork<F, E>(self, f: F) -> Result<Self::Output, E>
+            where
+                F: Task<(T,), ($($t,)*), E>,
+            {
+                $(
+                    let ($s, $r) = channel();
+                )*
+                f.process((self.0,), ($($s,)*))?;
+                Ok(($(Pipeline($r),)*))
             }
         }
     };
 }
 
-impl_merge! { PA pa, PB pb }
-impl_merge! { PA pa, PB pb, PC pc }
-impl_merge! { PA pa, PB pb, PC pc, PD pd }
-impl_merge! { PA pa, PB pb, PC pc, PD pd, PE pe }
-impl_merge! { PA pa, PB pb, PC pc, PD pd, PE pe, PF pf }
+impl_fork! { SA ra sa, SB rb sb }
+impl_fork! { SA ra sa, SB rb sb, SC rc sc }
+impl_fork! { SA ra sa, SB rb sb, SC rc sc, SD rd sd }
+impl_fork! { SA ra sa, SB rb sb, SC rc sc, SD rd sd, SE re se }
+impl_fork! { SA ra sa, SB rb sb, SC rc sc, SD rd sd, SE re se, SF rf sf }
 
-/// A trait to merge multiple pipelines into one pipeline using fallible
-/// closures.
-pub trait MergeTry {
-    /// Types of element receivers.
-    type ReceiverTuple;
-
+/// A trait to merge multiple pipelines into one pipeline.
+pub trait Merge<R, T>
+where
+    R: Tuple,
+{
     /// Merge multiple pipelines into one pipeline.
-    fn merge_try<E, T>(
-        p: Self,
-        f: impl FnOnce(Self::ReceiverTuple, Sender<T>) -> Result<(), E>,
-    ) -> Result<Pipeline<T>, E>;
+    fn merge<F, E>(p: Self, f: F) -> Result<Pipeline<T>, E>
+    where
+        F: Task<R, (T,), E>;
 }
 
-/// Implements [`MergeTry`].
-macro_rules! impl_merge_try {
+/// Implements [`Merge`] for closures.
+macro_rules! impl_merge {
     ($($t:ident $p:ident),*) => {
-        impl <$($t),*> MergeTry for ($(Pipeline<$t>,)*) {
-            type ReceiverTuple = ($(Receiver<$t>,)*);
-
-            fn merge_try<E, T>(
-                p: Self,
-                f: impl FnOnce(Self::ReceiverTuple, Sender<T>) -> Result<(), E>,
-            ) -> Result<Pipeline<T>, E> {
-                let ($($p,)*) = p;
+        impl <T, $($t,)*> Merge<($($t,)*), T> for ($(Pipeline<$t>,)*) {
+            fn merge<F, E>(($($p,)*): Self, f: F) -> Result<Pipeline<T>, E>
+            where
+                F: Task<($($t,)*), (T,), E>,
+            {
                 let (tx, rx) = channel();
-                (f)(($($p.0,)*), tx)?;
+                f.process(($($p.0,)*), (tx,))?;
                 Ok(Pipeline(rx))
             }
         }
     };
 }
 
-impl_merge_try! { PA pa, PB pb }
-impl_merge_try! { PA pa, PB pb, PC pc }
-impl_merge_try! { PA pa, PB pb, PC pc, PD pd }
-impl_merge_try! { PA pa, PB pb, PC pc, PD pd, PE pe }
-impl_merge_try! { PA pa, PB pb, PC pc, PD pd, PE pe, PF pf }
+impl_merge! { RA pa, RB pb }
+impl_merge! { RA pa, RB pb, RC pc }
+impl_merge! { RA pa, RB pb, RC pc, RD pd }
+impl_merge! { RA pa, RB pb, RC pc, RD pd, RE pe }
+impl_merge! { RA pa, RB pb, RC pc, RD pd, RE pe, RF pf }
 
-/// A trait to fork a pipeline into multiple pipelines.
-pub trait Fork
+/// A pipeline task.
+pub trait Task<R, S, E>
 where
-    Self: Sized,
+    R: Tuple,
+    S: Tuple,
 {
-    /// Types of output pipelines.
-    type PipelineTuple;
-
-    /// Fork a pipeline into multiple pipelines.
-    fn fork<T>(p: Pipeline<T>, f: impl FnOnce(Receiver<T>, Self)) -> Self::PipelineTuple;
+    /// Execute the task.
+    fn process(self, rxs: R::Receivers, txs: S::Senders) -> Result<(), E>;
 }
 
-/// Implements [`Fork`].
-macro_rules! impl_fork {
-    ($($t:ident $tx:ident $rx:ident),*) => {
-        impl <$($t),*> Fork for ($(Sender<$t>,)*) {
-            type PipelineTuple = ($(Pipeline<$t>,)*);
-
-            fn fork<T>(
-                p: Pipeline<T>,
-                f: impl FnOnce(Receiver<T>, Self),
-            ) -> Self::PipelineTuple {
-                $(
-                    let ($tx, $rx) = channel();
-                )*
-                (f)(p.0, ($($tx,)*));
-                ($(Pipeline($rx),)*)
+/// Implements [`Task`] for closures.
+macro_rules! impl_task {
+    (($($r:ident $ri:ident),*), ($($s:ident $si:ident),*)) => {
+        impl <$($r,)* $($s,)* E, F> Task<($($r,)*), ($($s,)*), E> for F
+        where
+            F: FnOnce($(Receiver<$r>,)* $(Sender<$s>,)*) -> Result<(), E>,
+        {
+            fn process(self, ($($ri,)*): ($(Receiver<$r>,)*), ($($si,)*): ($(Sender<$s>,)*))
+                -> Result<(), E>
+            {
+                (self)($($ri,)* $($si,)*)
             }
         }
     };
 }
 
-impl_fork! { PA ta ra, PB tb rb }
-impl_fork! { PA ta ra, PB tb rb, PC tc rc }
-impl_fork! { PA ta ra, PB tb rb, PC tc rc, PD td rd }
-impl_fork! { PA ta ra, PB tb rb, PC tc rc, PD td rd, PE te re }
-impl_fork! { PA ta ra, PB tb rb, PC tc rc, PD td rd, PE te re, PF tf rf }
+// Pipeline::new()
+impl_task! { (), (SA sa) }
+impl_task! { (), (SA sa, SB sb) }
+impl_task! { (), (SA sa, SB sb, SC sc) }
+impl_task! { (), (SA sa, SB sb, SC sc, SD sd) }
+impl_task! { (), (SA sa, SB sb, SC sc, SD sd, SE se) }
+impl_task! { (), (SA sa, SB sb, SC sc, SD sd, SE se, SF sf) }
 
-/// A trait to fork a pipeline into multiple pipelines using fallible closures.
-pub trait ForkTry
-where
-    Self: Sized,
-{
-    /// Types of output pipelines.
-    type PipelineTuple;
+// Pipeline::pipe()
+impl_task! { (RA ra), (SA sa) }
 
-    /// Fork a pipeline into multiple pipelines.
-    fn fork_try<E, T>(
-        p: Pipeline<T>,
-        f: impl FnOnce(Receiver<T>, Self) -> Result<(), E>,
-    ) -> Result<Self::PipelineTuple, E>;
+// Pipeline::fork()
+impl_task! { (RA ra), (SA sa, SB sb) }
+impl_task! { (RA ra), (SA sa, SB sb, SC sc) }
+impl_task! { (RA ra), (SA sa, SB sb, SC sc, SD sd) }
+impl_task! { (RA ra), (SA sa, SB sb, SC sc, SD sd, SE se) }
+impl_task! { (RA ra), (SA sa, SB sb, SC sc, SD sd, SE se, SF sf) }
+
+// Pipeline::merge()
+impl_task! { (RA ra, RB rb), (SA sa) }
+impl_task! { (RA ra, RB rb, RC rc), (SA sa) }
+impl_task! { (RA ra, RB rb, RC rc, RD rd), (SA sa) }
+impl_task! { (RA ra, RB rb, RC rc, RD rd, RE re), (SA sa) }
+impl_task! { (RA ra, RB rb, RC rc, RD rd, RE re, RF rf), (SA sa) }
+
+/// A trait for representing tuples and deriving types.
+pub trait Tuple {
+    /// The tuple of [`Receiver`]s.
+    type Receivers;
+
+    /// The tuple of [`Sender`]s.
+    type Senders;
 }
 
-/// Implements [`ForkTry`].
-macro_rules! impl_fork_try {
-    ($($t:ident $tx:ident $rx:ident),*) => {
-        impl <$($t),*> ForkTry for ($(Sender<$t>,)*) {
-            type PipelineTuple = ($(Pipeline<$t>,)*);
-
-            fn fork_try<E, T>(
-                p: Pipeline<T>,
-                f: impl FnOnce(Receiver<T>, Self) -> Result<(), E>,
-            ) -> Result<Self::PipelineTuple, E> {
-                $(
-                    let ($tx, $rx) = channel();
-                )*
-                (f)(p.0, ($($tx,)*))?;
-                Ok(($(Pipeline($rx),)*))
-            }
+/// Implements [`Receivers`] for arbitrary tuples.
+macro_rules! impl_tuple {
+    ($($t:ident),*) => {
+        impl <$($t),*> Tuple for ($($t,)*) {
+            type Receivers = ($(Receiver<$t>,)*);
+            type Senders = ($(Sender<$t>,)*);
         }
     };
 }
 
-impl_fork_try! { PA ta ra, PB tb rb }
-impl_fork_try! { PA ta ra, PB tb rb, PC tc rc }
-impl_fork_try! { PA ta ra, PB tb rb, PC tc rc, PD td rd }
-impl_fork_try! { PA ta ra, PB tb rb, PC tc rc, PD td rd, PE te re }
-impl_fork_try! { PA ta ra, PB tb rb, PC tc rc, PD td rd, PE te re, PF tf rf }
+impl_tuple! {}
+impl_tuple! { A }
+impl_tuple! { A, B }
+impl_tuple! { A, B, C }
+impl_tuple! { A, B, C, D }
+impl_tuple! { A, B, C, D, E }
+impl_tuple! { A, B, C, D, E, F }
