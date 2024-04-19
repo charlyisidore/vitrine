@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 /// An URL path.
-#[derive(Clone, Debug, Default, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Path(String);
 
 impl Path {
