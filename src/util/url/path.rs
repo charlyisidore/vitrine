@@ -42,9 +42,22 @@ impl Path {
         Segments(&self.0)
     }
 
+    /// Return an iterator over the segments of the path, preserving any
+    /// trailing slash.
+    pub fn segments_with_slash(&self) -> SegmentsWithSlash {
+        SegmentsWithSlash(&self.0)
+    }
+
     /// Return an iterator over the [`Component`]s of the path.
     pub fn components(&self) -> Components {
-        Components(self.segments())
+        Components(self.segments_with_slash())
+    }
+
+    /// Return the path without the final component, if any.
+    pub fn parent(&self) -> Self {
+        let mut path = self.clone();
+        path.pop();
+        path
     }
 
     /// Return the file name, if any.
@@ -209,6 +222,30 @@ impl<'a> Iterator for Segments<'a> {
         if self.0.is_empty() {
             return None;
         }
+        self.0 = self.0.trim_start_matches('/');
+        if let Some(i) = self.0.find('/') {
+            let segment = &self.0[..i];
+            self.0 = &self.0[i..];
+            Some(segment)
+        } else {
+            let segment = self.0;
+            self.0 = &self.0[self.0.len()..];
+            Some(segment)
+        }
+    }
+}
+
+/// An iterator over the segments of a [`Path`], preserving trailing slashes.
+#[derive(Debug)]
+pub struct SegmentsWithSlash<'a>(&'a str);
+
+impl<'a> Iterator for SegmentsWithSlash<'a> {
+    type Item = &'a str;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.0.is_empty() {
+            return None;
+        }
         if let Some(i) = self.0.find('/') {
             let segment = &self.0[..i + 1];
             self.0 = self.0[i + 1..].trim_start_matches('/');
@@ -223,7 +260,7 @@ impl<'a> Iterator for Segments<'a> {
 
 /// An iterator over the [`Component`]s of a [`Path`].
 #[derive(Debug)]
-pub struct Components<'a>(Segments<'a>);
+pub struct Components<'a>(SegmentsWithSlash<'a>);
 
 /// An URL path component.
 #[derive(Debug, PartialEq)]
@@ -277,6 +314,42 @@ mod tests {
             ("", &[]),
             (".", &["."]),
             ("..", &[".."]),
+            ("./", &[".", ""]),
+            ("../", &["..", ""]),
+            ("../..", &["..", ".."]),
+            ("../../", &["..", "..", ""]),
+            ("/", &[""]),
+            ("/.", &["."]),
+            ("/..", &[".."]),
+            ("/./", &[".", ""]),
+            ("/../", &["..", ""]),
+            ("/../..", &["..", ".."]),
+            ("/../../", &["..", "..", ""]),
+            ("foo", &["foo"]),
+            ("foo/bar", &["foo", "bar"]),
+            ("foo//bar", &["foo", "bar"]),
+            ("foo/./bar", &["foo", ".", "bar"]),
+            ("foo././bar", &["foo.", ".", "bar"]),
+            ("foo/", &["foo", ""]),
+            ("foo/.", &["foo", "."]),
+            ("foo/..", &["foo", ".."]),
+            ("/foo/bar", &["foo", "bar"]),
+            ("/foo/bar/./baz", &["foo", "bar", ".", "baz"]),
+        ];
+
+        for (input, expected) in CASES {
+            let path = Path::from(input);
+            let result: Vec<_> = path.segments().collect();
+            assert_eq!(result, expected, "{input:?}");
+        }
+    }
+
+    #[test]
+    fn segments_with_slash() {
+        const CASES: [(&str, &[&str]); 24] = [
+            ("", &[]),
+            (".", &["."]),
+            ("..", &[".."]),
             ("./", &["./"]),
             ("../", &["../"]),
             ("../..", &["../", ".."]),
@@ -302,7 +375,7 @@ mod tests {
 
         for (input, expected) in CASES {
             let path = Path::from(input);
-            let result: Vec<_> = path.segments().collect();
+            let result: Vec<_> = path.segments_with_slash().collect();
             assert_eq!(result, expected, "{input:?}");
         }
     }
