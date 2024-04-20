@@ -14,6 +14,7 @@ pub enum CompileScssError {
 }
 
 /// SCSS compiler.
+#[derive(Default)]
 pub struct ScssCompiler<'o> {
     options: Options<'o>,
 }
@@ -21,20 +22,12 @@ pub struct ScssCompiler<'o> {
 impl ScssCompiler<'_> {
     /// Create a SCSS compiler.
     pub fn new() -> Self {
-        Self {
-            options: Default::default(),
-        }
+        Self::default()
     }
 
     /// Compile a SCSS string to CSS.
     pub fn compile(&self, input: impl AsRef<str>) -> Result<String, CompileScssError> {
         Ok(grass::from_string(input.as_ref(), &self.options)?)
-    }
-}
-
-impl Default for ScssCompiler<'_> {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
