@@ -120,15 +120,15 @@ pub struct Config {
     #[vitrine(default)]
     pub layout: LayoutConfig,
 
-    /// Site data.
-    #[serde(default)]
-    #[vitrine(default)]
-    pub data: Value,
-
     /// Markdown configuration.
     #[serde(default)]
     #[vitrine(default)]
     pub markdown: MarkdownConfig,
+
+    /// Site data.
+    #[serde(default)]
+    #[vitrine(default)]
+    pub site_data: Value,
 
     /// Determine if the site should be optimized (minified, compressed...).
     #[serde(skip)]
