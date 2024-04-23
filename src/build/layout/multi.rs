@@ -34,7 +34,7 @@ pub enum MultiError {
 ///
 /// A layout engine that calls sub-engines depending on the layout file
 /// extension.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct MultiEngine {
     /// List of layout engines.
     engines: HashMap<String, Box<dyn DynamicLayoutEngine>>,
@@ -190,18 +190,14 @@ impl LayoutEngine for MultiEngine {
     }
 }
 
-impl Default for MultiEngine {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use serde::Serialize;
 
+    #[allow(unused_imports)]
     use super::MultiEngine;
-    use crate::util::layout::LayoutEngine;
+    #[allow(unused_imports)]
+    use crate::build::layout::LayoutEngine;
 
     #[derive(Serialize)]
     struct Data {
@@ -211,7 +207,7 @@ mod tests {
     #[cfg(feature = "jinja")]
     #[test]
     fn render_jinja() {
-        use crate::util::layout::jinja::JinjaEngine;
+        use crate::build::layout::jinja::JinjaEngine;
 
         let mut engine = MultiEngine::new();
 
@@ -231,7 +227,7 @@ mod tests {
     #[cfg(feature = "tera")]
     #[test]
     fn render_tera() {
-        use crate::util::layout::tera::TeraEngine;
+        use crate::build::layout::tera::TeraEngine;
 
         let mut engine = MultiEngine::new();
 

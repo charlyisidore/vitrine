@@ -6,7 +6,7 @@ use thiserror::Error;
 
 /// List of errors for this module.
 #[derive(Debug, Error)]
-pub enum CompileTypescriptError {
+pub enum TypescriptError {
     /// Unicode error.
     #[error(transparent)]
     FromUtf8(#[from] std::string::FromUtf8Error),
@@ -19,7 +19,7 @@ pub enum CompileTypescriptError {
 }
 
 /// Compile TypeScript to JavaScript.
-pub fn compile<S>(input: S, tsx: bool) -> Result<String, CompileTypescriptError>
+pub fn compile_typescript<S>(input: S, tsx: bool) -> Result<String, TypescriptError>
 where
     S: AsRef<str>,
 {
@@ -66,9 +66,9 @@ where
         error.into_diagnostic(&handler).emit();
     }
 
-    let program = parser.parse_program().map_err(|error| {
-        CompileTypescriptError::Parser(error.into_diagnostic(&handler).message())
-    })?;
+    let program = parser
+        .parse_program()
+        .map_err(|error| TypescriptError::Parser(error.into_diagnostic(&handler).message()))?;
 
     GLOBALS.set(&Default::default(), || {
         let unresolved_mark = Mark::new();
@@ -107,11 +107,65 @@ where
     })
 }
 
+/// Pipeline task.
+pub mod task {
+    use super::{compile_typescript, TypescriptError};
+    use crate::{
+        build::Script,
+        util::pipeline::{Receiver, Sender, Task},
+    };
+
+    /// Task to compile TypeScript code.
+    #[derive(Debug, Default)]
+    pub struct TypescriptTask;
+
+    impl TypescriptTask {
+        /// Create a pipeline task to compile TypeScript code.
+        pub fn new() -> Self {
+            Self {}
+        }
+    }
+
+    impl Task<(Script,), (Script,), TypescriptError> for TypescriptTask {
+        fn process(
+            self,
+            (rx,): (Receiver<Script>,),
+            (tx,): (Sender<Script>,),
+        ) -> Result<(), TypescriptError> {
+            for script in rx {
+                let script = if script
+                    .input_path
+                    .extension()
+                    .is_some_and(|extension| extension == "ts")
+                {
+                    let content = compile_typescript(
+                        script.content,
+                        script.input_path.extension().is_some_and(|extension| {
+                            ["jsx", "tsx"]
+                                .map(std::ffi::OsString::from)
+                                .contains(&extension.to_os_string())
+                        }),
+                    )?;
+
+                    Script { content, ..script }
+                } else {
+                    script
+                };
+
+                tx.send(script).unwrap();
+            }
+            Ok(())
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use super::compile_typescript;
+
     #[test]
     fn compile() {
-        let result = super::compile("const s: string = \"abc\";", false).unwrap();
+        let result = compile_typescript("const s: string = \"abc\";", false).unwrap();
         assert!(result.contains("abc"));
         assert!(!result.contains("string"));
     }

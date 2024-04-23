@@ -2,6 +2,8 @@
 //!
 //! A front matter is a block of metadata located at the top of a file.
 
+use std::path::PathBuf;
+
 use serde::de::DeserializeOwned;
 use thiserror::Error;
 
@@ -13,13 +15,21 @@ pub const YAML_DELIMITER: &str = "---";
 
 /// List of errors for this module.
 #[derive(Debug, Error)]
-pub enum FrontMatterError {
+pub enum MetadataError {
     /// TOML parse error.
     #[error(transparent)]
     Toml(#[from] crate::util::eval::toml::TomlError),
     /// YAML parse error.
     #[error(transparent)]
     Yaml(#[from] crate::util::eval::yaml::YamlError),
+    /// Provides a file path to the context of an existing error.
+    #[error("file `{path}`")]
+    WithFile {
+        /// Source error.
+        source: Box<Self>,
+        /// File path.
+        path: PathBuf,
+    },
 }
 
 /// Extract and deserialize front matter data from a string.
@@ -27,11 +37,11 @@ pub enum FrontMatterError {
 /// When a front matter is detected, this function returns a tuple `(data,
 /// content)`, where `data` is the deserialized front matter data, and `content`
 /// is the content without the front matter. Otherwise, it returns [`None`].
-pub fn parse<T>(source: &str) -> Result<Option<(T, &str)>, FrontMatterError>
+pub fn parse_front_matter<T>(source: &str) -> Result<Option<(T, &str)>, MetadataError>
 where
     T: DeserializeOwned,
 {
-    let Some((format, data, content)) = extract(source) else {
+    let Some((format, data, content)) = extract_front_matter(source) else {
         return Ok(None);
     };
 
@@ -50,7 +60,7 @@ where
 /// data, content)`, where `format` is the expected data format, `data` is the
 /// front matter string, and `content` is the content without front matter.
 /// Otherwise, it returns [`None`].
-pub fn extract(source: &str) -> Option<(&str, &str, &str)> {
+pub fn extract_front_matter(source: &str) -> Option<(&str, &str, &str)> {
     // Source must start with known delimiter
     let delimiter = [TOML_DELIMITER, YAML_DELIMITER]
         .into_iter()
@@ -88,11 +98,59 @@ pub fn extract(source: &str) -> Option<(&str, &str, &str)> {
     Some((format, data, content))
 }
 
+/// Pipeline task.
+pub mod task {
+    use super::{parse_front_matter, MetadataError};
+    use crate::{
+        build::Page,
+        util::pipeline::{Receiver, Sender, Task},
+    };
+
+    /// Task to parse metadata.
+    #[derive(Debug, Default)]
+    pub struct MetadataTask;
+
+    impl MetadataTask {
+        /// Create a pipeline task to parse metadata.
+        pub fn new() -> Self {
+            Self {}
+        }
+    }
+
+    impl Task<(Page,), (Page,), MetadataError> for MetadataTask {
+        fn process(
+            self,
+            (rx,): (Receiver<Page>,),
+            (tx,): (Sender<Page>,),
+        ) -> Result<(), MetadataError> {
+            for page in rx {
+                let page = if let Some((data, content)) = parse_front_matter(&page.content)
+                    .map_err(Into::into)
+                    .map_err(|source| MetadataError::WithFile {
+                        source: Box::new(source),
+                        path: page.input_path.to_owned(),
+                    })? {
+                    Page {
+                        content: content.to_string(),
+                        data,
+                        ..page
+                    }
+                } else {
+                    page
+                };
+
+                tx.send(page).unwrap();
+            }
+            Ok(())
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use serde::Deserialize;
 
-    use super::{extract, parse};
+    use super::{extract_front_matter, parse_front_matter};
 
     #[derive(Deserialize)]
     struct Data {
@@ -109,7 +167,7 @@ mod tests {
             "baz\n"
         );
 
-        let result = extract(INPUT);
+        let result = extract_front_matter(INPUT);
 
         assert!(result.is_none());
     }
@@ -121,7 +179,7 @@ mod tests {
             "layout: \"post\"\n"
         );
 
-        let result = extract(INPUT);
+        let result = extract_front_matter(INPUT);
 
         assert!(result.is_none());
     }
@@ -135,7 +193,7 @@ mod tests {
             "foo\n"
         );
 
-        let result = extract(INPUT);
+        let result = extract_front_matter(INPUT);
 
         assert!(result.is_none());
     }
@@ -148,7 +206,7 @@ mod tests {
             "---"
         );
 
-        let (_, data, content) = extract(INPUT).unwrap();
+        let (_, data, content) = extract_front_matter(INPUT).unwrap();
 
         assert_eq!(data, "layout: \"post\"\n");
         assert_eq!(content, "");
@@ -163,7 +221,7 @@ mod tests {
             "foo\r\n"
         );
 
-        let (_, data, content) = extract(INPUT).unwrap();
+        let (_, data, content) = extract_front_matter(INPUT).unwrap();
 
         assert_eq!(data, "layout: \"post\"\r\n");
         assert_eq!(content, "foo\r\n");
@@ -178,7 +236,7 @@ mod tests {
             "foo\n"
         );
 
-        let (data, content) = parse::<Data>(INPUT).unwrap().unwrap();
+        let (data, content) = parse_front_matter::<Data>(INPUT).unwrap().unwrap();
 
         assert_eq!(data.layout, "post");
         assert_eq!(content, "foo\n");
@@ -193,7 +251,7 @@ mod tests {
             "foo\n"
         );
 
-        let (data, content) = parse::<Data>(INPUT).unwrap().unwrap();
+        let (data, content) = parse_front_matter::<Data>(INPUT).unwrap().unwrap();
 
         assert_eq!(data.layout, "post");
         assert_eq!(content, "foo\n");
@@ -208,7 +266,7 @@ mod tests {
             "foo\n"
         );
 
-        let (data, content) = parse::<Data>(INPUT).unwrap().unwrap();
+        let (data, content) = parse_front_matter::<Data>(INPUT).unwrap().unwrap();
 
         assert_eq!(data.layout, "post");
         assert_eq!(content, "foo\n");
@@ -223,7 +281,7 @@ mod tests {
             "foo\n"
         );
 
-        let (data, content) = parse::<Data>(INPUT).unwrap().unwrap();
+        let (data, content) = parse_front_matter::<Data>(INPUT).unwrap().unwrap();
 
         assert_eq!(data.layout, "post");
         assert_eq!(content, "foo\n");
@@ -238,7 +296,7 @@ mod tests {
             "foo\n"
         );
 
-        let (data, content) = parse::<Data>(INPUT).unwrap().unwrap();
+        let (data, content) = parse_front_matter::<Data>(INPUT).unwrap().unwrap();
 
         assert_eq!(data.layout, "post");
         assert_eq!(content, "foo\n");

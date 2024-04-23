@@ -173,11 +173,44 @@ impl swc_core::bundler::Hook for Hook {
     }
 }
 
+/// Pipeline task.
+pub mod task {
+    use super::{bundle_js_file, BundleJsError};
+    use crate::{
+        build::Script,
+        util::pipeline::{Receiver, Sender, Task},
+    };
+
+    /// Task to bundle JavaScript code.
+    #[derive(Debug, Default)]
+    pub struct BundleJsTask;
+
+    impl BundleJsTask {
+        /// Create a pipeline task to bundle JavaScript code.
+        pub fn new() -> Self {
+            Self {}
+        }
+    }
+
+    impl Task<(Script,), (Script,), BundleJsError> for BundleJsTask {
+        fn process(
+            self,
+            (rx,): (Receiver<Script>,),
+            (tx,): (Sender<Script>,),
+        ) -> Result<(), BundleJsError> {
+            for script in rx {
+                let content = bundle_js_file(&script.input_path)?;
+                tx.send(Script { content, ..script }).unwrap();
+            }
+            Ok(())
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use temp_dir::TempDir;
-
     use super::bundle_js_file;
+    use crate::util::temp_dir::TempDir;
 
     #[test]
     fn bundle_file() {
@@ -228,49 +261,5 @@ mod tests {
 
         assert!(result.contains("console.log"));
         assert!(result.contains("Hello "));
-    }
-
-    mod temp_dir {
-        use std::path::{Path, PathBuf};
-
-        /// Wraps a temporary directory path.
-        ///
-        /// The directory is removed when this is dropped.
-        pub(super) struct TempDir(PathBuf);
-
-        impl Drop for TempDir {
-            fn drop(&mut self) {
-                std::fs::remove_dir_all(&self.0).expect("failed to remove temp dir")
-            }
-        }
-
-        impl TempDir {
-            /// Create a temporary directory.
-            pub fn new() -> Self {
-                let dir = std::env::temp_dir();
-                for _ in 0..10 {
-                    let path = dir.join(format!("vitrine_{}", random_number()));
-                    if !path.exists() {
-                        std::fs::create_dir_all(&path)
-                            .expect(&format!("failed to create temp dir {:?}", path));
-                        return Self(path);
-                    }
-                }
-                panic!("failed to create temp dir")
-            }
-
-            /// Return the directory path.
-            pub fn path(&self) -> &Path {
-                &self.0
-            }
-        }
-
-        /// Generate a random number.
-        fn random_number() -> u64 {
-            use std::hash::{BuildHasher, Hasher};
-            std::collections::hash_map::RandomState::new()
-                .build_hasher()
-                .finish()
-        }
     }
 }

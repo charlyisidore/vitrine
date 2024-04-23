@@ -36,6 +36,49 @@ pub fn minify_js(input: impl AsRef<str>) -> Result<String, MinifyJsError> {
     Ok(String::from_utf8(output)?)
 }
 
+/// Pipeline task.
+pub mod task {
+    use super::{minify_js, MinifyJsError};
+    use crate::{
+        build::Script,
+        config::Config,
+        util::pipeline::{Receiver, Sender, Task},
+    };
+
+    /// Task to minify JavaScript code.
+    #[derive(Debug)]
+    pub struct MinifyJsTask<'config> {
+        config: &'config Config,
+    }
+
+    impl<'config> MinifyJsTask<'config> {
+        /// Create a pipeline task to minify JavaScript code.
+        pub fn new(config: &'config Config) -> Self {
+            Self { config }
+        }
+    }
+
+    impl Task<(Script,), (Script,), MinifyJsError> for MinifyJsTask<'_> {
+        fn process(
+            self,
+            (rx,): (Receiver<Script>,),
+            (tx,): (Sender<Script>,),
+        ) -> Result<(), MinifyJsError> {
+            for script in rx {
+                let script = if self.config.optimize {
+                    let content = minify_js(script.content)?;
+                    Script { content, ..script }
+                } else {
+                    script
+                };
+
+                tx.send(script).unwrap();
+            }
+            Ok(())
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::minify_js;

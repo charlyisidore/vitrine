@@ -103,6 +103,59 @@ impl Default for MarkdownParser {
     }
 }
 
+/// Pipeline task.
+pub mod task {
+    use super::{MarkdownError, MarkdownParser};
+    use crate::{
+        build::Page,
+        config::Config,
+        util::pipeline::{Receiver, Sender, Task},
+    };
+
+    /// Task to parse Markdown.
+    #[derive(Debug)]
+    pub struct MarkdownTask {
+        parser: MarkdownParser,
+    }
+
+    impl MarkdownTask {
+        /// Create a pipeline task to parse Markdown content.
+        pub fn new(config: &Config) -> Result<Self, MarkdownError> {
+            let mut parser = MarkdownParser::new();
+
+            for plugin_name in &config.markdown.plugins {
+                parser.add_plugin(plugin_name)?;
+            }
+
+            Ok(Self { parser })
+        }
+    }
+
+    impl Task<(Page,), (Page,), MarkdownError> for MarkdownTask {
+        fn process(
+            self,
+            (rx,): (Receiver<Page>,),
+            (tx,): (Sender<Page>,),
+        ) -> Result<(), MarkdownError> {
+            for page in rx {
+                let page = if page
+                    .input_path
+                    .extension()
+                    .is_some_and(|extension| extension == "md")
+                {
+                    let content = self.parser.parse(page.content);
+                    Page { content, ..page }
+                } else {
+                    page
+                };
+
+                tx.send(page).unwrap();
+            }
+            Ok(())
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::MarkdownParser;

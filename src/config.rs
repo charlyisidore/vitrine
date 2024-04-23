@@ -12,11 +12,9 @@ use vitrine_derive::FromLua;
 use vitrine_derive::FromRhai;
 use vitrine_derive::VitrineNoop;
 
-use crate::util::{
-    layout::{LayoutFilter, LayoutFunction, LayoutTest},
-    path::PathExt,
-    url::Url,
-    value::Value,
+use crate::{
+    build::layout::{LayoutFilter, LayoutFunction, LayoutTest},
+    util::{path::PathExt, url::Url, value::Value},
 };
 
 /// List of configuration errors.

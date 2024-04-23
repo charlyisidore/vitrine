@@ -19,10 +19,10 @@ pub enum MinifyHtmlError {
     LolHtmlRewriting(#[from] RewritingError),
     /// Error minifying CSS.
     #[error(transparent)]
-    MinifyCss(#[from] crate::util::optimize::css::MinifyCssError),
+    MinifyCss(#[from] crate::build::minify_css::MinifyCssError),
     /// Error minifying JavaScript.
     #[error(transparent)]
-    MinifyJs(#[from] crate::util::optimize::js::MinifyJsError),
+    MinifyJs(#[from] crate::build::minify_js::MinifyJsError),
     /// Error minifying `<script>` elements.
     #[error("failed to minify `<script>` element")]
     MinifyScriptElement(Box<Self>),
@@ -74,7 +74,7 @@ impl Default for HtmlMinifier {
 /// This function minifies code inside `<script>` and `<style>` elements, as
 /// well as `style` attributes. The rest of the HTML code is not minified.
 pub fn minify_inline(input: impl AsRef<str>) -> Result<String, MinifyHtmlError> {
-    use crate::util::optimize::{css::minify_css, js::minify_js};
+    use crate::build::{minify_css::minify_css, minify_js::minify_js};
 
     let input = input.as_ref();
     let mut script_buffer = String::new();
@@ -147,6 +147,51 @@ pub fn minify_inline(input: impl AsRef<str>) -> Result<String, MinifyHtmlError> 
             ..lol_html::RewriteStrSettings::default()
         },
     )?)
+}
+
+/// Pipeline task.
+pub mod task {
+    use super::{HtmlMinifier, MinifyHtmlError};
+    use crate::{
+        build::Page,
+        config::Config,
+        util::pipeline::{Receiver, Sender, Task},
+    };
+
+    /// Task to minify HTML code.
+    pub struct MinifyHtmlTask<'config> {
+        config: &'config Config,
+        minifier: HtmlMinifier,
+    }
+
+    impl<'config> MinifyHtmlTask<'config> {
+        /// Create a pipeline task to minify HTML code.
+        pub fn new(config: &'config Config) -> Self {
+            let minifier = HtmlMinifier::new();
+
+            Self { config, minifier }
+        }
+    }
+
+    impl Task<(Page,), (Page,), MinifyHtmlError> for MinifyHtmlTask<'_> {
+        fn process(
+            self,
+            (rx,): (Receiver<Page>,),
+            (tx,): (Sender<Page>,),
+        ) -> Result<(), MinifyHtmlError> {
+            for page in rx {
+                let page = if self.config.optimize {
+                    let content = self.minifier.minify(page.content)?;
+                    Page { content, ..page }
+                } else {
+                    page
+                };
+
+                tx.send(page).unwrap();
+            }
+            Ok(())
+        }
+    }
 }
 
 #[cfg(test)]

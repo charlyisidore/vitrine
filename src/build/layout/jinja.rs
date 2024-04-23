@@ -1,57 +1,59 @@
-//! Tera layout engine.
+//! Jinja layout engine.
 //!
-//! This module uses [`tera`] under the hood.
+//! This module uses [`minijinja`] under the hood.
 
-use std::collections::HashMap;
-
+use minijinja::Environment;
 use serde::Serialize;
-use tera::Tera;
 use thiserror::Error;
 
 use super::{LayoutEngine, LayoutFilter, LayoutFunction, LayoutTest};
 
 /// List of errors for this module.
 #[derive(Debug, Error)]
-pub enum TeraError {
-    /// Tera error.
+pub enum JinjaError {
+    /// Minijinja error.
     #[error(transparent)]
-    Tera(#[from] tera::Error),
+    Minijinja(#[from] minijinja::Error),
 }
 
-/// Tera layout engine.
+/// Jinja layout engine.
 #[derive(Debug)]
-pub struct TeraEngine {
-    /// Tera engine.
-    tera: Tera,
+pub struct JinjaEngine<'source> {
+    /// Minijinja environment.
+    env: Environment<'source>,
 }
 
-impl TeraEngine {
-    /// Create a Tera layout engine.
+impl<'source> JinjaEngine<'source> {
+    /// Create a Jinja layout engine.
     pub fn new() -> Self {
         Self {
-            tera: Tera::default(),
+            env: Environment::new(),
         }
     }
 
-    /// Return a reference to the [`Tera`] instance.
-    pub fn tera_ref(&mut self) -> &Tera {
-        &self.tera
+    /// Return a reference to the [`Environment`] instance.
+    pub fn env_ref(&mut self) -> &Environment {
+        &self.env
     }
 
-    /// Return a mutable reference to the [`Tera`] instance.
-    pub fn tera_mut(&mut self) -> &mut Tera {
-        &mut self.tera
+    /// Return a mutable reference to the [`Environment`] instance.
+    pub fn env_mut(&mut self) -> &'source mut Environment {
+        &mut self.env
     }
 }
 
-impl LayoutEngine for TeraEngine {
-    type Error = TeraError;
+impl LayoutEngine for JinjaEngine<'_> {
+    type Error = JinjaError;
 
     fn add_layouts(
         &mut self,
         iter: impl IntoIterator<Item = (impl AsRef<str>, impl AsRef<str>)>,
     ) -> Result<(), Self::Error> {
-        Ok(self.tera.add_raw_templates(iter)?)
+        for (name, source) in iter {
+            self.env
+                .add_template_owned(name.as_ref().to_string(), source.as_ref().to_string())?;
+        }
+        Ok(())
     }
 
     fn add_filter(
@@ -59,22 +61,22 @@ impl LayoutEngine for TeraEngine {
         name: impl AsRef<str>,
         f: impl Into<LayoutFilter>,
     ) -> Result<(), Self::Error> {
-        use tera::{Error, Value};
+        use minijinja::{value::Rest, Error, ErrorKind, Value};
         let f = f.into();
-        let f = move |value: &Value, kwargs: &HashMap<String, Value>| -> Result<Value, Error> {
-            let value =
-                crate::util::value::to_value(value).map_err(|e| Error::msg(format!("{e}")))?;
-            let args = Default::default();
-            let kwargs = kwargs
+        let f = move |value: Value, args: Rest<Value>| -> Result<Value, Error> {
+            let value = crate::util::value::to_value(value)
+                .map_err(|e| Error::new(ErrorKind::InvalidOperation, format!("{e}")))?;
+            let args = args
                 .iter()
-                .map(|(k, v)| Ok((k.to_owned(), tera::from_value(v.to_owned())?)))
-                .collect::<Result<_, serde_json::Error>>()
-                .map_err(|e| Error::msg(format!("{e}")))?;
+                .map(crate::util::value::to_value)
+                .collect::<Result<_, _>>()
+                .map_err(|e| Error::new(ErrorKind::InvalidOperation, format!("{e}")))?;
+            let kwargs = Default::default();
             f.call(value, args, kwargs)
-                .map_err(|e| Error::msg(format!("{e}")))
-                .and_then(|output| tera::to_value(output).map_err(|e| Error::msg(format!("{e}"))))
+                .map(|output| Value::from_serializable(&output))
+                .map_err(|e| Error::new(ErrorKind::InvalidOperation, format!("{e}")))
         };
-        self.tera.register_filter(name.as_ref(), f);
+        self.env.add_filter(name.as_ref().to_string(), f);
         Ok(())
     }
 
@@ -83,20 +85,20 @@ impl LayoutEngine for TeraEngine {
         name: impl AsRef<str>,
         f: impl Into<LayoutFunction>,
     ) -> Result<(), Self::Error> {
-        use tera::{Error, Value};
+        use minijinja::{value::Rest, Error, ErrorKind, Value};
         let f = f.into();
-        let f = move |kwargs: &HashMap<String, Value>| -> Result<Value, Error> {
-            let args = Default::default();
-            let kwargs = kwargs
+        let f = move |args: Rest<Value>| -> Result<Value, Error> {
+            let args = args
                 .iter()
-                .map(|(k, v)| Ok((k.to_owned(), tera::from_value(v.to_owned())?)))
-                .collect::<Result<_, serde_json::Error>>()
-                .map_err(|e| Error::msg(format!("{e}")))?;
+                .map(crate::util::value::to_value)
+                .collect::<Result<_, _>>()
+                .map_err(|e| Error::new(ErrorKind::InvalidOperation, format!("{e}")))?;
+            let kwargs = Default::default();
             f.call(args, kwargs)
-                .map_err(|e| Error::msg(format!("{e}")))
-                .and_then(|output| tera::to_value(output).map_err(|e| Error::msg(format!("{e}"))))
+                .map(|output| Value::from_serializable(&output))
+                .map_err(|e| Error::new(ErrorKind::InvalidOperation, format!("{e}")))
         };
-        self.tera.register_function(name.as_ref(), f);
+        self.env.add_function(name.as_ref().to_string(), f);
         Ok(())
     }
 
@@ -105,21 +107,21 @@ impl LayoutEngine for TeraEngine {
         name: impl AsRef<str>,
         f: impl Into<LayoutTest>,
     ) -> Result<(), Self::Error> {
-        use tera::{Error, Value};
+        use minijinja::{value::Rest, Error, ErrorKind, Value};
         let f = f.into();
-        let f = move |value: Option<&Value>, args: &[Value]| -> Result<bool, Error> {
-            let value =
-                crate::util::value::to_value(value).map_err(|e| Error::msg(format!("{e}")))?;
+        let f = move |value: Value, args: Rest<Value>| -> Result<bool, Error> {
+            let value = crate::util::value::to_value(value)
+                .map_err(|e| Error::new(ErrorKind::InvalidOperation, format!("{e}")))?;
             let args = args
                 .iter()
-                .map(|v| tera::from_value(v.to_owned()))
-                .collect::<Result<_, serde_json::Error>>()
-                .map_err(|e| Error::msg(format!("{e}")))?;
+                .map(crate::util::value::to_value)
+                .collect::<Result<_, _>>()
+                .map_err(|e| Error::new(ErrorKind::InvalidOperation, format!("{e}")))?;
             let kwargs = Default::default();
             f.call(value, args, kwargs)
-                .map_err(|e| Error::msg(format!("{e}")))
+                .map_err(|e| Error::new(ErrorKind::InvalidOperation, format!("{e}")))
         };
-        self.tera.register_tester(name.as_ref(), f);
+        self.env.add_test(name.as_ref().to_string(), f);
         Ok(())
     }
 
@@ -128,12 +130,12 @@ impl LayoutEngine for TeraEngine {
         name: impl AsRef<str>,
         context: impl Serialize,
     ) -> Result<String, Self::Error> {
-        let context = tera::Context::from_serialize(context)?;
-        Ok(self.tera.render(name.as_ref(), &context)?)
+        let template = self.env.get_template(name.as_ref())?;
+        Ok(template.render(context)?)
     }
 }
 
-impl Default for TeraEngine {
+impl Default for JinjaEngine<'_> {
     fn default() -> Self {
         Self::new()
     }
@@ -143,8 +145,8 @@ impl Default for TeraEngine {
 mod tests {
     use serde::Serialize;
 
-    use super::TeraEngine;
-    use crate::util::layout::{LayoutEngine, Map, Value as LayoutValue};
+    use super::JinjaEngine;
+    use crate::build::layout::{LayoutEngine, Value as LayoutValue};
 
     #[derive(Serialize)]
     struct Data {
@@ -153,7 +155,7 @@ mod tests {
 
     #[test]
     fn render_layouts() {
-        let mut engine = TeraEngine::new();
+        let mut engine = JinjaEngine::new();
 
         engine
             .add_layouts([
@@ -176,7 +178,7 @@ mod tests {
 
     #[test]
     fn custom_filter() {
-        let mut engine = TeraEngine::new();
+        let mut engine = JinjaEngine::new();
 
         let filter = |value: LayoutValue, _, _| -> LayoutValue {
             value
@@ -202,11 +204,10 @@ mod tests {
 
     #[test]
     fn custom_function() {
-        let mut engine = TeraEngine::new();
+        let mut engine = JinjaEngine::new();
 
-        let function = |_, kwargs: Map<String, LayoutValue>| -> LayoutValue {
-            kwargs
-                .get("s")
+        let function = |args: Vec<LayoutValue>, _| -> LayoutValue {
+            args.get(0)
                 .and_then(|s| s.as_str())
                 .map(|s| s.to_uppercase())
                 .map_or_else(|| LayoutValue::Unit, |s| LayoutValue::Str(s))
@@ -215,7 +216,7 @@ mod tests {
         engine.add_function("upper_case", function).unwrap();
 
         engine
-            .add_layouts([("page", "{{ upper_case(s=foo) }}")])
+            .add_layouts([("page", "{{ upper_case(foo) }}")])
             .unwrap();
 
         let context = Data {
@@ -229,7 +230,7 @@ mod tests {
 
     #[test]
     fn custom_test() {
-        let mut engine = TeraEngine::new();
+        let mut engine = JinjaEngine::new();
 
         let test = |value: LayoutValue, _, _| -> bool {
             value

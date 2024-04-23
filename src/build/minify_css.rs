@@ -46,6 +46,49 @@ pub fn minify_css(input: impl AsRef<str>) -> Result<String, MinifyCssError> {
     Ok(result.code)
 }
 
+/// Pipeline task.
+pub mod task {
+    use super::{minify_css, MinifyCssError};
+    use crate::{
+        build::Style,
+        config::Config,
+        util::pipeline::{Receiver, Sender, Task},
+    };
+
+    /// Task to minify CSS code.
+    #[derive(Debug)]
+    pub struct MinifyCssTask<'config> {
+        config: &'config Config,
+    }
+
+    impl<'config> MinifyCssTask<'config> {
+        /// Create a pipeline task to minify CSS code.
+        pub fn new(config: &'config Config) -> Self {
+            Self { config }
+        }
+    }
+
+    impl Task<(Style,), (Style,), MinifyCssError> for MinifyCssTask<'_> {
+        fn process(
+            self,
+            (rx,): (Receiver<Style>,),
+            (tx,): (Sender<Style>,),
+        ) -> Result<(), MinifyCssError> {
+            for style in rx {
+                let style = if self.config.optimize {
+                    let content = minify_css(style.content)?;
+                    Style { content, ..style }
+                } else {
+                    style
+                };
+
+                tx.send(style).unwrap();
+            }
+            Ok(())
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::minify_css;
