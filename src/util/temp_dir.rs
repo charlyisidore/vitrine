@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 /// Wraps a temporary directory path.
 ///
 /// The directory is removed when this is dropped.
+#[derive(Debug, Default)]
 pub struct TempDir(PathBuf);
 
 impl Drop for TempDir {
@@ -22,7 +23,8 @@ impl TempDir {
             if path.exists() {
                 continue;
             }
-            std::fs::create_dir_all(&path).expect(&format!("failed to create temp dir {:?}", path));
+            std::fs::create_dir_all(&path)
+                .unwrap_or_else(|_| panic!("failed to create temp dir {:?}", path));
             return Self(path);
         }
         panic!("failed to create temp dir")
