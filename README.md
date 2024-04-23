@@ -19,7 +19,7 @@ Move to the directory containing your source files (Markdown, SCSS, etc.).
 Build the site:
 
 ```bash
-vitrine
+vitrine build
 ```
 
 Output files will be located in the `_site` folder.

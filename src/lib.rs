@@ -17,8 +17,12 @@ extern crate self as vitrine;
 
 pub mod build;
 pub mod config;
+pub mod serve;
 pub mod util;
+pub mod watch;
 
 pub use build::build;
 pub use config::Config;
+pub use serve::serve;
 pub use util::url::{Url, UrlPath};
+pub use watch::watch;

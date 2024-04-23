@@ -27,6 +27,7 @@ tera = ["dep:tera"]
 
 [dependencies]
 anyhow = "1.0.82"
+axum = { version = "0.7.5", default-features = false, features = ["http1", "tokio"] }
 clap = { version = "4.5.4", features = ["derive"] }
 futures = { version = "0.3.30", optional = true }
 grass = { version = "0.13.2", default-features = false }
@@ -38,6 +39,7 @@ minify-html = "0.15.0"
 minify-js = "0.5.6"
 minijinja = { version = "1.0.20", features = ["loader"], optional = true }
 mlua = { version = "0.9.7", features = ["lua51", "send", "serialize", "vendored"], optional = true }
+notify-debouncer-full = { version = "0.3.1", default-features = false }
 quickjs_runtime = { version = "0.13.3", default-features = false, features = ["bellard", "console", "setimmediate", "setinterval", "settimeout"], optional = true }
 rhai = { version = "1.18.0", features = ["serde", "sync"], optional = true }
 serde = "1.0.198"
@@ -47,5 +49,7 @@ slug = "0.1.5"
 swc_core = { version = "0.90.37", features = ["bundler", "common", "ecma_ast", "ecma_codegen", "ecma_loader", "ecma_loader_lru", "ecma_loader_node", "ecma_loader_parking_lot", "ecma_parser", "ecma_transforms_typescript", "ecma_visit"] }
 tera = { version = "1.19.1", optional = true }
 thiserror = "1.0.59"
+tokio = "1.37.0"
 toml = { version = "0.8.12", default-features = false, features = ["parse"] }
+tower-http = { version = "0.5.2", features = ["fs"] }
 vitrine_derive = { version = "=0.2.0", path = "crates/derive" }

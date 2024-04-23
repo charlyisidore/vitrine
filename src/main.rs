@@ -3,6 +3,7 @@
 use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand};
+use futures::TryFutureExt;
 use vitrine::{Config, Url};
 
 /// Command line usage description.
@@ -59,7 +60,8 @@ struct BuildArgs {
     pub base_url: Option<Url>,
 }
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
@@ -68,17 +70,29 @@ fn main() -> anyhow::Result<()> {
                 optimize: true,
                 ..create_config(build_args)?
             };
+
             vitrine::build(&config)?;
         },
-        Command::Serve {
-            build_args,
-            port: _port,
-        } => {
-            let _config = Config {
+        Command::Serve { build_args, port } => {
+            let config = Config {
                 optimize: false,
                 ..create_config(build_args)?
             };
-            todo!();
+
+            let Some(output_dir) = &config.output_dir else {
+                panic!("no output directory specified");
+            };
+
+            vitrine::build(&config)?;
+
+            let serve = vitrine::serve(&output_dir, port).map_err(anyhow::Error::from);
+
+            let watch = vitrine::watch(&config, || {
+                vitrine::build(&config).map_err(|e| vitrine::watch::WatchError::Boxed(Box::new(e)))
+            })
+            .map_err(anyhow::Error::from);
+
+            tokio::try_join!(serve, watch)?;
         },
     }
 
