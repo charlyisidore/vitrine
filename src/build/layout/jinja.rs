@@ -73,7 +73,7 @@ impl LayoutEngine for JinjaEngine<'_> {
                 .map_err(|e| Error::new(ErrorKind::InvalidOperation, format!("{e}")))?;
             let kwargs = Default::default();
             f.call(value, args, kwargs)
-                .map(|output| Value::from_serializable(&output))
+                .map(Value::from_serialize)
                 .map_err(|e| Error::new(ErrorKind::InvalidOperation, format!("{e}")))
         };
         self.env.add_filter(name.as_ref().to_string(), f);
@@ -95,7 +95,7 @@ impl LayoutEngine for JinjaEngine<'_> {
                 .map_err(|e| Error::new(ErrorKind::InvalidOperation, format!("{e}")))?;
             let kwargs = Default::default();
             f.call(args, kwargs)
-                .map(|output| Value::from_serializable(&output))
+                .map(Value::from_serialize)
                 .map_err(|e| Error::new(ErrorKind::InvalidOperation, format!("{e}")))
         };
         self.env.add_function(name.as_ref().to_string(), f);
