@@ -36,7 +36,7 @@ pub enum BuildError {
     /// Error while bundling CSS.
     #[error("failed to bundle CSS")]
     BundleCss(#[source] self::bundle_css::BundleCssError),
-    /// Error while bundling JavaScript.
+    /// Error while bundling HTML.
     #[error("failed to bundle HTML")]
     BundleHtml(#[source] self::bundle_html::BundleHtmlError),
     /// Error while bundling JavaScript.
