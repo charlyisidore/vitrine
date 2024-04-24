@@ -20,7 +20,7 @@ members = ["crates/derive"]
 [features]
 default = ["jinja", "js", "lua", "rhai", "tera"]
 jinja = ["dep:minijinja"]
-js = ["dep:futures", "dep:quickjs_runtime"]
+js = ["dep:quickjs_runtime"]
 lua = ["dep:mlua"]
 rhai = ["dep:rhai"]
 tera = ["dep:tera"]
@@ -29,7 +29,7 @@ tera = ["dep:tera"]
 anyhow = "1.0.82"
 axum = { version = "0.7.5", default-features = false, features = ["http1", "tokio"] }
 clap = { version = "4.5.4", features = ["derive"] }
-futures = { version = "0.3.30", optional = true }
+futures = "0.3.30"
 grass = { version = "0.13.2", default-features = false }
 ignore = "0.4.22"
 lightningcss = { version = "1.0.0-alpha.55", default-features = false, features = ["bundler", "grid", "sourcemap"] }
@@ -37,7 +37,7 @@ lol_html = "1.2.1"
 markdown-it = { version = "0.6.0", default-features = false, features = ["linkify"] }
 minify-html = "0.15.0"
 minify-js = "0.5.6"
-minijinja = { version = "1.0.20", features = ["loader"], optional = true }
+minijinja = { version = "1.0.21", features = ["loader"], optional = true }
 mlua = { version = "0.9.7", features = ["lua51", "send", "serialize", "vendored"], optional = true }
 notify-debouncer-full = { version = "0.3.1", default-features = false }
 quickjs_runtime = { version = "0.13.3", default-features = false, features = ["bellard", "console", "setimmediate", "setinterval", "settimeout"], optional = true }
