@@ -51,7 +51,7 @@ pub fn expand_from_js(input: &syn::DeriveInput) -> TokenStream {
                                 || #crate_path::JsError::FromJs {
                                     from: value.get_value_type().to_string(),
                                     to: ::std::stringify!(#struct_ident),
-                                    message: Some(::std::format!(
+                                    message: ::std::option::Option::Some(::std::format!(
                                         "required field `{}`",
                                         ::std::stringify!(#field_ident),
                                     )),
