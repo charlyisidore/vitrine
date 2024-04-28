@@ -4,11 +4,14 @@
 
 pub mod authority;
 pub mod path;
+pub mod query;
 
 use serde::{Deserialize, Serialize};
 
-pub use self::{authority::Authority as UrlAuthority, path::Path as UrlPath};
 use self::{authority::Authority, path::Path};
+pub use self::{
+    authority::Authority as UrlAuthority, path::Path as UrlPath, query::Query as UrlQuery,
+};
 
 /// An owned and mutable URL.
 #[derive(Clone, Debug, Default, Hash, PartialEq, Serialize, Deserialize)]
@@ -61,16 +64,26 @@ impl Url {
         })
     }
 
-    /// Return the authority component, if any.
-    pub fn authority(&self) -> Option<&str> {
+    /// Return the authority component as a [`UrlAuthority`], if any.
+    pub fn authority(&self) -> Option<UrlAuthority> {
+        self.authority_str().map(UrlAuthority::from)
+    }
+
+    /// Return the authority component as a string, if any.
+    pub fn authority_str(&self) -> Option<&str> {
         self.components().find_map(|component| match component {
             Component::Authority(s) => Some(s),
             _ => None,
         })
     }
 
-    /// Return the path component.
-    pub fn path(&self) -> &str {
+    /// Return the path component as a [`UrlPath`].
+    pub fn path(&self) -> UrlPath {
+        UrlPath::from(self.path_str())
+    }
+
+    /// Return the path component as a string.
+    pub fn path_str(&self) -> &str {
         self.components()
             .find_map(|component| match component {
                 Component::Path(s) => Some(s),
@@ -79,8 +92,13 @@ impl Url {
             .expect("must have path component")
     }
 
-    /// Return the query component, if any.
-    pub fn query(&self) -> Option<&str> {
+    /// Return the query component as a [`UrlQuery`], if any.
+    pub fn query(&self) -> Option<UrlQuery> {
+        self.query_str().map(UrlQuery::from)
+    }
+
+    /// Return the query component as a string, if any.
+    pub fn query_str(&self) -> Option<&str> {
         self.components().find_map(|component| match component {
             Component::Query(s) => Some(s),
             _ => None,
@@ -99,9 +117,9 @@ impl Url {
     pub fn set_scheme(&mut self, scheme: Option<&str>) {
         self.0 = Self::str_from_components(
             scheme,
-            self.authority(),
-            self.path(),
-            self.query(),
+            self.authority_str(),
+            self.path_str(),
+            self.query_str(),
             self.fragment(),
         )
     }
@@ -111,8 +129,8 @@ impl Url {
         self.0 = Self::str_from_components(
             self.scheme(),
             authority,
-            self.path(),
-            self.query(),
+            self.path_str(),
+            self.query_str(),
             self.fragment(),
         )
     }
@@ -121,9 +139,9 @@ impl Url {
     pub fn set_path(&mut self, path: &str) {
         self.0 = Self::str_from_components(
             self.scheme(),
-            self.authority(),
+            self.authority_str(),
             path,
-            self.query(),
+            self.query_str(),
             self.fragment(),
         )
     }
@@ -132,8 +150,8 @@ impl Url {
     pub fn set_query(&mut self, query: Option<&str>) {
         self.0 = Self::str_from_components(
             self.scheme(),
-            self.authority(),
-            self.path(),
+            self.authority_str(),
+            self.path_str(),
             query,
             self.fragment(),
         )
@@ -143,9 +161,9 @@ impl Url {
     pub fn set_fragment(&mut self, fragment: Option<&str>) {
         self.0 = Self::str_from_components(
             self.scheme(),
-            self.authority(),
-            self.path(),
-            self.query(),
+            self.authority_str(),
+            self.path_str(),
+            self.query_str(),
             fragment,
         )
     }
