@@ -23,7 +23,7 @@ impl Query {
     /// Check if a parameter key exists.
     pub fn has(&self, key: impl AsRef<str>) -> bool {
         let key = key.as_ref();
-        self.parameters().find(|(k, _)| *k == key).is_some()
+        self.parameters().any(|(k, _)| k == key)
     }
 
     /// Return the value of a parameter given its key, if any.
