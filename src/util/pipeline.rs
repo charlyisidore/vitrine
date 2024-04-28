@@ -52,6 +52,17 @@ impl<T> Pipeline<T> {
         P::merge(p, f)
     }
 
+    /// Call a task that takes multiple receivers and multiple senders.
+    pub fn multiplex<R, S, E, P, F>(p: P, f: F) -> Result<<P as Multiplex<R, S>>::Output, E>
+    where
+        P: Multiplex<R, S>,
+        F: Task<R, S, E>,
+        R: Tuple,
+        S: Tuple,
+    {
+        Multiplex::<R, S>::multiplex(p, f)
+    }
+
     /// Call a closure on each element of the pipeline.
     pub fn map<U>(self, mut f: impl FnMut(T) -> U) -> Pipeline<U> {
         self.pipe(
@@ -202,6 +213,88 @@ impl_merge! { RA pa, RB pb, RC pc }
 impl_merge! { RA pa, RB pb, RC pc, RD pd }
 impl_merge! { RA pa, RB pb, RC pc, RD pd, RE pe }
 impl_merge! { RA pa, RB pb, RC pc, RD pd, RE pe, RF pf }
+
+/// A trait to multiplex pipelines.
+pub trait Multiplex<R, S>
+where
+    R: Tuple,
+    S: Tuple,
+{
+    /// Type of the [`Multiplex::multiplex`] method.
+    type Output;
+
+    /// Multiplex pipelines.
+    fn multiplex<F, E>(p: Self, f: F) -> Result<Self::Output, E>
+    where
+        F: Task<R, S, E>;
+}
+
+/// Implements [`Multiplex`] for closures.
+macro_rules! impl_multiplex {
+    (($($rt:ident $rp:ident),*), ($($st:ident $sr:ident $ss:ident),*)) => {
+        impl <$($rt,)* $($st,)*> Multiplex<($($rt,)*), ($($st,)*)> for ($(Pipeline<$rt>,)*) {
+            type Output = ($(Pipeline<$st>,)*);
+
+            fn multiplex<F, E>(($($rp,)*): Self, f: F) -> Result<Self::Output, E>
+            where
+                F: Task<($($rt,)*), ($($st,)*), E>,
+            {
+                $(
+                    let ($ss, $sr) = channel();
+                )*
+                f.process(($($rp.0,)*), ($($ss,)*))?;
+                Ok(($(Pipeline($sr),)*))
+            }
+        }
+    };
+}
+
+impl_multiplex! { (RA pa, RB pb), (SA ra sa, SB rb sb) }
+impl_multiplex! { (RA pa, RB pb), (SA ra sa, SB rb sb, SC rc sc) }
+impl_multiplex! { (RA pa, RB pb), (SA ra sa, SB rb sb, SC rc sc, SD rd sd) }
+impl_multiplex! { (RA pa, RB pb), (SA ra sa, SB rb sb, SC rc sc, SD rd sd, SE re se) }
+impl_multiplex! { (RA pa, RB pb), (SA ra sa, SB rb sb, SC rc sc, SD rd sd, SE re se, SF rf sf) }
+impl_multiplex! { (RA pa, RB pb, RC pc), (SA ra sa, SB rb sb) }
+impl_multiplex! { (RA pa, RB pb, RC pc), (SA ra sa, SB rb sb, SC rc sc) }
+impl_multiplex! { (RA pa, RB pb, RC pc), (SA ra sa, SB rb sb, SC rc sc, SD rd sd) }
+impl_multiplex! { (RA pa, RB pb, RC pc), (SA ra sa, SB rb sb, SC rc sc, SD rd sd, SE re se) }
+impl_multiplex! {
+    (RA pa, RB pb, RC pc),
+    (SA ra sa, SB rb sb, SC rc sc, SD rd sd, SE re se, SF rf sf)
+}
+impl_multiplex! { (RA pa, RB pb, RC pc, RD pd), (SA ra sa, SB rb sb) }
+impl_multiplex! { (RA pa, RB pb, RC pc, RD pd), (SA ra sa, SB rb sb, SC rc sc) }
+impl_multiplex! { (RA pa, RB pb, RC pc, RD pd), (SA ra sa, SB rb sb, SC rc sc, SD rd sd) }
+impl_multiplex! { (RA pa, RB pb, RC pc, RD pd), (SA ra sa, SB rb sb, SC rc sc, SD rd sd, SE re se) }
+impl_multiplex! {
+    (RA pa, RB pb, RC pc, RD pd),
+    (SA ra sa, SB rb sb, SC rc sc, SD rd sd, SE re se, SF rf sf)
+}
+impl_multiplex! { (RA pa, RB pb, RC pc, RD pd, RE pe), (SA ra sa, SB rb sb) }
+impl_multiplex! { (RA pa, RB pb, RC pc, RD pd, RE pe), (SA ra sa, SB rb sb, SC rc sc) }
+impl_multiplex! { (RA pa, RB pb, RC pc, RD pd, RE pe), (SA ra sa, SB rb sb, SC rc sc, SD rd sd) }
+impl_multiplex! {
+    (RA pa, RB pb, RC pc, RD pd, RE pe),
+    (SA ra sa, SB rb sb, SC rc sc, SD rd sd, SE re se)
+}
+impl_multiplex! {
+    (RA pa, RB pb, RC pc, RD pd, RE pe),
+    (SA ra sa, SB rb sb, SC rc sc, SD rd sd, SE re se, SF rf sf)
+}
+impl_multiplex! { (RA pa, RB pb, RC pc, RD pd, RE pe, RF pf), (SA ra sa, SB rb sb) }
+impl_multiplex! { (RA pa, RB pb, RC pc, RD pd, RE pe, RF pf), (SA ra sa, SB rb sb, SC rc sc) }
+impl_multiplex! {
+    (RA pa, RB pb, RC pc, RD pd, RE pe, RF pf),
+    (SA ra sa, SB rb sb, SC rc sc, SD rd sd)
+}
+impl_multiplex! {
+    (RA pa, RB pb, RC pc, RD pd, RE pe, RF pf),
+    (SA ra sa, SB rb sb, SC rc sc, SD rd sd, SE re se)
+}
+impl_multiplex! {
+    (RA pa, RB pb, RC pc, RD pd, RE pe, RF pf),
+    (SA ra sa, SB rb sb, SC rc sc, SD rd sd, SE re se, SF rf sf)
+}
 
 /// A pipeline task.
 pub trait Task<R, S, E>
