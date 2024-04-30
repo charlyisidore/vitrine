@@ -2,9 +2,9 @@
 
 use std::{net::SocketAddr, path::Path};
 
-use axum::Router;
+use axum::{handler::HandlerWithoutStateExt, http::StatusCode, Router};
 use thiserror::Error;
-use tower_http::services::{ServeDir, ServeFile};
+use tower_http::services::ServeDir;
 
 /// List of server errors.
 #[derive(Debug, Error)]
@@ -14,26 +14,21 @@ pub enum ServeError {
     Io(#[from] std::io::Error),
 }
 
+/// Show 404 error.
+async fn handle_404() -> (StatusCode, &'static str) {
+    (StatusCode::NOT_FOUND, "Not found")
+}
+
 /// Serve the site.
 ///
 /// This function creates a HTTP server that delivers files from `dir`.
 pub async fn serve(dir: impl AsRef<Path>, port: u16) -> Result<(), ServeError> {
     let dir = dir.as_ref();
 
-    let not_found_path = dir.join("404").join("index.html");
-
     let serve_dir = ServeDir::new(dir);
 
-    let router = Router::new();
-
-    let router = if not_found_path.exists() {
-        router.nest_service(
-            "/",
-            serve_dir.not_found_service(ServeFile::new(not_found_path)),
-        )
-    } else {
-        router.nest_service("/", serve_dir)
-    };
+    let router =
+        Router::new().nest_service("/", serve_dir.not_found_service(handle_404.into_service()));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
 
