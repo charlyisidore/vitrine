@@ -1,5 +1,6 @@
 //! Build the site.
 
+pub mod assets;
 pub mod bundle_css;
 pub mod bundle_html;
 pub mod bundle_js;
@@ -19,7 +20,7 @@ use std::path::PathBuf;
 use thiserror::Error;
 
 use self::{
-    bundle_css::task::BundleCssTask, bundle_html::task::BundleHtmlTask,
+    assets::task::AssetsTask, bundle_css::task::BundleCssTask, bundle_html::task::BundleHtmlTask,
     bundle_js::task::BundleJsTask, input::task::InputTask, layout::task::LayoutTask,
     markdown::task::MarkdownTask, metadata::task::MetadataTask, minify_css::task::MinifyCssTask,
     minify_html::task::MinifyHtmlTask, minify_js::task::MinifyJsTask, output::task::OutputTask,
@@ -33,6 +34,9 @@ use crate::{
 /// List of build errors.
 #[derive(Debug, Error)]
 pub enum BuildError {
+    /// Error while extracting HTML assets.
+    #[error("failed to extract HTML assets")]
+    Assets(#[source] self::assets::AssetsError),
     /// Error while bundling CSS.
     #[error("failed to bundle CSS")]
     BundleCss(#[source] self::bundle_css::BundleCssError),
@@ -106,6 +110,12 @@ pub struct Image {
 
     /// URL from which the entry will be accessible.
     url: UrlPath,
+
+    /// Image target width.
+    width: Option<u32>,
+
+    /// Image target height.
+    height: Option<u32>,
 }
 
 /// A script entry.
@@ -138,6 +148,30 @@ pub struct Style {
     content: String,
 }
 
+/// An asset (image, script, or style).
+#[derive(Debug)]
+pub enum Asset {
+    /// Image entry.
+    Image(Image),
+    /// Script entry.
+    Script(Script),
+    /// Style entry.
+    Style(Style),
+}
+
+/// An entry (page or asset).
+#[derive(Debug)]
+pub enum Entry {
+    /// Page entry.
+    Page(Page),
+    /// Image entry.
+    Image(Image),
+    /// Script entry.
+    Script(Script),
+    /// Style entry.
+    Style(Style),
+}
+
 /// Build the site with given configuration.
 pub fn build(config: &Config) -> Result<(), BuildError> {
     // Check if configuration is normalized
@@ -161,7 +195,7 @@ pub fn build(config: &Config) -> Result<(), BuildError> {
     let metadata_task = MetadataTask::new();
     let markdown_task = MarkdownTask::new(config).map_err(BuildError::NewMarkdown)?;
     let layout_task = LayoutTask::new(config).map_err(BuildError::NewLayout)?;
-    let bundle_html_task = BundleHtmlTask::new(config);
+    let assets_task = AssetsTask::new(config);
     let minify_html_task = MinifyHtmlTask::new(config);
 
     let bundle_js_task = BundleJsTask::new();
@@ -171,6 +205,7 @@ pub fn build(config: &Config) -> Result<(), BuildError> {
     let bundle_css_task = BundleCssTask::new();
     let minify_css_task = MinifyCssTask::new(config);
 
+    let bundle_html_task = BundleHtmlTask::new(config);
     let output_task = OutputTask::new(config);
 
     let (page_pipeline, image_pipeline, script_pipeline, style_pipeline) = Pipeline::new(walk_task)
@@ -181,12 +216,8 @@ pub fn build(config: &Config) -> Result<(), BuildError> {
         .map_err(BuildError::Markdown)?
         .pipe(layout_task)
         .map_err(BuildError::Layout)?
-        .fork(bundle_html_task)
-        .map_err(BuildError::BundleHtml)?;
-
-    let page_pipeline = page_pipeline
-        .pipe(minify_html_task)
-        .map_err(BuildError::MinifyHtml)?;
+        .fork(assets_task)
+        .map_err(BuildError::Assets)?;
 
     let script_pipeline = script_pipeline
         .pipe(bundle_js_task)
@@ -202,18 +233,25 @@ pub fn build(config: &Config) -> Result<(), BuildError> {
         .pipe(minify_css_task)
         .map_err(BuildError::MinifyCss)?;
 
-    let num_output_files = Pipeline::merge(
+    let (page_pipeline, asset_pipeline) = Pipeline::<()>::multiplex(
         (
             page_pipeline,
             image_pipeline,
             script_pipeline,
             style_pipeline,
         ),
-        output_task,
+        bundle_html_task,
     )
-    .map_err(BuildError::Output)?
-    .into_iter()
-    .count();
+    .map_err(BuildError::BundleHtml)?;
+
+    let page_pipeline = page_pipeline
+        .pipe(minify_html_task)
+        .map_err(BuildError::MinifyHtml)?;
+
+    let num_output_files = Pipeline::merge((page_pipeline, asset_pipeline), output_task)
+        .map_err(BuildError::Output)?
+        .into_iter()
+        .count();
 
     let duration = start_time.elapsed().as_secs_f64();
 

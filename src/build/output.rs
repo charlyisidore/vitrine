@@ -14,16 +14,6 @@ pub enum OutputError {
     Io(#[from] std::io::Error),
 }
 
-/// Convert a URL to a file path w.r.t. given base directory.
-pub fn url_to_path(url: impl AsRef<str>, base_dir: impl AsRef<Path>) -> PathBuf {
-    let url = UrlPath::from(url.as_ref());
-    let base_dir = base_dir.as_ref().to_path_buf();
-
-    url.segments()
-        .filter(|s| !s.is_empty())
-        .fold(base_dir, |path, segment| path.join(segment))
-}
-
 /// Normalize a page URL, e.g. by appending `index.html`.
 pub fn normalize_page_url(mut url: String) -> String {
     if url.ends_with('/') {
@@ -37,13 +27,23 @@ pub fn normalize_page_url(mut url: String) -> String {
     }
 }
 
+/// Convert a URL to an output file path w.r.t. given base directory.
+pub fn url_to_path(url: impl AsRef<str>, base_dir: impl AsRef<Path>) -> PathBuf {
+    let url = UrlPath::from(url.as_ref());
+    let base_dir = base_dir.as_ref().to_path_buf();
+
+    url.segments()
+        .filter(|s| !s.is_empty())
+        .fold(base_dir, |path, segment| path.join(segment))
+}
+
 /// Pipeline task.
 pub mod task {
     use std::path::{Path, PathBuf};
 
     use super::{normalize_page_url, url_to_path, OutputError};
     use crate::{
-        build::{Image, Page, Script, Style},
+        build::{Asset, Page},
         config::Config,
         util::pipeline::{Receiver, Sender, Task},
     };
@@ -76,24 +76,20 @@ pub mod task {
                         .as_ref()
                         .expect("`config.output_dir` must be set")
                 ),
-                "path must be canonical"
+                "path must be inside `config.output_dir`"
             );
 
             println!("Writing {:?}", path);
-            std::fs::create_dir_all(path.parent().expect("path must have a parent"))?;
+
+            std::fs::create_dir_all(path.parent().unwrap())?;
             Ok(std::fs::write(path, content)?)
         }
     }
 
-    impl Task<(Page, Image, Script, Style), (PathBuf,), OutputError> for OutputTask<'_> {
+    impl Task<(Page, Asset), (PathBuf,), OutputError> for OutputTask<'_> {
         fn process(
             self,
-            (rx_page, rx_image, rx_script, rx_style): (
-                Receiver<Page>,
-                Receiver<Image>,
-                Receiver<Script>,
-                Receiver<Style>,
-            ),
+            (rx_page, rx_asset): (Receiver<Page>, Receiver<Asset>),
             (tx,): (Sender<PathBuf>,),
         ) -> Result<(), OutputError> {
             // Skip if no `config.output_dir` specified
@@ -108,21 +104,16 @@ pub mod task {
                 tx.send(output_path).unwrap();
             }
 
-            for image in rx_image {
-                let output_path = url_to_path(image.url, output_dir);
-                // self.write(&output_path, page.content)?;
-                tx.send(output_path).unwrap();
-            }
-
-            for script in rx_script {
-                let output_path = url_to_path(script.url, output_dir);
-                self.write(&output_path, script.content)?;
-                tx.send(output_path).unwrap();
-            }
-
-            for style in rx_style {
-                let output_path = url_to_path(style.url, output_dir);
-                self.write(&output_path, style.content)?;
+            for asset in rx_asset {
+                let (url, content) = match asset {
+                    Asset::Image(image) => (image.url, None),
+                    Asset::Script(script) => (script.url, Some(script.content)),
+                    Asset::Style(style) => (style.url, Some(style.content)),
+                };
+                let output_path = url_to_path(url, output_dir);
+                if let Some(content) = content {
+                    self.write(&output_path, content)?;
+                }
                 tx.send(output_path).unwrap();
             }
 
