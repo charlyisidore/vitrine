@@ -216,17 +216,18 @@ impl Theme {
 
 /// Escape special characters in a CSS identifier.
 ///
-/// See <https://www.w3.org/TR/CSS21/syndata.html#characters>.
+/// See <https://www.w3.org/International/questions/qa-escapes#css_identifiers>.
 fn escape_css_identifier(input: impl AsRef<str>) -> String {
     let input = input.as_ref();
 
     input
         .char_indices()
         .fold(String::with_capacity(input.len()), |mut output, (i, c)| {
-            if !c.is_ascii_alphabetic() && c != '-' && c != '_' && (!c.is_ascii_digit() || i == 0) {
-                output.push('\\');
+            if c.is_ascii_alphabetic() || c == '-' || c == '_' || (i > 0 && c.is_ascii_digit()) {
+                output.push(c);
+            } else {
+                output.push_str(&dbg!(format!("\\{:x} ", c as u32)));
             }
-            output.push(c);
             output
         })
 }
