@@ -49,6 +49,10 @@ where
         add_watch_path(&mut debouncer, layout_dir)?;
     }
 
+    if let Some(config_path) = &config.config_path {
+        add_watch_path(&mut debouncer, config_path)?;
+    }
+
     println!("Watching for file changes");
 
     let mut last_callback_time = Instant::now();
@@ -81,16 +85,28 @@ where
                     continue;
                 }
 
-                let mut paths: Vec<_> = events
-                    .iter()
-                    .flat_map(|event| &event.paths)
-                    .filter_map(|path| path.to_str())
-                    .collect();
+                let mut paths: Vec<_> = events.iter().flat_map(|event| &event.paths).collect();
 
                 paths.sort();
                 paths.dedup();
 
-                println!("Files changed: {}", paths.join(", "));
+                if config
+                    .config_path
+                    .as_ref()
+                    .is_some_and(|config_path| paths.iter().any(|path| config_path == *path))
+                {
+                    println!("Configuration changed");
+                    return Ok(());
+                }
+
+                println!(
+                    "Files changed: {}",
+                    paths
+                        .iter()
+                        .map(|p| format!("{p:?}"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
 
                 last_callback_time = Instant::now();
 
@@ -112,7 +128,6 @@ fn add_watch_path(
     let path = path.as_ref();
 
     debouncer.watcher().watch(path, RecursiveMode::Recursive)?;
-
     debouncer.cache().add_root(path, RecursiveMode::Recursive);
 
     Ok(())

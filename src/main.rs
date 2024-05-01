@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand};
-use futures::TryFutureExt;
+use futures::future::Either;
 use vitrine::{Config, Url};
 
 /// Command line usage description.
@@ -74,25 +74,34 @@ async fn main() -> anyhow::Result<()> {
             vitrine::build(&config)?;
         },
         Command::Serve { build_args, port } => {
-            let config = Config {
-                optimize: false,
-                ..create_config(build_args)?
-            };
+            // Reload configuration at each iteration
+            loop {
+                let config = Config {
+                    optimize: false,
+                    ..create_config(build_args.clone())?
+                };
 
-            let Some(output_dir) = &config.output_dir else {
-                panic!("no output directory specified");
-            };
+                let Some(output_dir) = &config.output_dir else {
+                    panic!("no output directory specified");
+                };
 
-            vitrine::build(&config)?;
+                vitrine::build(&config)?;
 
-            let serve = vitrine::serve(&output_dir, port).map_err(anyhow::Error::from);
+                let serve = vitrine::serve(&output_dir, port);
 
-            let watch = vitrine::watch(&config, || {
-                vitrine::build(&config).map_err(|e| vitrine::watch::WatchError::Boxed(Box::new(e)))
-            })
-            .map_err(anyhow::Error::from);
+                let watch = vitrine::watch(&config, || {
+                    vitrine::build(&config)
+                        .map_err(|e| vitrine::watch::WatchError::Boxed(Box::new(e)))
+                });
 
-            tokio::try_join!(serve, watch)?;
+                let result = futures::future::try_select(Box::pin(serve), Box::pin(watch)).await;
+
+                match result {
+                    Err(Either::Left((e, _))) => Err(anyhow::Error::from(e)),
+                    Err(Either::Right((e, _))) => Err(anyhow::Error::from(e)),
+                    _ => Ok(()),
+                }?;
+            }
         },
     }
 
