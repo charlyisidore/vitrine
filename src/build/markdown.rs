@@ -5,8 +5,11 @@
 //!
 //! This module uses [`markdown_it`] under the hood.
 
+pub mod syntax_highlight;
 use markdown_it::MarkdownIt;
 use thiserror::Error;
+
+use crate::config::Config;
 
 /// List of errors for this module.
 #[derive(Debug, Error)]
@@ -27,16 +30,19 @@ impl MarkdownParser {
     /// Create a Markdown parser.
     ///
     /// By default, it parses only the [CommonMark](<https://spec.commonmark.org/>) standard.
-    /// The syntax can be extended using the [`Self::add_plugin`] method.
+    /// The syntax can be extended using the [`Self::add_plugins`] method.
     pub fn new() -> Self {
         let mut parser = MarkdownIt::new();
+
+        // Always add CommonMark
         markdown_it::plugins::cmark::add(&mut parser);
+
         Self { parser }
     }
 
-    /// Add a builtin plugin by name.
+    /// Add plugins from configuration.
     ///
-    /// This method returns an error when the plugin has not been found.
+    /// This method returns an error when a plugin has not been found.
     ///
     /// Available plugins:
     ///
@@ -53,27 +59,29 @@ impl MarkdownParser {
     /// - `heading_anchors`: Add id attribute (slug) to headings.
     /// - `sourcepos`: Add source mapping to resulting HTML, looks like this:
     ///   `<stuff data-sourcepos="1:1-2:3">`.
+    /// - `syntax_highlight`: Highlight code syntax.
     ///
     /// See <https://docs.rs/markdown-it/0.6.0/markdown_it/plugins/index.html> for more details.
-    pub fn add_plugin(&mut self, name: impl AsRef<str>) -> Result<(), MarkdownError> {
+    pub fn add_plugins(&mut self, config: &Config) -> Result<(), MarkdownError> {
         use markdown_it::plugins::{extra, html, sourcepos};
 
-        let name = name.as_ref();
-
-        match name {
-            "cmark" => {},
-            "html" => html::add(&mut self.parser),
-            "strikethrough" => extra::strikethrough::add(&mut self.parser),
-            "beautify_links" => extra::beautify_links::add(&mut self.parser),
-            "linkify" => extra::linkify::add(&mut self.parser),
-            "tables" => extra::tables::add(&mut self.parser),
-            "typographer" => extra::typographer::add(&mut self.parser),
-            "smartquotes" => extra::smartquotes::add(&mut self.parser),
-            "heading_anchors" => {
-                extra::heading_anchors::add(&mut self.parser, |s| slug::slugify(s))
-            },
-            "sourcepos" => sourcepos::add(&mut self.parser),
-            _ => return Err(MarkdownError::PluginNotFound(name.to_string())),
+        for plugin in &config.markdown.plugins {
+            match plugin.as_str() {
+                "cmark" => {},
+                "html" => html::add(&mut self.parser),
+                "strikethrough" => extra::strikethrough::add(&mut self.parser),
+                "beautify_links" => extra::beautify_links::add(&mut self.parser),
+                "linkify" => extra::linkify::add(&mut self.parser),
+                "tables" => extra::tables::add(&mut self.parser),
+                "typographer" => extra::typographer::add(&mut self.parser),
+                "smartquotes" => extra::smartquotes::add(&mut self.parser),
+                "heading_anchors" => {
+                    extra::heading_anchors::add(&mut self.parser, |s| slug::slugify(s))
+                },
+                "sourcepos" => sourcepos::add(&mut self.parser),
+                "syntax_highlight" => self::syntax_highlight::add(&mut self.parser, config),
+                _ => return Err(MarkdownError::PluginNotFound(plugin.to_string())),
+            }
         }
 
         Ok(())
@@ -122,11 +130,7 @@ pub mod task {
         /// Create a pipeline task to parse Markdown content.
         pub fn new(config: &Config) -> Result<Self, MarkdownError> {
             let mut parser = MarkdownParser::new();
-
-            for plugin_name in &config.markdown.plugins {
-                parser.add_plugin(plugin_name)?;
-            }
-
+            parser.add_plugins(config)?;
             Ok(Self { parser })
         }
     }

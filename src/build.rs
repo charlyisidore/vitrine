@@ -13,6 +13,7 @@ pub mod minify_html;
 pub mod minify_js;
 pub mod output;
 pub mod scss;
+pub mod syntax_highlight;
 pub mod typescript;
 
 use std::path::PathBuf;
@@ -27,6 +28,7 @@ use self::{
     scss::task::ScssTask,
 };
 use crate::{
+    build::syntax_highlight::task::SyntaxHighlightTask,
     config::Config,
     util::{pipeline::Pipeline, url::UrlPath, value::Value},
 };
@@ -79,6 +81,9 @@ pub enum BuildError {
     /// Error while compiling SCSS.
     #[error("failed to compile SCSS")]
     Scss(#[source] self::scss::ScssError),
+    /// Error while creating syntax highlight themes.
+    #[error("failed to generate syntax highlight themes")]
+    SyntaxHighlight(#[source] self::syntax_highlight::SyntaxHighlightError),
 }
 
 /// A page entry.
@@ -205,6 +210,8 @@ pub fn build(config: &Config) -> Result<(), BuildError> {
     let bundle_css_task = BundleCssTask::new();
     let minify_css_task = MinifyCssTask::new(config);
 
+    let syntax_highlight_task = SyntaxHighlightTask::new(config);
+
     let bundle_html_task = BundleHtmlTask::new(config);
     let output_task = OutputTask::new(config);
 
@@ -228,6 +235,8 @@ pub fn build(config: &Config) -> Result<(), BuildError> {
     let style_pipeline = style_pipeline
         .pipe(scss_task)
         .map_err(BuildError::Scss)?
+        .pipe(syntax_highlight_task)
+        .map_err(BuildError::SyntaxHighlight)?
         .pipe(bundle_css_task)
         .map_err(BuildError::BundleCss)?
         .pipe(minify_css_task)
