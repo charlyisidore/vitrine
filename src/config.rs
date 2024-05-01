@@ -1,6 +1,9 @@
 //! Configure the site builder.
 
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
 use serde::Deserialize;
 use thiserror::Error;
@@ -13,7 +16,10 @@ use vitrine_derive::FromRhai;
 use vitrine_derive::VitrineNoop;
 
 use crate::{
-    build::layout::{LayoutFilter, LayoutFunction, LayoutTest},
+    build::{
+        layout::{LayoutFilter, LayoutFunction, LayoutTest},
+        markdown::syntax_highlight::SyntaxHighlighter,
+    },
     util::{path::PathExt, url::Url, value::Value},
 };
 
@@ -81,7 +87,7 @@ pub enum ConfigError {
 pub type Map<K, V> = std::collections::HashMap<K, V>;
 
 /// Configuration for the site builder.
-#[derive(Debug, Default, Deserialize, VitrineNoop)]
+#[derive(Clone, Debug, Default, Deserialize, VitrineNoop)]
 #[cfg_attr(feature = "js", derive(FromJs))]
 #[cfg_attr(feature = "lua", derive(FromLua))]
 #[cfg_attr(feature = "rhai", derive(FromRhai))]
@@ -128,6 +134,11 @@ pub struct Config {
     #[vitrine(default)]
     pub site_data: Value,
 
+    /// Syntax highlight configuration.
+    #[serde(default)]
+    #[vitrine(default)]
+    pub syntax_highlight: SyntaxHighlightConfig,
+
     /// Determine if the site should be optimized (minified, compressed...).
     #[serde(skip)]
     #[vitrine(skip)]
@@ -135,7 +146,7 @@ pub struct Config {
 }
 
 /// Configuration for the layout engine.
-#[derive(Debug, Default, Deserialize, VitrineNoop)]
+#[derive(Clone, Debug, Default, Deserialize, VitrineNoop)]
 #[cfg_attr(feature = "js", derive(FromJs))]
 #[cfg_attr(feature = "lua", derive(FromLua))]
 #[cfg_attr(feature = "rhai", derive(FromRhai))]
@@ -162,7 +173,7 @@ pub struct LayoutConfig {
 }
 
 /// Configuration for the markdown parser.
-#[derive(Debug, Default, Deserialize, VitrineNoop)]
+#[derive(Clone, Debug, Default, Deserialize, VitrineNoop)]
 #[cfg_attr(feature = "js", derive(FromJs))]
 #[cfg_attr(feature = "lua", derive(FromLua))]
 #[cfg_attr(feature = "rhai", derive(FromRhai))]
@@ -171,6 +182,55 @@ pub struct MarkdownConfig {
     #[serde(default)]
     #[vitrine(default)]
     pub plugins: Vec<String>,
+}
+
+/// Configuration for syntax highlight.
+#[derive(Clone, Debug, Default, Deserialize, VitrineNoop)]
+#[cfg_attr(feature = "js", derive(FromJs))]
+#[cfg_attr(feature = "lua", derive(FromLua))]
+#[cfg_attr(feature = "rhai", derive(FromRhai))]
+pub struct SyntaxHighlightConfig {
+    /// Prefix for CSS classes.
+    #[serde(default)]
+    #[vitrine(default)]
+    pub css_prefix: String,
+
+    /// HTML attributes for syntax highlight `<code>` element.
+    #[serde(default)]
+    #[vitrine(default)]
+    pub code_attributes: HashMap<String, String>,
+
+    /// HTML attributes for syntax highlight `<pre>` element.
+    #[serde(default)]
+    #[vitrine(default)]
+    pub pre_attributes: HashMap<String, String>,
+
+    /// Syntax highlight function.
+    #[serde(skip)]
+    #[vitrine(default)]
+    pub highlighter: Option<SyntaxHighlighter>,
+
+    /// Syntax highlight CSS stylesheets.
+    #[serde(default)]
+    #[vitrine(default)]
+    pub stylesheets: Vec<SyntaxHighlightStylesheetConfig>,
+}
+
+/// Configuration for a syntax highlight CSS stylesheet.
+#[derive(Clone, Debug, Deserialize, FromJs, FromLua, FromRhai)]
+pub struct SyntaxHighlightStylesheetConfig {
+    /// Prefix for class names.
+    #[serde(default)]
+    #[vitrine(default)]
+    pub prefix: String,
+
+    /// Theme name.
+    ///
+    /// See <https://docs.rs/syntect/latest/syntect/highlighting/struct.ThemeSet.html>
+    pub theme: String,
+
+    /// Output URL of the stylesheet.
+    pub url: String,
 }
 
 impl Config {
@@ -187,10 +247,7 @@ impl Config {
     /// Load configuration from file path.
     ///
     /// This method selects the parser according to the file extension.
-    pub fn from_file<P>(path: P) -> Result<Self, ConfigError>
-    where
-        P: AsRef<Path>,
-    {
+    pub fn from_file(path: impl AsRef<Path>) -> Result<Self, ConfigError> {
         let path = path.as_ref();
 
         let Some(extension) = path.extension().and_then(|v| v.to_str()) else {
@@ -219,7 +276,10 @@ impl Config {
             path: path.to_owned(),
         })?;
 
-        Ok(config)
+        Ok(Self {
+            config_path: Some(path.to_path_buf()),
+            ..config
+        })
     }
 
     /// Normalize the configuration.
@@ -288,6 +348,17 @@ impl Config {
     /// inside the output directory.
     pub fn validate(&self) -> Result<(), ConfigError> {
         if let Some(output_dir) = &self.output_dir {
+            // Protection against overwriting config file
+            if self
+                .config_path
+                .as_ref()
+                .is_some_and(|path| path.starts_with(output_dir))
+            {
+                return Err(ConfigError::Validate(
+                    "configuration file must be located outside `output_dir`".to_string(),
+                ));
+            }
+
             // Protection against overwriting input files
             if self.input_dir.starts_with(output_dir) {
                 return Err(ConfigError::Validate(
