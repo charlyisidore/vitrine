@@ -217,19 +217,20 @@ impl Theme {
 /// Escape special characters in a CSS identifier.
 ///
 /// See <https://www.w3.org/International/questions/qa-escapes#css_identifiers>.
-fn escape_css_identifier(input: impl AsRef<str>) -> String {
-    let input = input.as_ref();
+fn escape_css_identifier(identifier: impl AsRef<str>) -> String {
+    let identifier = identifier.as_ref();
 
-    input
-        .char_indices()
-        .fold(String::with_capacity(input.len()), |mut output, (i, c)| {
+    identifier.char_indices().fold(
+        String::with_capacity(identifier.len()),
+        |mut output, (i, c)| {
             if c.is_ascii_alphabetic() || c == '-' || c == '_' || (i > 0 && c.is_ascii_digit()) {
                 output.push(c);
             } else {
-                output.push_str(&dbg!(format!("\\{:x} ", c as u32)));
+                output.push_str(&format!("\\{:x} ", c as u32));
             }
             output
-        })
+        },
+    )
 }
 
 /// Return the list of themes formatted as a string.
