@@ -50,8 +50,8 @@ static SYNTAX_SET: Lazy<SyntaxSet> = Lazy::new(SyntaxSet::load_defaults_newlines
 /// SAFETY: `prefix` must outlive the function call.
 pub fn highlight(
     input: impl AsRef<str>,
-    language: Option<impl AsRef<str>>,
-    prefix: Option<impl AsRef<str>>,
+    language: Option<&str>,
+    prefix: Option<&str>,
 ) -> Result<String, SyntaxHighlightError> {
     let input = input.as_ref();
 
@@ -63,7 +63,7 @@ pub fn highlight(
     let style = match prefix {
         None => ClassStyle::Spaced,
         Some(prefix) => ClassStyle::SpacedPrefixed {
-            prefix: unsafe { std::mem::transmute::<&str, &'static str>(prefix.as_ref()) },
+            prefix: unsafe { std::mem::transmute::<&str, &'static str>(prefix) },
         },
     };
 
@@ -307,5 +307,68 @@ pub mod task {
 
             Ok(())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{escape_css_identifier, highlight, Theme};
+
+    #[test]
+    fn highlight_code() {
+        let result = highlight("let foo = \"bar\";", Some("rust"), None).unwrap();
+        assert!(result.contains("foo"));
+        assert!(result.contains("bar"));
+        assert!(result.contains('<'));
+        assert!(result.contains('>'));
+    }
+
+    #[test]
+    fn highlight_code_with_prefix() {
+        let result = highlight("let foo = \"bar\";", Some("rust"), Some("prefix-")).unwrap();
+        assert!(result.contains("foo"));
+        assert!(result.contains("bar"));
+        assert!(result.contains('<'));
+        assert!(result.contains('>'));
+        assert!(result.contains("prefix-"));
+    }
+
+    #[test]
+    fn css_theme() {
+        let theme = Theme::from_name("base16-eighties.dark").unwrap();
+        let result = theme.to_css().unwrap();
+        assert!(result.contains(".code"));
+    }
+
+    #[test]
+    fn css_theme_with_prefix() {
+        let theme = Theme::from_name("base16-eighties.dark")
+            .unwrap()
+            .with_prefix("prefix-");
+        let result = theme.to_css().unwrap();
+        assert!(result.contains(".prefix-code"));
+    }
+
+    #[test]
+    fn escape_css() {
+        const CASES: [(&str, &str); 3] =
+            [("abc", "abc"), ("123", "\\31 23"), ("c++", "c\\2b \\2b ")];
+
+        for (input, expected) in CASES {
+            let result = escape_css_identifier(input);
+            assert_eq!(
+                result, expected,
+                "\nescape_css_identifier({input:?}) expected {expected:?} but received {result:?}"
+            );
+        }
+    }
+
+    /// See issue [syntect#308](<https://github.com/trishume/syntect/issues/308>).
+    #[test]
+    fn syntect_issue_308() {
+        let theme = Theme::from_name("Solarized (dark)").unwrap();
+        let result = theme.to_css().unwrap();
+        assert!(!result.contains(".c++"));
+        assert!(result.contains(".c\\2b \\2b "));
     }
 }

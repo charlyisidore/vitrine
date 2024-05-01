@@ -83,12 +83,15 @@ impl CoreRule for SyntaxHighlightRule {
             }
 
             // TODO: spread error when markdown_it supports it
-            let Some(content) = highlight(content, language, prefix)
-                .inspect_err(|error| {
-                    eprintln!("markdown::syntax_highlight: {}", error);
-                })
-                .ok()
-            else {
+            let Some(content) = highlight(
+                content,
+                language.map(|s| s.as_str()),
+                prefix.map(|s| s.as_str()),
+            )
+            .inspect_err(|error| {
+                eprintln!("markdown::syntax_highlight: {}", error);
+            })
+            .ok() else {
                 return;
             };
 
