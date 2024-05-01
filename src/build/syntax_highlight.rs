@@ -45,15 +45,6 @@ static THEME_SET: Lazy<ThemeSet> = Lazy::new(ThemeSet::load_defaults);
 /// Set of default syntaxes.
 static SYNTAX_SET: Lazy<SyntaxSet> = Lazy::new(SyntaxSet::load_defaults_newlines);
 
-/// Syntax highlighting theme.
-pub struct Theme {
-    /// Syntect theme.
-    theme: syntect::highlighting::Theme,
-
-    /// Prefix for CSS class names.
-    prefix: String,
-}
-
 /// Highlight a code with specified language.
 ///
 /// SAFETY: `prefix` must outlive the function call.
@@ -83,6 +74,15 @@ pub fn highlight(
     }
 
     Ok(html_generator.finalize())
+}
+
+/// Syntax highlighting theme.
+pub struct Theme {
+    /// Syntect theme.
+    theme: syntect::highlighting::Theme,
+
+    /// Prefix for CSS class names.
+    prefix: String,
 }
 
 impl Theme {
