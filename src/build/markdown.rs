@@ -22,7 +22,7 @@ pub enum MarkdownError {
 /// Markdown parser.
 #[derive(Debug)]
 pub struct MarkdownParser {
-    // Markdown-it parser.
+    /// Markdown-it parser.
     parser: MarkdownIt,
 }
 
