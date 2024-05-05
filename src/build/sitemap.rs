@@ -160,10 +160,7 @@ pub mod task {
                     .map(|sitemap_url| {
                         // Fallback to defaults for unspecified fields
                         SitemapUrl {
-                            loc: format!(
-                                "{}{}{}",
-                                config.url_prefix, self.config.base_url, page.url
-                            ),
+                            loc: format!("{}{}", config.url_prefix, page.url),
                             lastmod: sitemap_url
                                 .lastmod
                                 .or_else(|| {
