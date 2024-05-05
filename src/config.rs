@@ -20,7 +20,11 @@ use crate::{
         layout::{LayoutFilter, LayoutFunction, LayoutTest},
         markdown::syntax_highlight::SyntaxHighlighter,
     },
-    util::{path::PathExt, url::Url, value::Value},
+    util::{
+        path::PathExt,
+        url::{Url, UrlPath},
+        value::Value,
+    },
 };
 
 /// List of configuration errors.
@@ -134,6 +138,9 @@ pub struct Config {
     #[vitrine(default)]
     pub site_data: Value,
 
+    /// Sitemap configuration.
+    pub sitemap: Option<SitemapConfig>,
+
     /// Syntax highlight configuration.
     #[serde(default)]
     #[vitrine(default)]
@@ -216,6 +223,29 @@ pub struct SyntaxHighlightConfig {
     pub stylesheets: Vec<SyntaxHighlightStylesheetConfig>,
 }
 
+/// Configuration for sitemap generation.
+#[derive(Clone, Debug, Default, Deserialize, VitrineNoop)]
+#[cfg_attr(feature = "js", derive(FromJs))]
+#[cfg_attr(feature = "lua", derive(FromLua))]
+#[cfg_attr(feature = "rhai", derive(FromRhai))]
+pub struct SitemapConfig {
+    /// Default page change frequency.
+    pub changefreq: Option<String>,
+
+    /// Default priority.
+    pub priority: Option<f64>,
+
+    /// Domain to prepend to URLs, if `base_url` does not specify it.
+    #[serde(default)]
+    #[vitrine(default)]
+    pub url_prefix: String,
+
+    /// URL of the sitemap.
+    #[serde(default = "default_sitemap_url")]
+    #[vitrine(default = "default_sitemap_url")]
+    pub url: UrlPath,
+}
+
 /// Configuration for a syntax highlight CSS stylesheet.
 #[derive(Clone, Debug, Deserialize, FromJs, FromLua, FromRhai)]
 pub struct SyntaxHighlightStylesheetConfig {
@@ -230,7 +260,7 @@ pub struct SyntaxHighlightStylesheetConfig {
     pub theme: String,
 
     /// Output URL of the stylesheet.
-    pub url: String,
+    pub url: UrlPath,
 }
 
 impl Config {
@@ -394,4 +424,9 @@ pub fn default_output_dir() -> Option<PathBuf> {
 pub fn default_layout_dir() -> Option<PathBuf> {
     // Returns the path only if it exists
     Some(PathBuf::from("_layouts")).filter(|path| path.exists())
+}
+
+/// Return the default URL of the sitemap.
+fn default_sitemap_url() -> UrlPath {
+    UrlPath::from("/sitemap.xml")
 }
