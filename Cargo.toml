@@ -52,7 +52,7 @@ swc_core = { version = "0.91.3", features = ["bundler", "common", "ecma_ast", "e
 syntect = { version = "5.2.0", default-features = false, features = ["default-fancy"] }
 tera = { version = "1.19.1", optional = true }
 thiserror = "1.0.59"
-time = { version = "0.3.36", features = ["parsing", "macros"] }
+time = { version = "0.3.36", features = ["macros", "parsing"] }
 tokio = "1.37.0"
 toml = { version = "0.8.12", default-features = false, features = ["parse"] }
 tower-http = { version = "0.5.2", features = ["fs"] }
