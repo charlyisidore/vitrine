@@ -195,7 +195,7 @@ pub mod task {
                         style_tx
                             .send(Style {
                                 content: read_content(&input_path, &url)?,
-                                input_path,
+                                input_path: Some(input_path),
                                 url: self.create_url(url, Some("css")),
                             })
                             .unwrap();

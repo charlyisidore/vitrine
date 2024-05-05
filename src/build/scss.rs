@@ -63,7 +63,8 @@ pub mod task {
             for style in rx {
                 let style = if style
                     .input_path
-                    .extension()
+                    .as_ref()
+                    .and_then(|path| path.extension())
                     .is_some_and(|extension| extension == "scss")
                 {
                     let content = self.compiler.compile(style.content)?;

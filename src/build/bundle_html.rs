@@ -267,10 +267,15 @@ pub mod task {
             }
 
             for style in style_rx {
-                let path = style.input_path.to_str().unwrap().to_string();
-                let url = self.normalize_url(&style.url);
-                link_to_url.insert(Link::Style { url: path }, url.clone());
-                asset_tx.send(Asset::Style(Style { url, ..style })).unwrap();
+                if let Some(path) = &style.input_path {
+                    let path = path.to_str().unwrap().to_string();
+                    let url = self.normalize_url(&style.url);
+                    link_to_url.insert(Link::Style { url: path }, url.clone());
+                    asset_tx.send(Asset::Style(Style { url, ..style })).unwrap();
+                } else {
+                    let url = self.normalize_url(&style.url);
+                    asset_tx.send(Asset::Style(Style { url, ..style })).unwrap();
+                }
             }
 
             for page in pages {

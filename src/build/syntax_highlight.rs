@@ -295,7 +295,7 @@ pub mod task {
                         theme: stylesheet.theme.clone(),
                     })?;
 
-                let url = stylesheet.url.clone().into();
+                let url = stylesheet.url.clone();
 
                 tx.send(Style {
                     input_path: Default::default(),

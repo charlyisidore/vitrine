@@ -43,7 +43,7 @@ pub mod task {
 
     use super::{normalize_page_url, url_to_path, OutputError};
     use crate::{
-        build::{Asset, Page},
+        build::{Asset, Page, Xml},
         config::Config,
         util::pipeline::{Receiver, Sender, Task},
     };
@@ -86,10 +86,10 @@ pub mod task {
         }
     }
 
-    impl Task<(Page, Asset), (PathBuf,), OutputError> for OutputTask<'_> {
+    impl Task<(Page, Asset, Xml), (PathBuf,), OutputError> for OutputTask<'_> {
         fn process(
             self,
-            (rx_page, rx_asset): (Receiver<Page>, Receiver<Asset>),
+            (rx_page, rx_asset, rx_xml): (Receiver<Page>, Receiver<Asset>, Receiver<Xml>),
             (tx,): (Sender<PathBuf>,),
         ) -> Result<(), OutputError> {
             // Skip if no `config.output_dir` specified
@@ -114,6 +114,12 @@ pub mod task {
                 if let Some(content) = content {
                     self.write(&output_path, content)?;
                 }
+                tx.send(output_path).unwrap();
+            }
+
+            for xml in rx_xml {
+                let output_path = url_to_path(&xml.url, output_dir);
+                self.write(&output_path, xml.content)?;
                 tx.send(output_path).unwrap();
             }
 

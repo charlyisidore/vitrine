@@ -160,17 +160,23 @@ pub mod task {
             let provider = CssSourceProvider::new();
 
             for style in rx {
-                provider.insert(&style.input_path, style.content.clone());
+                if let Some(input_path) = &style.input_path {
+                    provider.insert(input_path, style.content.clone());
+                }
                 styles.push(style);
             }
 
             for style in styles {
-                let content = bundle_css(&style.input_path, &provider).map_err(|source| {
-                    BundleCssError::WithFile {
-                        source: Box::new(source),
-                        path: style.input_path.clone(),
-                    }
-                })?;
+                let content = if let Some(input_path) = &style.input_path {
+                    bundle_css(input_path, &provider).map_err(|source| {
+                        BundleCssError::WithFile {
+                            source: Box::new(source),
+                            path: input_path.clone(),
+                        }
+                    })?
+                } else {
+                    style.content
+                };
 
                 tx.send(Style { content, ..style }).unwrap();
             }

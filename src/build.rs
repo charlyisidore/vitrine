@@ -13,6 +13,7 @@ pub mod minify_html;
 pub mod minify_js;
 pub mod output;
 pub mod scss;
+pub mod sitemap;
 pub mod syntax_highlight;
 pub mod typescript;
 
@@ -28,9 +29,9 @@ use self::{
     scss::task::ScssTask,
 };
 use crate::{
-    build::syntax_highlight::task::SyntaxHighlightTask,
+    build::{sitemap::task::SitemapTask, syntax_highlight::task::SyntaxHighlightTask},
     config::Config,
-    util::{pipeline::Pipeline, url::UrlPath, value::Value},
+    util::{date_time::DateTime, pipeline::Pipeline, url::UrlPath, value::Value},
 };
 
 /// List of build errors.
@@ -81,6 +82,9 @@ pub enum BuildError {
     /// Error while compiling SCSS.
     #[error("failed to compile SCSS")]
     Scss(#[source] self::scss::ScssError),
+    /// Error while generating sitemap.
+    #[error("failed to generate sitemap")]
+    Sitemap(#[source] self::sitemap::SitemapError),
     /// Error while creating syntax highlight themes.
     #[error("failed to generate syntax highlight themes")]
     SyntaxHighlight(#[source] self::syntax_highlight::SyntaxHighlightError),
@@ -89,7 +93,7 @@ pub enum BuildError {
 /// A page entry.
 ///
 /// A page represents a future HTML file.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Page {
     /// Input file path from which the entry comes from.
     input_path: PathBuf,
@@ -105,6 +109,9 @@ pub struct Page {
 
     /// Page data.
     data: Value,
+
+    /// Page date.
+    date: DateTime,
 }
 
 /// An image entry.
@@ -143,8 +150,8 @@ pub struct Script {
 /// A style represents a future CSS file.
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Style {
-    /// Input file path from which the entry comes from.
-    input_path: PathBuf,
+    /// Input file path from which the entry comes from, if any.
+    input_path: Option<PathBuf>,
 
     /// URL from which the entry will be accessible.
     url: UrlPath,
@@ -153,22 +160,19 @@ pub struct Style {
     content: String,
 }
 
-/// An asset (image, script, or style).
-#[derive(Debug)]
-pub enum Asset {
-    /// Image entry.
-    Image(Image),
-    /// Script entry.
-    Script(Script),
-    /// Style entry.
-    Style(Style),
+/// A XML entry.
+#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Xml {
+    /// URL from which the entry will be accessible.
+    url: UrlPath,
+
+    /// Content of the entry.
+    content: String,
 }
 
-/// An entry (page or asset).
+/// An asset (image, script, style, ...).
 #[derive(Debug)]
-pub enum Entry {
-    /// Page entry.
-    Page(Page),
+pub enum Asset {
     /// Image entry.
     Image(Image),
     /// Script entry.
@@ -201,6 +205,7 @@ pub fn build(config: &Config) -> Result<(), BuildError> {
     let markdown_task = MarkdownTask::new(config).map_err(BuildError::NewMarkdown)?;
     let layout_task = LayoutTask::new(config).map_err(BuildError::NewLayout)?;
     let assets_task = AssetsTask::new(config);
+    let sitemap_task = SitemapTask::new(config);
     let minify_html_task = MinifyHtmlTask::new(config);
 
     let bundle_js_task = BundleJsTask::new();
@@ -253,14 +258,19 @@ pub fn build(config: &Config) -> Result<(), BuildError> {
     )
     .map_err(BuildError::BundleHtml)?;
 
+    let (page_pipeline, xml_pipeline) = page_pipeline
+        .fork(sitemap_task)
+        .map_err(BuildError::Sitemap)?;
+
     let page_pipeline = page_pipeline
         .pipe(minify_html_task)
         .map_err(BuildError::MinifyHtml)?;
 
-    let num_output_files = Pipeline::merge((page_pipeline, asset_pipeline), output_task)
-        .map_err(BuildError::Output)?
-        .into_iter()
-        .count();
+    let num_output_files =
+        Pipeline::merge((page_pipeline, asset_pipeline, xml_pipeline), output_task)
+            .map_err(BuildError::Output)?
+            .into_iter()
+            .count();
 
     let duration = start_time.elapsed().as_secs_f64();
 

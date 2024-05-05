@@ -11,6 +11,9 @@ use thiserror::Error;
 /// List of errors for this module.
 #[derive(Debug, Error)]
 pub enum InputError {
+    /// Ignore error.
+    #[error(transparent)]
+    Ignore(#[from] ignore::Error),
     /// I/O error.
     #[error(transparent)]
     Io(#[from] std::io::Error),
@@ -206,11 +209,14 @@ pub mod task {
                 .map_err(Into::into)
                 .map_err(err_with_file)?;
 
+            let date = entry.metadata()?.modified()?.into();
+
             Ok(Page {
                 input_path,
                 url: url.into(),
                 content,
-                ..Default::default()
+                date,
+                data: Default::default(),
             })
         }
     }
