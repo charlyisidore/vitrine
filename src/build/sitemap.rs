@@ -2,6 +2,7 @@
 
 use std::path::PathBuf;
 
+use quick_xml::se::Serializer;
 use serde::Serialize;
 use thiserror::Error;
 
@@ -28,17 +29,53 @@ pub enum SitemapError {
     },
 }
 
-// <urlset>...</urlset>
-#[derive(Debug, Default, Serialize)]
+/// Sitemap generator.
+#[derive(Debug, Default)]
+pub struct Sitemap {
+    /// Sitemap entries.
+    urlset: Vec<SitemapUrl>,
+}
+
+impl Sitemap {
+    /// Create a Sitemap generator.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Add a sitemap entry.
+    pub fn add(&mut self, url: SitemapUrl) {
+        self.urlset.push(url);
+    }
+
+    /// Render the sitemap as a string.
+    pub fn render(&self) -> Result<String, SitemapError> {
+        let urlset = SitemapUrlset {
+            xmlns: XMLNS,
+            url: self.urlset.clone(),
+        };
+
+        let mut buffer = String::new();
+
+        let mut serializer = Serializer::with_root(&mut buffer, Some("urlset"))?;
+        serializer.indent(' ', 2);
+
+        urlset.serialize(serializer)?;
+
+        Ok(format!("{}\n{}", XML_DECLARATION, buffer))
+    }
+}
+
+/// Sitemap.
+#[derive(Clone, Debug, Default, Serialize)]
 struct SitemapUrlset<'a> {
     #[serde(rename = "@xmlns")]
     xmlns: &'a str,
     url: Vec<SitemapUrl>,
 }
 
-// <url>...</url>
-#[derive(Debug, Default, Serialize)]
-struct SitemapUrl {
+/// Sitemap entry.
+#[derive(Clone, Debug, Default, Serialize)]
+pub struct SitemapUrl {
     loc: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     lastmod: Option<String>,
@@ -50,10 +87,7 @@ struct SitemapUrl {
 
 /// Pipeline task.
 pub mod task {
-    use quick_xml::se::Serializer;
-    use serde::Serialize;
-
-    use super::{SitemapError, SitemapUrl, SitemapUrlset, XMLNS, XML_DECLARATION};
+    use super::{Sitemap, SitemapError, SitemapUrl};
     use crate::{
         build::{Page, Xml},
         config::Config,
@@ -90,7 +124,7 @@ pub mod task {
                 return Ok(());
             };
 
-            let mut urlset = Vec::<SitemapUrl>::new();
+            let mut sitemap = Sitemap::new();
 
             for page in rx {
                 if let Some(sitemap_url) = page
@@ -146,39 +180,37 @@ pub mod task {
                         }
                     })
                 {
-                    urlset.push(sitemap_url);
+                    sitemap.add(sitemap_url);
                 }
 
                 tx_page.send(page).unwrap();
             }
 
-            let urlset = SitemapUrlset {
-                xmlns: XMLNS,
-                url: urlset,
-            };
+            // let urlset = SitemapUrlset {
+            //     xmlns: XMLNS,
+            //     url: urlset,
+            // };
 
-            let mut buffer = String::new();
+            // let mut buffer = String::new();
 
-            let mut serializer = Serializer::with_root(&mut buffer, Some("urlset"))?;
+            // let mut serializer = Serializer::with_root(&mut buffer, Some("urlset"))?;
 
-            if !self.config.optimize {
-                serializer.indent(' ', 2);
-            }
+            // if !self.config.optimize {
+            //     serializer.indent(' ', 2);
+            // }
 
-            urlset.serialize(serializer)?;
+            // urlset.serialize(serializer)?;
 
-            let content = if self.config.optimize {
-                format!("{}{}", XML_DECLARATION, buffer)
-            } else {
-                format!("{}\n{}", XML_DECLARATION, buffer)
-            };
+            // let content = if self.config.optimize {
+            //     format!("{}{}", XML_DECLARATION, buffer)
+            // } else {
+            //     format!("{}\n{}", XML_DECLARATION, buffer)
+            // };
 
-            tx_xml
-                .send(Xml {
-                    url: format!("{}{}", self.config.base_url, config.url).into(),
-                    content,
-                })
-                .unwrap();
+            let url = format!("{}{}", self.config.base_url, config.url).into();
+            let content = sitemap.render()?;
+
+            tx_xml.send(Xml { url, content }).unwrap();
 
             Ok(())
         }
