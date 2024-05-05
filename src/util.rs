@@ -1,5 +1,6 @@
 //! Utility functions and structures.
 
+pub mod date_time;
 pub mod eval;
 pub mod function;
 pub mod iter;
