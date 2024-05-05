@@ -39,7 +39,7 @@ impl DateTime {
 
         let dt = PrimitiveDateTime::parse(
             input,
-            format_description!("[year]-[month]-[day] [hour]:[minute]:[second]"),
+            format_description!("[year]-[month]-[day] [hour]:[minute][optional [:[second]]]"),
         )
         .map(|dt| dt.assume_utc())
         .or_else(|_| {
@@ -92,6 +92,12 @@ mod tests {
         assert_eq!(
             DateTime::new(1985, Month::April, 12, 23, 20, 50, 0).unwrap(),
             DateTime::parse("1985-04-12 23:20:50").unwrap()
+        );
+
+        // yyyy-mm-dd hh:mm
+        assert_eq!(
+            DateTime::new(1985, Month::April, 12, 23, 20, 0, 0).unwrap(),
+            DateTime::parse("1985-04-12 23:20").unwrap()
         );
 
         // yyyy-mm-dd
