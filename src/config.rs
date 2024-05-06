@@ -197,7 +197,7 @@ pub struct MarkdownConfig {
 #[cfg_attr(feature = "lua", derive(FromLua))]
 #[cfg_attr(feature = "rhai", derive(FromRhai))]
 pub struct SyntaxHighlightConfig {
-    /// Prefix for CSS classes.
+    /// Prefix for CSS class names.
     #[serde(default)]
     #[vitrine(default)]
     pub css_prefix: String,
@@ -217,10 +217,10 @@ pub struct SyntaxHighlightConfig {
     #[vitrine(default)]
     pub highlighter: Option<SyntaxHighlighter>,
 
-    /// Syntax highlight CSS stylesheets.
+    /// Syntax highlight themes.
     #[serde(default)]
     #[vitrine(default)]
-    pub stylesheets: Vec<SyntaxHighlightStylesheetConfig>,
+    pub themes: Vec<SyntaxHighlightThemeConfig>,
 }
 
 /// Configuration for sitemap generation.
@@ -246,18 +246,13 @@ pub struct SitemapConfig {
     pub url: UrlPath,
 }
 
-/// Configuration for a syntax highlight CSS stylesheet.
+/// Configuration for a syntax highlight theme.
 #[derive(Clone, Debug, Deserialize, FromJs, FromLua, FromRhai)]
-pub struct SyntaxHighlightStylesheetConfig {
-    /// Prefix for class names.
-    #[serde(default)]
-    #[vitrine(default)]
-    pub prefix: String,
-
+pub struct SyntaxHighlightThemeConfig {
     /// Theme name.
     ///
     /// See <https://docs.rs/syntect/latest/syntect/highlighting/struct.ThemeSet.html>
-    pub theme: String,
+    pub name: String,
 
     /// Output URL of the stylesheet.
     pub url: UrlPath,

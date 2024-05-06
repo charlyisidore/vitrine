@@ -276,26 +276,26 @@ pub mod task {
                 tx.send(style).unwrap();
             }
 
-            // Create styles for syntax highlight
-            for stylesheet in &self.config.syntax_highlight.stylesheets {
-                let theme = Theme::from_name(&stylesheet.theme)
+            // Create CSS themes for syntax highlight
+            for config in &self.config.syntax_highlight.themes {
+                let theme = Theme::from_name(&config.name)
                     .map_err(|source| SyntaxHighlightError::WithTheme {
                         source: Box::new(source),
-                        theme: stylesheet.theme.clone(),
+                        theme: config.name.clone(),
                     })
                     .map_err(|source| SyntaxHighlightError::WithThemeList {
                         source: Box::new(source),
                     })?
-                    .with_prefix(&stylesheet.prefix);
+                    .with_prefix(&self.config.syntax_highlight.css_prefix);
 
                 let content = theme
                     .to_css()
                     .map_err(|source| SyntaxHighlightError::WithTheme {
                         source: Box::new(source),
-                        theme: stylesheet.theme.clone(),
+                        theme: config.name.clone(),
                     })?;
 
-                let url = stylesheet.url.clone();
+                let url = config.url.clone();
 
                 tx.send(Style {
                     input_path: Default::default(),
