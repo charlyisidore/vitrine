@@ -18,7 +18,6 @@ pub enum SitemapError {
     /// Deserialization error.
     #[error(transparent)]
     QuickXmlDe(#[from] quick_xml::DeError),
-    /// Missing configuration:
     /// Provides a file path to the context of an existing error.
     #[error("file `{path}`")]
     WithFile {
@@ -182,27 +181,6 @@ pub mod task {
 
                 tx_page.send(page).unwrap();
             }
-
-            // let urlset = SitemapUrlset {
-            //     xmlns: XMLNS,
-            //     url: urlset,
-            // };
-
-            // let mut buffer = String::new();
-
-            // let mut serializer = Serializer::with_root(&mut buffer, Some("urlset"))?;
-
-            // if !self.config.optimize {
-            //     serializer.indent(' ', 2);
-            // }
-
-            // urlset.serialize(serializer)?;
-
-            // let content = if self.config.optimize {
-            //     format!("{}{}", XML_DECLARATION, buffer)
-            // } else {
-            //     format!("{}\n{}", XML_DECLARATION, buffer)
-            // };
 
             let url = format!("{}{}", self.config.base_url, config.url).into();
             let content = sitemap.render()?;
