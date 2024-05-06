@@ -130,6 +130,7 @@ pub mod task {
                     .data
                     .get("sitemap")
                     .and_then(|page_sitemap| {
+                        // Read `sitemap` metadata variable
                         match page_sitemap {
                             Value::Map(map) => Some(SitemapUrl {
                                 lastmod: map
@@ -143,15 +144,7 @@ pub mod task {
                                 priority: map.get("priority").and_then(|v| v.as_f64()),
                                 ..Default::default()
                             }),
-                            Value::Bool(value) => {
-                                if *value {
-                                    // sitemap = true
-                                    Some(Default::default())
-                                } else {
-                                    // sitemap = false
-                                    None
-                                }
-                            },
+                            Value::Bool(value) => value.then_some(Default::default()),
                             _ => Some(Default::default()),
                         }
                     })
