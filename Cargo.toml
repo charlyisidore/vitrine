@@ -26,7 +26,7 @@ rhai = ["dep:rhai"]
 tera = ["dep:tera"]
 
 [dependencies]
-anyhow = "1.0.82"
+anyhow = "1.0.83"
 axum = { version = "0.7.5", default-features = false, features = ["http1", "tokio"] }
 clap = { version = "4.5.4", features = ["derive"] }
 futures = "0.3.30"
@@ -44,14 +44,14 @@ once_cell = "1.19.0"
 quick-xml = { version = "0.31.0", features = ["serialize"] }
 quickjs_runtime = { version = "0.13.3", default-features = false, features = ["bellard", "console", "setimmediate", "setinterval", "settimeout"], optional = true }
 rhai = { version = "1.18.0", features = ["serde", "sync"], optional = true }
-serde = "1.0.200"
-serde_json = "1.0.116"
+serde = "1.0.201"
+serde_json = "1.0.117"
 serde_yaml = "0.9.34"
 slug = "0.1.5"
-swc_core = { version = "0.91.3", features = ["bundler", "common", "ecma_ast", "ecma_codegen", "ecma_loader", "ecma_loader_lru", "ecma_loader_node", "ecma_loader_parking_lot", "ecma_parser", "ecma_transforms_typescript", "ecma_visit"] }
+swc_core = { version = "0.92.2", features = ["bundler", "common", "ecma_ast", "ecma_codegen", "ecma_loader", "ecma_loader_lru", "ecma_loader_node", "ecma_loader_parking_lot", "ecma_parser", "ecma_transforms_typescript", "ecma_visit"] }
 syntect = { version = "5.2.0", default-features = false, features = ["default-fancy"] }
 tera = { version = "1.19.1", optional = true }
-thiserror = "1.0.59"
+thiserror = "1.0.60"
 time = { version = "0.3.36", features = ["macros", "parsing"] }
 tokio = "1.37.0"
 toml = { version = "0.8.12", default-features = false, features = ["parse"] }
