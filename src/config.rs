@@ -98,6 +98,8 @@ pub type Map<K, V> = std::collections::HashMap<K, V>;
 #[cfg_attr(feature = "rhai", derive(FromRhai))]
 pub struct Config {
     /// Configuration file path, if any.
+    #[serde(skip)]
+    #[vitrine(skip)]
     pub config_path: Option<PathBuf>,
 
     /// Base URL of the site.
@@ -145,6 +147,8 @@ pub struct Config {
     pub site_data: Value,
 
     /// Sitemap configuration.
+    #[serde(default)]
+    #[vitrine(default)]
     pub sitemap: Option<SitemapConfig>,
 
     /// Syntax highlight configuration.
@@ -183,27 +187,41 @@ pub struct FeedConfig {
     pub contributor: Vec<FeedPersonConfig>,
 
     /// Generator of the feed.
+    #[serde(default)]
+    #[vitrine(default)]
     pub generator: Option<String>,
 
     /// Image that provides iconic visual identification for the feed.
+    #[serde(default)]
+    #[vitrine(default)]
     pub icon: Option<String>,
 
     /// Unique identifier of the feed.
+    #[serde(default)]
+    #[vitrine(default)]
     pub id: Option<String>,
 
     /// Image that provides visual identification for the feed.
+    #[serde(default)]
+    #[vitrine(default)]
     pub logo: Option<String>,
 
     /// Information about rights held in and over the feed.
+    #[serde(default)]
+    #[vitrine(default)]
     pub rights: Option<String>,
 
     /// Description or subtitle for the feed.
+    #[serde(default)]
+    #[vitrine(default)]
     pub subtitle: Option<String>,
 
     /// Title for the feed.
     pub title: String,
 
     /// The most recent instant in time when the feed was modified.
+    #[serde(default)]
+    #[vitrine(default)]
     pub updated: Option<String>,
 
     /// Predicate that determines whether an entry belongs to the feed or not.
@@ -222,9 +240,13 @@ pub struct FeedPersonConfig {
     pub name: String,
 
     /// Person website.
+    #[serde(default)]
+    #[vitrine(default)]
     pub uri: Option<String>,
 
     /// Person email.
+    #[serde(default)]
+    #[vitrine(default)]
     pub email: Option<String>,
 }
 
