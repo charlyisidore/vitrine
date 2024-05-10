@@ -103,7 +103,10 @@ pub mod task {
     use super::{parse_front_matter, MetadataError};
     use crate::{
         build::Page,
-        util::pipeline::{Receiver, Sender, Task},
+        util::{
+            pipeline::{Receiver, Sender, Task},
+            url::UrlPath,
+        },
     };
 
     /// Task to parse metadata.
@@ -139,7 +142,15 @@ pub mod task {
                     page
                 };
 
-                tx.send(page).unwrap();
+                // Overwrite page URL
+                let url = page
+                    .data
+                    .get("url")
+                    .and_then(|v| v.as_str())
+                    .map(UrlPath::from)
+                    .unwrap_or(page.url);
+
+                tx.send(Page { url, ..page }).unwrap();
             }
             Ok(())
         }
