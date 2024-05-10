@@ -139,7 +139,7 @@ pub mod task {
                         script.content,
                         script.input_path.extension().is_some_and(|extension| {
                             ["jsx", "tsx"]
-                                .map(std::ffi::OsString::from)
+                                .map(Into::into)
                                 .contains(&extension.to_os_string())
                         }),
                     )?;
