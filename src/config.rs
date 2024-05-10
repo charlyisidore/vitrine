@@ -328,9 +328,13 @@ pub struct SyntaxHighlightConfig {
 #[cfg_attr(feature = "rhai", derive(FromRhai))]
 pub struct SitemapConfig {
     /// Default page change frequency.
+    #[serde(default)]
+    #[vitrine(default)]
     pub changefreq: Option<String>,
 
     /// Default priority.
+    #[serde(default)]
+    #[vitrine(default)]
     pub priority: Option<f64>,
 
     /// Domain to prepend to URLs, if `base_url` does not specify it.
