@@ -180,7 +180,7 @@ pub mod task {
         fn is_page(&self, entry: &DirEntry) -> bool {
             entry.path().extension().is_some_and(|extension| {
                 ["html", "md"]
-                    .map(std::ffi::OsString::from)
+                    .map(Into::into)
                     .contains(&extension.to_os_string())
             })
         }
