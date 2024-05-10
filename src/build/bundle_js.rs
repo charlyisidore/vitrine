@@ -104,7 +104,21 @@ impl swc_core::bundler::Load for Loader {
         };
 
         let fm = match f {
-            FileName::Real(path) => self.cm.load_file(path)?,
+            FileName::Real(path) => {
+                let extension = path.extension();
+                if extension.is_some_and(|extension| {
+                    ["ts", "tsx"]
+                        .map(Into::into)
+                        .contains(&extension.to_os_string())
+                }) {
+                    let tsx = extension.is_some_and(|extension| extension == "tsx");
+                    let source = std::fs::read_to_string(path)?;
+                    let source = crate::build::typescript::compile_typescript(source, tsx)?;
+                    self.cm.new_source_file(f.clone(), source)
+                } else {
+                    self.cm.load_file(path)?
+                }
+            },
             _ => unreachable!(),
         };
 
@@ -213,7 +227,7 @@ mod tests {
     use crate::util::temp_dir::TempDir;
 
     #[test]
-    fn bundle_file() {
+    fn bundle_javascript_file() {
         let temp_dir = TempDir::new();
         let dir = temp_dir.path();
         let path = dir.join("foo.js");
@@ -227,6 +241,33 @@ mod tests {
         let result = bundle_js_file(path).unwrap();
 
         assert!(result.contains("Hello world"));
+    }
+
+    #[test]
+    fn bundle_typescript_file() {
+        let temp_dir = TempDir::new();
+        let dir = temp_dir.path();
+        let path = dir.join("foo.ts");
+
+        std::fs::write(
+            &path,
+            "import bar from \"./bar.ts\";\nconst baz: number = \
+             123;\nconsole.log(bar);\nconsole.log(baz);",
+        )
+        .expect("failed to create file");
+
+        std::fs::write(
+            dir.join("bar.ts"),
+            "const foo: string = \"Hello world\";\nexport default foo;",
+        )
+        .expect("failed to create file");
+
+        let result = bundle_js_file(path).unwrap();
+
+        assert!(result.contains("Hello world"));
+        assert!(result.contains("123"));
+        assert!(!result.contains("string"));
+        assert!(!result.contains("number"));
     }
 
     #[cfg(any())]
