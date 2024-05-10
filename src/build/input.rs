@@ -178,10 +178,11 @@ pub mod task {
 
         /// Determine if a [`DirEntry`] is a page.
         fn is_page(&self, entry: &DirEntry) -> bool {
-            entry
-                .path()
-                .extension()
-                .is_some_and(|extension| extension == "md")
+            entry.path().extension().is_some_and(|extension| {
+                ["html", "md"]
+                    .map(std::ffi::OsString::from)
+                    .contains(&extension.to_os_string())
+            })
         }
 
         /// Create a [`Page`] instance from a [`DirEntry`].
