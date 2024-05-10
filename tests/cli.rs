@@ -65,7 +65,7 @@ fn typescript() -> Result<(), Box<dyn std::error::Error>> {
     dir.child("script.ts").write_str(
         r#"// Comment
 const myVar: string = "abc";
-console.log(myVar);
+alert(myVar);
 "#,
     )?;
 
@@ -80,6 +80,7 @@ console.log(myVar);
 
     dir.child("_site/script.js")
         .assert(predicate::path::is_file())
+        .assert(predicate::str::contains("Comment").not())
         .assert(predicate::str::contains("string").not())
         .assert(predicate::str::contains("myVar"))
         .assert(predicate::str::contains("abc"));
