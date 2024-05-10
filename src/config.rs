@@ -17,6 +17,7 @@ use vitrine_derive::VitrineNoop;
 
 use crate::{
     build::{
+        feeds::FeedFilter,
         layout::{LayoutFilter, LayoutFunction, LayoutTest},
         markdown::syntax_highlight::SyntaxHighlighter,
     },
@@ -128,6 +129,11 @@ pub struct Config {
     #[vitrine(default)]
     pub layout: LayoutConfig,
 
+    /// Feeds configuration.
+    #[serde(default)]
+    #[vitrine(default)]
+    pub feeds: Vec<FeedConfig>,
+
     /// Markdown configuration.
     #[serde(default)]
     #[vitrine(default)]
@@ -150,6 +156,76 @@ pub struct Config {
     #[serde(skip)]
     #[vitrine(skip)]
     pub optimize: bool,
+}
+
+/// Configuration for feed generation.
+#[derive(Clone, Debug, Default, Deserialize, VitrineNoop)]
+#[cfg_attr(feature = "js", derive(FromJs))]
+#[cfg_attr(feature = "lua", derive(FromLua))]
+#[cfg_attr(feature = "rhai", derive(FromRhai))]
+pub struct FeedConfig {
+    /// URL of the feed.
+    pub url: String,
+
+    /// Authors of the feed.
+    #[serde(default)]
+    #[vitrine(default)]
+    pub author: Vec<FeedPersonConfig>,
+
+    /// Categories of the feed.
+    #[serde(default)]
+    #[vitrine(default)]
+    pub category: Vec<String>,
+
+    /// Contributors of the feed.
+    #[serde(default)]
+    #[vitrine(default)]
+    pub contributor: Vec<FeedPersonConfig>,
+
+    /// Generator of the feed.
+    pub generator: Option<String>,
+
+    /// Image that provides iconic visual identification for the feed.
+    pub icon: Option<String>,
+
+    /// Unique identifier of the feed.
+    pub id: Option<String>,
+
+    /// Image that provides visual identification for the feed.
+    pub logo: Option<String>,
+
+    /// Information about rights held in and over the feed.
+    pub rights: Option<String>,
+
+    /// Description or subtitle for the feed.
+    pub subtitle: Option<String>,
+
+    /// Title for the feed.
+    pub title: String,
+
+    /// The most recent instant in time when the feed was modified.
+    pub updated: Option<String>,
+
+    /// Predicate that determines whether an entry belongs to the feed or not.
+    #[serde(skip)]
+    #[vitrine(default)]
+    pub filter: Option<FeedFilter>,
+}
+
+/// Configuration for feed persons (author or contributor).
+#[derive(Clone, Debug, Default, Deserialize, VitrineNoop)]
+#[cfg_attr(feature = "js", derive(FromJs))]
+#[cfg_attr(feature = "lua", derive(FromLua))]
+#[cfg_attr(feature = "rhai", derive(FromRhai))]
+pub struct FeedPersonConfig {
+    /// Person name.
+    pub name: String,
+
+    /// Person website.
+    pub uri: Option<String>,
+
+    /// Person email.
+    pub email: Option<String>,
 }
 
 /// Configuration for the layout engine.

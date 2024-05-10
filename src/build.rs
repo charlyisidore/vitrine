@@ -4,6 +4,7 @@ pub mod assets;
 pub mod bundle_css;
 pub mod bundle_html;
 pub mod bundle_js;
+pub mod feeds;
 pub mod input;
 pub mod layout;
 pub mod markdown;
@@ -29,7 +30,10 @@ use self::{
     scss::task::ScssTask,
 };
 use crate::{
-    build::{sitemap::task::SitemapTask, syntax_highlight::task::SyntaxHighlightTask},
+    build::{
+        feeds::task::FeedsTask, sitemap::task::SitemapTask,
+        syntax_highlight::task::SyntaxHighlightTask,
+    },
     config::Config,
     util::{date_time::DateTime, pipeline::Pipeline, url::UrlPath, value::Value},
 };
@@ -49,6 +53,9 @@ pub enum BuildError {
     /// Error while bundling JavaScript.
     #[error("failed to bundle JavaScript")]
     BundleJs(#[source] self::bundle_js::BundleJsError),
+    /// Error while generating feeds.
+    #[error("failed to generate feeds")]
+    Feeds(#[source] self::feeds::FeedsError),
     /// Error while walking input files
     #[error("failed to walk input files")]
     Input(#[source] self::input::InputError),
@@ -206,6 +213,7 @@ pub fn build(config: &Config) -> Result<(), BuildError> {
     let layout_task = LayoutTask::new(config).map_err(BuildError::NewLayout)?;
     let assets_task = AssetsTask::new(config);
     let sitemap_task = SitemapTask::new(config);
+    let feeds_task = FeedsTask::new(config);
     let minify_html_task = MinifyHtmlTask::new(config);
 
     let bundle_js_task = BundleJsTask::new();
@@ -261,6 +269,10 @@ pub fn build(config: &Config) -> Result<(), BuildError> {
     let (page_pipeline, xml_pipeline) = page_pipeline
         .fork(sitemap_task)
         .map_err(BuildError::Sitemap)?;
+
+    let (page_pipeline, xml_pipeline) =
+        Pipeline::<()>::multiplex((page_pipeline, xml_pipeline), feeds_task)
+            .map_err(BuildError::Feeds)?;
 
     let page_pipeline = page_pipeline
         .pipe(minify_html_task)
