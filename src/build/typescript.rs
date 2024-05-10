@@ -19,10 +19,7 @@ pub enum TypescriptError {
 }
 
 /// Compile TypeScript to JavaScript.
-pub fn compile_typescript<S>(input: S, tsx: bool) -> Result<String, TypescriptError>
-where
-    S: AsRef<str>,
-{
+pub fn compile_typescript(input: impl AsRef<str>, tsx: bool) -> Result<String, TypescriptError> {
     // https://github.com/swc-project/swc/blob/main/crates/swc_ecma_transforms_typescript/examples
     // /ts_to_js.rs
     use swc_core::{
