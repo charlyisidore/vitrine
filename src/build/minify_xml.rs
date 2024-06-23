@@ -37,7 +37,7 @@ where
 
     let mut reader = Reader::from_str(input);
 
-    reader.trim_text(true);
+    reader.config_mut().trim_text(true);
 
     let mut writer = Writer::new(Vec::new());
 
