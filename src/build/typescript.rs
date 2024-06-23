@@ -9,7 +9,7 @@ use swc_core::{
     },
     ecma::{
         codegen::{text_writer::JsWriter, Emitter},
-        parser::{lexer::Lexer, Parser, StringInput, Syntax, TsConfig},
+        parser::{lexer::Lexer, Parser, StringInput, Syntax, TsSyntax},
         transforms::{
             base::{fixer::fixer, hygiene::hygiene, resolver},
             typescript::strip,
@@ -76,7 +76,7 @@ where
     let comments = SingleThreadedComments::default();
 
     let lexer = Lexer::new(
-        Syntax::Typescript(TsConfig {
+        Syntax::Typescript(TsSyntax {
             tsx,
             ..Default::default()
         }),
