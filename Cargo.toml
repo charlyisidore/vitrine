@@ -36,7 +36,6 @@ lightningcss = { version = "1.0.0-alpha.55", default-features = false, features 
 lol_html = "1.2.1"
 markdown-it = { version = "0.6.0", default-features = false, features = ["linkify"] }
 minify-html = "0.15.0"
-minify-js = "0.5.6"
 minijinja = { version = "2.0.1", features = ["loader"], optional = true }
 mlua = { version = "0.9.7", features = ["lua51", "send", "serialize", "vendored"], optional = true }
 notify-debouncer-full = { version = "0.3.1", default-features = false }
@@ -48,7 +47,17 @@ serde = "1.0.201"
 serde_json = "1.0.117"
 serde_yaml = "0.9.34"
 slug = "0.1.5"
-swc_core = { version = "0.92.2", features = ["bundler", "common", "ecma_ast", "ecma_codegen", "ecma_loader", "ecma_loader_lru", "ecma_loader_node", "ecma_loader_parking_lot", "ecma_parser", "ecma_transforms_typescript", "ecma_visit"] }
+swc_core = { version = "0.95.9", features = [
+    "base",
+    "bundler",
+    "bundler_node_v1",
+    "common",
+    "ecma_ast",
+    "ecma_codegen",
+    "ecma_loader",
+    "ecma_transforms",
+    "ecma_visit",
+] }
 syntect = { version = "5.2.0", default-features = false, features = ["default-fancy"] }
 tera = { version = "1.19.1", optional = true }
 thiserror = "1.0.60"

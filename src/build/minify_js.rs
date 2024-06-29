@@ -1,39 +1,62 @@
 //! Minify JavaScript code.
 //!
-//! This module uses [`::minify_js`] under the hood.
+//! This module uses [`swc_core`] under the hood.
 
-use std::string::FromUtf8Error;
+use std::sync::Arc;
 
-use ::minify_js::{Session, TopLevelMode};
 use thiserror::Error;
 
 /// List of errors for this module.
 #[derive(Debug, Error)]
 pub enum MinifyJsError {
-    /// JavaScript syntax error.
-    #[error("{0}")]
-    Syntax(String),
-    /// Error converting a string in UTF-8.
+    /// Anyhow error.
     #[error(transparent)]
-    FromUtf8(#[from] FromUtf8Error),
+    Anyhow(#[from] anyhow::Error),
 }
 
 /// Minify a string of JavaScript code.
 pub fn minify_js(input: impl AsRef<str>) -> Result<String, MinifyJsError> {
+    use swc_core::{
+        base::{
+            config::{JsMinifyOptions, JscConfig},
+            try_with_handler, BoolOrDataConfig, Compiler,
+        },
+        common::{FileName, SourceMap, GLOBALS},
+    };
+
     let input = input.as_ref();
 
-    let session = Session::new();
-    let mut output = Vec::new();
+    let compress = false;
+    let mangle = false;
 
-    minify_js::minify(
-        &session,
-        TopLevelMode::Global,
-        input.as_bytes(),
-        &mut output,
-    )
-    .map_err(|source| MinifyJsError::Syntax(source.to_string()))?;
+    let options = swc_core::base::config::Options {
+        config: swc_core::base::config::Config {
+            minify: true.into(),
+            jsc: JscConfig {
+                minify: Some(JsMinifyOptions {
+                    compress: BoolOrDataConfig::from_bool(compress),
+                    mangle: BoolOrDataConfig::from_bool(mangle),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        ..Default::default()
+    };
 
-    Ok(String::from_utf8(output)?)
+    let cm = Arc::new(SourceMap::default());
+    let compiler = Compiler::new(cm.clone());
+
+    let output = GLOBALS.set(&Default::default(), || {
+        try_with_handler(cm.clone(), Default::default(), |handler| {
+            let fm = cm.new_source_file(FileName::Anon, input.to_string());
+            let output = compiler.process_js_file(fm, handler, &options)?;
+            Ok(output.code)
+        })
+    })?;
+
+    Ok(output)
 }
 
 /// Pipeline task.

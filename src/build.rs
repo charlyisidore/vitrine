@@ -16,7 +16,6 @@ pub mod output;
 pub mod scss;
 pub mod sitemap;
 pub mod syntax_highlight;
-pub mod typescript;
 
 use std::path::PathBuf;
 
@@ -26,8 +25,7 @@ use self::{
     assets::task::AssetsTask, bundle_css::task::BundleCssTask, bundle_html::task::BundleHtmlTask,
     bundle_js::task::BundleJsTask, input::task::InputTask, layout::task::LayoutTask,
     markdown::task::MarkdownTask, metadata::task::MetadataTask, minify_css::task::MinifyCssTask,
-    minify_html::task::MinifyHtmlTask, minify_js::task::MinifyJsTask, output::task::OutputTask,
-    scss::task::ScssTask,
+    minify_html::task::MinifyHtmlTask, output::task::OutputTask, scss::task::ScssTask,
 };
 use crate::{
     build::{
@@ -74,9 +72,6 @@ pub enum BuildError {
     /// Error while minifying HTML.
     #[error("failed to minify HTML")]
     MinifyHtml(#[source] self::minify_html::MinifyHtmlError),
-    /// Error while minifying JavaScript.
-    #[error("failed to minify JavaScript")]
-    MinifyJs(#[source] self::minify_js::MinifyJsError),
     /// Error while creating the layout engine.
     #[error("failed to initialize the layout engine")]
     NewLayout(#[source] self::layout::LayoutError),
@@ -216,8 +211,7 @@ pub fn build(config: &Config) -> Result<(), BuildError> {
     let feeds_task = FeedsTask::new(config);
     let minify_html_task = MinifyHtmlTask::new(config);
 
-    let bundle_js_task = BundleJsTask::new();
-    let minify_js_task = MinifyJsTask::new(config);
+    let bundle_js_task = BundleJsTask::new(config);
 
     let scss_task = ScssTask::new();
     let bundle_css_task = BundleCssTask::new();
@@ -241,9 +235,7 @@ pub fn build(config: &Config) -> Result<(), BuildError> {
 
     let script_pipeline = script_pipeline
         .pipe(bundle_js_task)
-        .map_err(BuildError::BundleJs)?
-        .pipe(minify_js_task)
-        .map_err(BuildError::MinifyJs)?;
+        .map_err(BuildError::BundleJs)?;
 
     let style_pipeline = style_pipeline
         .pipe(scss_task)

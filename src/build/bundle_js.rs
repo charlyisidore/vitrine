@@ -2,7 +2,11 @@
 //!
 //! This module uses [`swc_core`] under the hood.
 
-use std::{collections::HashMap, path::Path};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use thiserror::Error;
 
@@ -15,136 +19,111 @@ pub enum BundleJsError {
     /// I/O error.
     #[error(transparent)]
     Io(#[from] std::io::Error),
+    /// Provides a file path to the context of an existing error.
+    #[error("file `{path}`")]
+    WithFile {
+        /// Source error.
+        source: Box<Self>,
+        /// File path.
+        path: PathBuf,
+    },
 }
 
 /// Bundle a JavaScript file.
-pub fn bundle_js_file(path: impl AsRef<Path>) -> Result<String, BundleJsError> {
+pub fn bundle_js_file(path: impl AsRef<Path>, minify: bool) -> Result<String, BundleJsError> {
     use swc_core::{
-        bundler::Bundler,
-        common::{sync::Lrc, FileName, FilePathMapping, SourceMap},
-        ecma::{
-            codegen::{text_writer::JsWriter, Emitter},
-            loader::{
-                resolvers::{lru::CachingResolver, node::NodeModulesResolver},
-                TargetEnv,
-            },
+        base::{
+            config::{JsMinifyOptions, JscConfig},
+            resolver::environment_resolver,
+            try_with_handler, BoolOrDataConfig, Compiler, PrintArgs,
         },
+        bundler::{node::loaders::swc::SwcLoader, Bundler},
+        common::{FileName, Globals, SourceMap, GLOBALS},
+        ecma::{loader::TargetEnv, transforms::base::fixer::fixer, visit::FoldWith},
     };
 
     let path = path.as_ref();
 
-    const MINIFY: bool = false;
-    const INLINE: bool = true;
-
-    let entries = HashMap::from([("main".to_string(), FileName::Real(path.to_path_buf()))]);
-
-    let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-    let globals = Box::leak(Box::default());
-    let mut bundler = Bundler::new(
-        globals,
-        cm.clone(),
-        Loader { cm: cm.clone() },
-        CachingResolver::new(
-            4096,
-            NodeModulesResolver::new(TargetEnv::Node, Default::default(), true),
-        ),
-        swc_core::bundler::Config {
-            require: true,
-            disable_inliner: !INLINE,
-            external_modules: Default::default(),
-            disable_fixer: MINIFY,
-            disable_hygiene: MINIFY,
-            disable_dce: false,
-            module: Default::default(),
+    let options = swc_core::base::config::Options {
+        filename: path.to_string_lossy().into(),
+        config: swc_core::base::config::Config {
+            minify: minify.into(),
+            jsc: JscConfig {
+                minify: Some(JsMinifyOptions {
+                    compress: BoolOrDataConfig::from_bool(minify),
+                    mangle: BoolOrDataConfig::from_bool(minify),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            ..Default::default()
         },
-        Box::new(Hook),
-    );
+        ..Default::default()
+    };
 
-    let modules = bundler.bundle(entries)?;
+    let entries = HashMap::from([(
+        path.to_string_lossy().into(),
+        FileName::Real(path.to_path_buf()),
+    )]);
 
-    Ok(modules
-        .into_iter()
-        .map(|bundled| {
-            let mut buf = Vec::new();
+    let cm = Arc::new(SourceMap::default());
+    let globals = Globals::default();
 
-            {
-                let wr = JsWriter::new(cm.clone(), "\n", &mut buf, None);
-                let mut emitter = Emitter {
-                    cfg: swc_core::ecma::codegen::Config::default().with_minify(MINIFY),
-                    cm: cm.clone(),
-                    comments: None,
-                    wr: Box::new(wr),
-                };
+    let output = GLOBALS.set(&globals, || {
+        try_with_handler(cm.clone(), Default::default(), |_handler| {
+            let compiler = Arc::new(Compiler::new(cm.clone()));
 
-                emitter.emit_module(&bundled.module)?;
-            }
+            let loader = SwcLoader::new(compiler.clone(), options);
 
-            Ok(String::from_utf8_lossy(&buf).to_string())
+            let resolver = environment_resolver(TargetEnv::Browser, Default::default(), false);
+
+            let mut bundler = Bundler::new(
+                &globals,
+                cm.clone(),
+                &loader,
+                &resolver,
+                swc_core::bundler::Config {
+                    require: true,
+                    ..Default::default()
+                },
+                Box::new(Hook),
+            );
+
+            let bundles = bundler.bundle(entries)?;
+
+            assert!(bundles.len() == 1);
+
+            let output: String = bundles
+                .into_iter()
+                .map(move |bundle| {
+                    let comments = compiler.comments().clone();
+
+                    let module = bundle
+                        .module
+                        .fold_with(&mut fixer((!minify).then_some(&comments)));
+
+                    let code = compiler
+                        .print(&module, PrintArgs {
+                            comments: (!minify).then_some(&comments),
+                            codegen_config: swc_core::ecma::codegen::Config::default()
+                                .with_minify(minify),
+                            ..Default::default()
+                        })?
+                        .code;
+
+                    Ok(code)
+                })
+                .collect::<Result<_, anyhow::Error>>()?;
+
+            Ok(output)
         })
-        .collect::<Result<Vec<_>, BundleJsError>>()?
-        .join("\n"))
+    })?;
+
+    Ok(output)
 }
 
-struct Loader {
-    cm: swc_core::common::sync::Lrc<swc_core::common::SourceMap>,
-}
-
-impl swc_core::bundler::Load for Loader {
-    fn load(
-        &self,
-        f: &swc_core::common::FileName,
-    ) -> Result<swc_core::bundler::ModuleData, anyhow::Error> {
-        use swc_core::{
-            bundler::ModuleData,
-            common::{errors::Handler, FileName},
-            ecma::{
-                ast::EsVersion,
-                parser::{parse_file_as_module, Syntax},
-            },
-        };
-
-        let fm = match f {
-            FileName::Real(path) => {
-                let extension = path.extension();
-                if extension.is_some_and(|extension| {
-                    ["ts", "tsx"]
-                        .map(Into::into)
-                        .contains(&extension.to_os_string())
-                }) {
-                    let tsx = extension.is_some_and(|extension| extension == "tsx");
-                    let source = std::fs::read_to_string(path)?;
-                    let source = crate::build::typescript::compile_typescript(source, tsx)?;
-                    self.cm.new_source_file(f.clone(), source)
-                } else {
-                    self.cm.load_file(path)?
-                }
-            },
-            _ => unreachable!(),
-        };
-
-        let module = parse_file_as_module(
-            &fm,
-            Syntax::Es(Default::default()),
-            EsVersion::Es2020,
-            None,
-            &mut vec![],
-        )
-        .unwrap_or_else(|err| {
-            let handler =
-                Handler::with_emitter_writer(Box::new(std::io::stderr()), Some(self.cm.clone()));
-            err.into_diagnostic(&handler).emit();
-            panic!("failed to parse")
-        });
-
-        Ok(ModuleData {
-            fm,
-            module,
-            helpers: Default::default(),
-        })
-    }
-}
-
-struct Hook;
+/// SWC bundle hook.
+pub struct Hook;
 
 impl swc_core::bundler::Hook for Hook {
     fn get_import_meta_props(
@@ -192,17 +171,22 @@ pub mod task {
     use super::{bundle_js_file, BundleJsError};
     use crate::{
         build::Script,
+        config::Config,
         util::pipeline::{Receiver, Sender, Task},
     };
 
     /// Task to bundle JavaScript code.
     #[derive(Debug, Default)]
-    pub struct BundleJsTask;
+    pub struct BundleJsTask {
+        minify: bool,
+    }
 
     impl BundleJsTask {
         /// Create a pipeline task to bundle JavaScript code.
-        pub fn new() -> Self {
-            Self {}
+        pub fn new(config: &Config) -> Self {
+            Self {
+                minify: config.optimize,
+            }
         }
     }
 
@@ -213,7 +197,13 @@ pub mod task {
             (tx,): (Sender<Script>,),
         ) -> Result<(), BundleJsError> {
             for script in rx {
-                let content = bundle_js_file(&script.input_path)?;
+                let content =
+                    bundle_js_file(&script.input_path, self.minify).map_err(|source| {
+                        BundleJsError::WithFile {
+                            source: Box::new(source),
+                            path: script.input_path.clone(),
+                        }
+                    })?;
                 tx.send(Script { content, ..script }).unwrap();
             }
             Ok(())
@@ -238,7 +228,7 @@ mod tests {
         std::fs::write(dir.join("bar.js"), r#"export default "Hello world";"#)
             .expect("failed to create file");
 
-        let result = bundle_js_file(path).unwrap();
+        let result = bundle_js_file(path, true).unwrap();
 
         assert!(result.contains("Hello world"));
     }
@@ -262,7 +252,7 @@ mod tests {
         )
         .expect("failed to create file");
 
-        let result = bundle_js_file(path).unwrap();
+        let result = bundle_js_file(path, true).unwrap();
 
         assert!(result.contains("Hello world"));
         assert!(result.contains("123"));
@@ -270,6 +260,7 @@ mod tests {
         assert!(!result.contains("number"));
     }
 
+    /// Requires `npm`.
     #[cfg(any())]
     #[test]
     fn bundle_with_npm() {
@@ -298,7 +289,7 @@ mod tests {
         )
         .expect("failed to create file");
 
-        let result = bundle_js_file(path).unwrap();
+        let result = bundle_js_file(path, true).unwrap();
 
         assert!(result.contains("console.log"));
         assert!(result.contains("Hello "));
