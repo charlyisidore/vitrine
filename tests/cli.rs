@@ -82,7 +82,7 @@ alert(myVar);
         .assert(predicate::path::is_file())
         .assert(predicate::str::contains("Comment").not())
         .assert(predicate::str::contains("string").not())
-        .assert(predicate::str::contains("myVar"))
+        .assert(predicate::str::contains("alert"))
         .assert(predicate::str::contains("abc"));
 
     Ok(())
