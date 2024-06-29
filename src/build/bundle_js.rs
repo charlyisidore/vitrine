@@ -283,6 +283,43 @@ mod tests {
         assert!(!result.contains("string"));
     }
 
+    #[test]
+    fn bundle_with_node_modules() {
+        let temp_dir = TempDir::new();
+        let dir = temp_dir.path();
+        let path = dir.join("index.js");
+        let module_dir = dir.join("node_modules").join("hello-world");
+
+        std::fs::write(
+            &path,
+            r#"
+                import { hi } from "hello-world";
+                hi("world");
+            "#,
+        )
+        .expect("failed to create file");
+
+        std::fs::create_dir_all(&module_dir).expect("failed to create dir");
+
+        std::fs::write(
+            module_dir.join("index.js"),
+            r#"
+                module.exports = {
+                    hi: function(name) {
+                        console.log(`Hello ${name}`);
+                    },
+                };
+            "#,
+        )
+        .expect("failed to create file");
+
+        let result = bundle_js_file(path, true).unwrap();
+
+        assert!(result.contains("console.log"));
+        assert!(result.contains("Hello "));
+        assert!(!result.contains("hello-world"));
+    }
+
     /// Requires `npm`.
     #[cfg(any())]
     #[test]
