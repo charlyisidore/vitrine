@@ -55,10 +55,11 @@ impl DateTime {
     }
 }
 
-impl ToString for DateTime {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for DateTime {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use time::format_description::well_known::Iso8601;
-        self.0.format(&Iso8601::DEFAULT).unwrap()
+        let s = self.0.format(&Iso8601::DEFAULT).unwrap();
+        write!(f, "{}", s)
     }
 }
 
