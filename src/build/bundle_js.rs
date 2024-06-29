@@ -222,15 +222,28 @@ mod tests {
         let dir = temp_dir.path();
         let path = dir.join("foo.js");
 
-        std::fs::write(&path, "import bar from \"./bar.js\";\nconsole.log(bar);")
-            .expect("failed to create file");
+        std::fs::write(
+            &path,
+            r#"
+                import bar from "./bar.js";
+                console.log(bar);
+            "#,
+        )
+        .expect("failed to create file");
 
-        std::fs::write(dir.join("bar.js"), r#"export default "Hello world";"#)
-            .expect("failed to create file");
+        std::fs::write(
+            dir.join("bar.js"),
+            r#"
+                export default "Hello world";
+            "#,
+        )
+        .expect("failed to create file");
 
         let result = bundle_js_file(path, true).unwrap();
 
+        assert!(result.contains("console.log"));
         assert!(result.contains("Hello world"));
+        assert!(!result.contains("bar"));
     }
 
     #[test]
@@ -241,23 +254,33 @@ mod tests {
 
         std::fs::write(
             &path,
-            "import bar from \"./bar.ts\";\nconst baz: number = \
-             123;\nconsole.log(bar);\nconsole.log(baz);",
+            r#"
+                import bar from "./bar.ts";
+                const baz: number = 123;
+                console.log(bar);
+                console.log(baz);
+            "#,
         )
         .expect("failed to create file");
 
         std::fs::write(
             dir.join("bar.ts"),
-            "const foo: string = \"Hello world\";\nexport default foo;",
+            r#"
+                const foo: string = "Hello world";
+                export default foo;
+            "#,
         )
         .expect("failed to create file");
 
         let result = bundle_js_file(path, true).unwrap();
 
-        assert!(result.contains("Hello world"));
+        assert!(result.contains("console.log"));
         assert!(result.contains("123"));
-        assert!(!result.contains("string"));
+        assert!(result.contains("Hello world"));
+
+        assert!(!result.contains("bar"));
         assert!(!result.contains("number"));
+        assert!(!result.contains("string"));
     }
 
     /// Requires `npm`.
@@ -285,7 +308,10 @@ mod tests {
 
         std::fs::write(
             &path,
-            "import hi from \"hello-world-typescript\";\nhi(\"world\");",
+            r#"
+                import hi from "hello-world-typescript";
+                hi("world");
+            "#,
         )
         .expect("failed to create file");
 
@@ -293,5 +319,6 @@ mod tests {
 
         assert!(result.contains("console.log"));
         assert!(result.contains("Hello "));
+        assert!(!result.contains("hello-world-typescript"));
     }
 }

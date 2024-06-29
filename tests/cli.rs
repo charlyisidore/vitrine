@@ -63,10 +63,12 @@ fn typescript() -> Result<(), Box<dyn std::error::Error>> {
         .write_str(r#"<script src="script.ts"></script>"#)?;
 
     dir.child("script.ts").write_str(
-        r#"// Comment
-const myVar: string = "abc";
-alert(myVar);
-"#,
+        r#"
+            // Lorem ipsum dolor sit amet
+            document.addEventListener("DOMContentLoaded", () => {
+                console.log("Hello world");
+            });
+        "#,
     )?;
 
     let mut cmd = Command::cargo_bin("vitrine")?;
@@ -80,41 +82,12 @@ alert(myVar);
 
     dir.child("_site/script.js")
         .assert(predicate::path::is_file())
-        .assert(predicate::str::contains("Comment").not())
-        .assert(predicate::str::contains("string").not())
-        .assert(predicate::str::contains("alert"))
-        .assert(predicate::str::contains("abc"));
-
-    Ok(())
-}
-
-#[test]
-fn javascript() -> Result<(), Box<dyn std::error::Error>> {
-    let dir = assert_fs::TempDir::new()?;
-
-    dir.child("index.html")
-        .write_str(r#"<script src="script.js">"#)?;
-
-    dir.child("script.js").write_str(
-        r#"// Comment
-alert('Hello, World!');
-"#,
-    )?;
-
-    let mut cmd = Command::cargo_bin("vitrine")?;
-    cmd.args(["build"]).current_dir(&dir);
-
-    cmd.assert().success();
-
-    dir.child("_site/index.html")
-        .assert(predicate::path::is_file())
-        .assert(predicate::str::contains("script.js"));
-
-    dir.child("_site/script.js")
-        .assert(predicate::path::is_file())
-        .assert(predicate::str::contains("Comment").not())
-        .assert(predicate::str::contains("alert"))
-        .assert(predicate::str::contains("Hello, World!"));
+        .assert(predicate::str::contains("document.addEventListener"))
+        .assert(predicate::str::contains("DOMContentLoaded"))
+        .assert(predicate::str::contains("console.log"))
+        .assert(predicate::str::contains("Hello world"))
+        .assert(predicate::str::contains("Lorem").not())
+        .assert(predicate::str::contains('\n').not());
 
     Ok(())
 }
@@ -145,13 +118,14 @@ fn scss() -> Result<(), Box<dyn std::error::Error>> {
         .write_str(r#"<link rel="stylesheet" href="style.scss">"#)?;
 
     dir.child("style.scss").write_str(
-        r#"// Comment
-body {
-  main {
-    margin: 0;
-  }
-}
-"#,
+        r#"
+            // Lorem ipsum dolor sit amet
+            body {
+                main {
+                    margin: 0;
+                }
+            }
+        "#,
     )?;
 
     let mut cmd = Command::cargo_bin("vitrine")?;
@@ -165,9 +139,9 @@ body {
 
     dir.child("_site/style.css")
         .assert(predicate::path::is_file())
-        .assert(predicate::str::contains("Comment").not())
+        .assert(predicate::str::contains("Lorem").not())
         .assert(predicate::str::contains("body main"))
-        .assert(predicate::str::contains("margin"));
+        .assert(predicate::str::contains("margin:0"));
 
     Ok(())
 }
@@ -180,11 +154,12 @@ fn css() -> Result<(), Box<dyn std::error::Error>> {
         .write_str(r#"<link rel="stylesheet" href="style.css">"#)?;
 
     dir.child("style.css").write_str(
-        r#"/* Comment */
-body {
-  margin: 0;
-}
-"#,
+        r#"
+            /* Lorem ipsum dolor sit amet */
+            body {
+                margin: 0;
+            }
+        "#,
     )?;
 
     let mut cmd = Command::cargo_bin("vitrine")?;
@@ -198,9 +173,9 @@ body {
 
     dir.child("_site/style.css")
         .assert(predicate::path::is_file())
-        .assert(predicate::str::contains("Comment").not())
+        .assert(predicate::str::contains("Lorem").not())
         .assert(predicate::str::contains("body"))
-        .assert(predicate::str::contains("margin"));
+        .assert(predicate::str::contains("margin:0"));
 
     Ok(())
 }

@@ -26,16 +26,13 @@ pub fn minify_js(input: impl AsRef<str>) -> Result<String, MinifyJsError> {
 
     let input = input.as_ref();
 
-    let compress = false;
-    let mangle = false;
-
     let options = swc_core::base::config::Options {
         config: swc_core::base::config::Config {
             minify: true.into(),
             jsc: JscConfig {
                 minify: Some(JsMinifyOptions {
-                    compress: BoolOrDataConfig::from_bool(compress),
-                    mangle: BoolOrDataConfig::from_bool(mangle),
+                    compress: BoolOrDataConfig::from_bool(true),
+                    mangle: BoolOrDataConfig::from_bool(true),
                     ..Default::default()
                 }),
                 ..Default::default()
@@ -108,19 +105,25 @@ mod tests {
 
     #[test]
     fn minify() {
-        // Length: 41
-        const INPUT: &str = concat!(
-            "function foo() {\n",        //
-            "  console.log(\"bar\");\n", //
-            "}\n"
-        );
+        // Length: 177
+        const INPUT: &str = r#"
+            // Lorem ipsum dolor sit amet
+            document.addEventListener("DOMContentLoaded", () => {
+                console.log("Hello world");
+            });
+        "#;
 
         let result = minify_js(INPUT).unwrap();
 
-        assert!(result.contains("foo"));
-        assert!(result.contains("bar"));
+        assert!(result.contains("document.addEventListener"));
+        assert!(result.contains("DOMContentLoaded"));
+        assert!(result.contains("console.log"));
+        assert!(result.contains("Hello world"));
+
+        assert!(!result.contains("Lorem"));
         assert!(!result.contains('\n'));
-        // Expected: 34
-        assert!(result.len() <= 36);
+
+        // Expected: 85
+        assert!(result.len() <= 90);
     }
 }

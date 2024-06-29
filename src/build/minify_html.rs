@@ -198,24 +198,27 @@ pub mod task {
 mod tests {
     use super::HtmlMinifier;
 
-    // Length: 219
-    const INPUT: &str = concat!(
-        "<html>\n",                                //
-        "  <head>\n",                              //
-        "    <script>\n",                          //
-        "      const foo = \"bar\";\n",            //
-        "    </script>\n",                         //
-        "    <style>\n",                           //
-        "      body {\n",                          //
-        "        color: black;\n",                 //
-        "      }\n",                               //
-        "    </style>\n",                          //
-        "  </head>\n",                             //
-        "  <body style=\"background: white;\">\n", //
-        "    <div>baz</div>\n",                    //
-        "  </body>\n",                             //
-        "</html>\n"
-    );
+    // Length: 559
+    const INPUT: &str = r#"
+        <html>
+            <head>
+                <script>
+                    // Lorem ipsum dolor sit amet
+                    document.addEventListener("DOMContentLoaded", () => {
+                        console.log("Hello world");
+                    });
+                </script>
+                <style>
+                    body {
+                        color: black;
+                    }
+                </style>
+            </head>
+            <body style="background: white;">
+                <div>foo</div>
+            </body>
+        </html>
+    "#;
 
     #[test]
     fn minify_html() {
@@ -223,20 +226,22 @@ mod tests {
         let result = minifier.minify(INPUT).unwrap();
 
         // Should minify `<script>`
-        assert!(result.contains("foo"));
-        assert!(result.contains("bar"));
-        assert!(!result.contains("const foo = \"bar\";"));
+        assert!(result.contains("document.addEventListener"));
+        assert!(result.contains("DOMContentLoaded"));
+        assert!(result.contains("console.log"));
+        assert!(result.contains("Hello world"));
+        assert!(!result.contains("Lorem"));
         // Should minify `<style>`
-        assert!(result.contains("color:"));
-        assert!(!result.contains(" color: black"));
+        assert!(result.contains("color:#000"));
+        assert!(!result.contains("black"));
         // Should minify `style="..."`
-        assert!(result.contains("background:"));
-        assert!(!result.contains("background: white;"));
+        assert!(result.contains("background:#fff"));
+        assert!(!result.contains("white"));
         // Should minify HTML
-        assert!(result.contains("<div>baz</div>"));
-        assert!(!result.contains(" <div>baz</div>"));
-        // Expected: 107
-        assert!(result.len() <= 120);
+        assert!(result.contains("<div>foo</div>"));
+        assert!(!result.contains(" <div>foo</div>"));
+        // Expected: 177
+        assert!(result.len() <= 200);
     }
 
     #[test]
@@ -245,15 +250,15 @@ mod tests {
         let result = minifier.minify_html_only(INPUT).unwrap();
 
         // Should not minify `<script>`
-        assert!(result.contains("const foo = \"bar\";"));
+        assert!(result.contains("Lorem"));
         // Should not minify `<style>`
         assert!(result.contains(" color: black;\n"));
         // Should not minify `style="..."`
         assert!(result.contains("background: white;"));
         // Should minify HTML
-        assert!(result.contains("<div>baz</div>"));
-        assert!(!result.contains(" <div>baz</div>"));
-        // Expected: 133
-        assert!(result.len() <= 150);
+        assert!(result.contains("<div>foo</div>"));
+        assert!(!result.contains(" <div>foo</div>"));
+        // Expected: 324
+        assert!(result.len() <= 350);
     }
 }
