@@ -6,7 +6,7 @@ use once_cell::sync::Lazy;
 use syntect::{
     highlighting::{FontStyle, ThemeSet},
     html::{ClassStyle, ClassedHTMLGenerator},
-    parsing::SyntaxSet,
+    parsing::{SyntaxSet, SCOPE_REPO},
     util::LinesWithEndings,
 };
 use thiserror::Error;
@@ -83,6 +83,9 @@ pub struct Theme {
 
     /// Prefix for CSS class names.
     prefix: String,
+
+    /// Prefix for CSS selectors.
+    selector: String,
 }
 
 impl Theme {
@@ -99,15 +102,22 @@ impl Theme {
         Ok(Self {
             theme,
             prefix: String::new(),
+            selector: String::new(),
         })
     }
 
     /// Set the prefix for CSS class names.
     pub fn with_prefix(self, prefix: impl AsRef<str>) -> Self {
-        let prefix = prefix.as_ref();
-
         Self {
-            prefix: prefix.to_string(),
+            prefix: prefix.as_ref().to_string(),
+            ..self
+        }
+    }
+
+    /// Set the prefix for CSS selectors.
+    pub fn with_selector(self, selector: impl AsRef<str>) -> Self {
+        Self {
+            selector: selector.as_ref().to_string(),
             ..self
         }
     }
@@ -125,6 +135,12 @@ impl Theme {
     /// [`syntect::html::css_for_theme_with_class_style`] and modified to fix
     /// syntect's issue [#308](<https://github.com/trishume/syntect/issues/308>).
     fn write_css(&self, mut writer: impl std::fmt::Write) -> Result<(), SyntaxHighlightError> {
+        let selector_prefix = if self.selector.is_empty() {
+            String::new()
+        } else {
+            format!("{} ", self.selector)
+        };
+
         // Preamble
         writer.write_str("/*\n")?;
         if let Some(name) = &self.theme.name {
@@ -136,6 +152,7 @@ impl Theme {
         writer.write_str(" */\n\n")?;
 
         // Container styles
+        writer.write_str(&selector_prefix)?;
         writer.write_char('.')?;
         let class_name = escape_css_identifier(format!("{}code", self.prefix));
         writer.write_str(&class_name)?;
@@ -159,9 +176,10 @@ impl Theme {
             let scope_selectors = &theme_item.scope.selectors;
             for (i, scope_selector) in scope_selectors.iter().enumerate() {
                 // One selector
+                writer.write_str(&selector_prefix)?;
                 let scopes = scope_selector.extract_scopes();
                 for (j, scope) in scopes.iter().enumerate() {
-                    let scope_repo = syntect::parsing::SCOPE_REPO.lock().unwrap();
+                    let scope_repo = SCOPE_REPO.lock().unwrap();
                     for k in 0..(scope.len()) {
                         let atom = scope.atom_at(k as usize);
                         let atom_str = scope_repo.atom_str(atom);
@@ -286,7 +304,8 @@ pub mod task {
                     .map_err(|source| SyntaxHighlightError::WithThemeList {
                         source: Box::new(source),
                     })?
-                    .with_prefix(&self.config.syntax_highlight.css_prefix);
+                    .with_prefix(&self.config.syntax_highlight.css_prefix)
+                    .with_selector(&config.selector);
 
                 let content = theme
                     .to_css()
@@ -347,6 +366,15 @@ mod tests {
             .with_prefix("prefix-");
         let result = theme.to_css().unwrap();
         assert!(result.contains(".prefix-code"));
+    }
+
+    #[test]
+    fn css_theme_with_selector() {
+        let theme = Theme::from_name("base16-eighties.dark")
+            .unwrap()
+            .with_selector(".theme-base16-eighties");
+        let result = theme.to_css().unwrap();
+        assert!(result.contains(".theme-base16-eighties .code"));
     }
 
     #[test]

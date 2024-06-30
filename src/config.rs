@@ -358,6 +358,11 @@ pub struct SyntaxHighlightThemeConfig {
 
     /// Output URL of the stylesheet.
     pub url: UrlPath,
+
+    /// Prefix for CSS selectors.
+    #[serde(default)]
+    #[vitrine(default)]
+    pub selector: String,
 }
 
 impl Config {
