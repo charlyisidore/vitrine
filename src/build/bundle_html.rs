@@ -213,7 +213,7 @@ pub mod task {
 
         /// Prepend `config.base_url` and normalize a URL.
         pub fn normalize_url(&self, url: &UrlPath) -> UrlPath {
-            let url = format!("{}{}", self.config.base_url, url);
+            let url = format!("{}{}", self.config.base_url.path_str(), url);
             UrlPath::from(url).normalize()
         }
     }

@@ -175,7 +175,7 @@ pub mod task {
                 tx_page.send(page).unwrap();
             }
 
-            let url = format!("{}{}", self.config.base_url, config.url).into();
+            let url = format!("{}{}", self.config.base_url.path_str(), config.url).into();
             let content = sitemap.render()?;
 
             tx_xml.send(Xml { url, content }).unwrap();

@@ -105,7 +105,7 @@ pub mod task {
         build::Page,
         util::{
             pipeline::{Receiver, Sender, Task},
-            url::UrlPath,
+            url::Url,
         },
     };
 
@@ -147,7 +147,7 @@ pub mod task {
                     .data
                     .get("url")
                     .and_then(|v| v.as_str())
-                    .map(UrlPath::from)
+                    .map(|s| Url::from(s).path())
                     .unwrap_or(page.url);
 
                 tx.send(Page { url, ..page }).unwrap();
