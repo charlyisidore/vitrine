@@ -7,7 +7,7 @@ use assert_fs::prelude::*;
 use predicates::prelude::*;
 
 #[test]
-fn config_default_js() -> Result<(), Box<dyn std::error::Error>> {
+fn default_js() -> Result<(), Box<dyn std::error::Error>> {
     let dir = assert_fs::TempDir::new()?;
 
     dir.child("vitrine.config.js").write_str(
@@ -36,7 +36,7 @@ fn config_default_js() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn config_default_json() -> Result<(), Box<dyn std::error::Error>> {
+fn default_json() -> Result<(), Box<dyn std::error::Error>> {
     let dir = assert_fs::TempDir::new()?;
 
     dir.child("vitrine.config.json").write_str(
@@ -65,7 +65,7 @@ fn config_default_json() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn config_default_lua() -> Result<(), Box<dyn std::error::Error>> {
+fn default_lua() -> Result<(), Box<dyn std::error::Error>> {
     let dir = assert_fs::TempDir::new()?;
 
     dir.child("vitrine.config.lua").write_str(
@@ -94,7 +94,7 @@ fn config_default_lua() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn config_default_rhai() -> Result<(), Box<dyn std::error::Error>> {
+fn default_rhai() -> Result<(), Box<dyn std::error::Error>> {
     let dir = assert_fs::TempDir::new()?;
 
     dir.child("vitrine.config.rhai").write_str(
@@ -123,7 +123,7 @@ fn config_default_rhai() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn config_default_toml() -> Result<(), Box<dyn std::error::Error>> {
+fn default_toml() -> Result<(), Box<dyn std::error::Error>> {
     let dir = assert_fs::TempDir::new()?;
 
     dir.child("vitrine.config.toml").write_str(
@@ -150,7 +150,7 @@ fn config_default_toml() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn config_default_yaml() -> Result<(), Box<dyn std::error::Error>> {
+fn default_yaml() -> Result<(), Box<dyn std::error::Error>> {
     let dir = assert_fs::TempDir::new()?;
 
     dir.child("vitrine.config.yaml").write_str(
