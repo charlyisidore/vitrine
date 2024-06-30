@@ -1,4 +1,4 @@
-//! Configuration loading tests.
+//! Configuration tests.
 
 use std::process::Command;
 
@@ -12,11 +12,11 @@ fn config_default_js() -> Result<(), Box<dyn std::error::Error>> {
 
     dir.child("vitrine.config.js").write_str(
         r#"// Config
-({
-    input_dir: "my_input",
-    output_dir: "my_output",
-})
-"#,
+            ({
+                input_dir: "my_input",
+                output_dir: "my_output",
+            })
+        "#,
     )?;
 
     dir.child("my_input/index.md").write_str("Home")?;
@@ -40,11 +40,12 @@ fn config_default_json() -> Result<(), Box<dyn std::error::Error>> {
     let dir = assert_fs::TempDir::new()?;
 
     dir.child("vitrine.config.json").write_str(
-        r#"{
-  "input_dir": "my_input",
-  "output_dir": "my_output"
-}
-"#,
+        r#"
+        {
+            "input_dir": "my_input",
+            "output_dir": "my_output"
+        }
+        "#,
     )?;
 
     dir.child("my_input/index.md").write_str("Home")?;
@@ -69,11 +70,11 @@ fn config_default_lua() -> Result<(), Box<dyn std::error::Error>> {
 
     dir.child("vitrine.config.lua").write_str(
         r#"-- Config
-return {
-    input_dir = "my_input",
-    output_dir = "my_output",
-}
-"#,
+        return {
+            input_dir = "my_input",
+            output_dir = "my_output",
+        }
+        "#,
     )?;
 
     dir.child("my_input/index.md").write_str("Home")?;
@@ -98,11 +99,11 @@ fn config_default_rhai() -> Result<(), Box<dyn std::error::Error>> {
 
     dir.child("vitrine.config.rhai").write_str(
         r#"// Config
-#{
-    input_dir: "my_input",
-    output_dir: "my_output",
-}
-"#,
+        #{
+            input_dir: "my_input",
+            output_dir: "my_output",
+        }
+        "#,
     )?;
 
     dir.child("my_input/index.md").write_str("Home")?;
@@ -127,9 +128,9 @@ fn config_default_toml() -> Result<(), Box<dyn std::error::Error>> {
 
     dir.child("vitrine.config.toml").write_str(
         r#"# Config
-input_dir = "my_input"
-output_dir = "my_output"
-"#,
+        input_dir = "my_input"
+        output_dir = "my_output"
+        "#,
     )?;
 
     dir.child("my_input/index.md").write_str("Home")?;
@@ -154,9 +155,9 @@ fn config_default_yaml() -> Result<(), Box<dyn std::error::Error>> {
 
     dir.child("vitrine.config.yaml").write_str(
         r#"# Config
-input_dir: my_input
-output_dir: my_output
-"#,
+        input_dir: my_input
+        output_dir: my_output
+        "#,
     )?;
 
     dir.child("my_input/index.md").write_str("Home")?;
