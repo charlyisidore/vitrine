@@ -26,28 +26,28 @@ rhai = ["dep:rhai"]
 tera = ["dep:tera"]
 
 [dependencies]
-anyhow = "1.0.83"
+anyhow = "1.0.86"
 axum = { version = "0.7.5", default-features = false, features = ["http1", "tokio"] }
-clap = { version = "4.5.4", features = ["derive"] }
+clap = { version = "4.5.8", features = ["derive"] }
 futures = "0.3.30"
-grass = { version = "0.13.2", default-features = false }
+grass = { version = "0.13.3", default-features = false }
 ignore = "0.4.22"
-lightningcss = { version = "1.0.0-alpha.55", default-features = false, features = ["bundler", "grid", "sourcemap"] }
+lightningcss = { version = "1.0.0-alpha.57", default-features = false, features = ["bundler", "grid", "sourcemap"] }
 lol_html = "1.2.1"
 markdown-it = { version = "0.6.0", default-features = false, features = ["linkify"] }
 minify-html = "0.15.0"
-minijinja = { version = "2.0.1", features = ["loader"], optional = true }
-mlua = { version = "0.9.7", features = ["lua51", "send", "serialize", "vendored"], optional = true }
+minijinja = { version = "2.0.3", features = ["loader"], optional = true }
+mlua = { version = "0.9.9", features = ["lua51", "send", "serialize", "vendored"], optional = true }
 notify-debouncer-full = { version = "0.3.1", default-features = false }
 once_cell = "1.19.0"
-quick-xml = { version = "0.31.0", features = ["serialize"] }
-quickjs_runtime = { version = "0.13.3", default-features = false, features = ["bellard", "console", "setimmediate", "setinterval", "settimeout"], optional = true }
-rhai = { version = "1.18.0", features = ["serde", "sync"], optional = true }
-serde = "1.0.201"
-serde_json = "1.0.117"
+quick-xml = { version = "0.35.0", features = ["serialize"] }
+quickjs_runtime = { version = "0.13.4", default-features = false, features = ["bellard", "console", "setimmediate", "setinterval", "settimeout"], optional = true }
+rhai = { version = "1.19.0", features = ["serde", "sync"], optional = true }
+serde = "1.0.204"
+serde_json = "1.0.120"
 serde_yaml = "0.9.34"
 slug = "0.1.5"
-swc_core = { version = "0.95.9", features = [
+swc_core = { version = "0.96.9", features = [
     "base",
     "bundler",
     "bundler_node_v1",
@@ -59,11 +59,11 @@ swc_core = { version = "0.95.9", features = [
     "ecma_visit",
 ] }
 syntect = { version = "5.2.0", default-features = false, features = ["default-fancy"] }
-tera = { version = "1.19.1", optional = true }
-thiserror = "1.0.60"
+tera = { version = "1.20.0", optional = true }
+thiserror = "1.0.61"
 time = { version = "0.3.36", features = ["macros", "parsing"] }
-tokio = "1.37.0"
-toml = { version = "0.8.12", default-features = false, features = ["parse"] }
+tokio = "1.38.0"
+toml = { version = "0.8.14", default-features = false, features = ["parse"] }
 tower-http = { version = "0.5.2", features = ["fs"] }
 vitrine_derive = { version = "=0.2.0", path = "crates/derive" }
 
