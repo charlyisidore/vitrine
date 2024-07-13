@@ -12,10 +12,10 @@ fn default_js() -> Result<(), Box<dyn std::error::Error>> {
 
     dir.child("vitrine.config.js").write_str(
         r#"// Config
-            ({
+            export default {
                 input_dir: "my_input",
                 output_dir: "my_output",
-            })
+            };
         "#,
     )?;
 
