@@ -47,7 +47,7 @@ pub fn minify_js(input: impl AsRef<str>) -> Result<String, MinifyJsError> {
 
     let output = GLOBALS.set(&Default::default(), || {
         try_with_handler(cm.clone(), Default::default(), |handler| {
-            let fm = cm.new_source_file(FileName::Anon, input.to_string());
+            let fm = cm.new_source_file(FileName::Anon.into(), input.to_string());
             let output = compiler.process_js_file(fm, handler, &options)?;
             Ok(output.code)
         })
