@@ -20,7 +20,7 @@ members = ["crates/derive"]
 [features]
 default = ["jinja", "js", "lua", "rhai", "tera"]
 jinja = ["dep:minijinja"]
-js = ["dep:quickjs_runtime"]
+js = ["dep:v8"]
 lua = ["dep:mlua"]
 rhai = ["dep:rhai"]
 tera = ["dep:tera"]
@@ -55,13 +55,6 @@ mlua = { version = "0.9.9", features = [
 notify-debouncer-full = { version = "0.3.1", default-features = false }
 once_cell = "1.19.0"
 quick-xml = { version = "0.35.0", features = ["serialize"] }
-quickjs_runtime = { version = "0.13.4", default-features = false, features = [
-    "bellard",
-    "console",
-    "setimmediate",
-    "setinterval",
-    "settimeout",
-], optional = true }
 rhai = { version = "1.19.0", features = ["serde", "sync"], optional = true }
 serde = "1.0.204"
 serde_json = "1.0.120"
@@ -84,9 +77,10 @@ syntect = { version = "5.2.0", default-features = false, features = [
 tera = { version = "1.20.0", optional = true }
 thiserror = "1.0.61"
 time = { version = "0.3.36", features = ["macros", "parsing"] }
-tokio = "1.38.0"
+tokio = { version = "1.38.0", features = ["rt-multi-thread"] }
 toml = { version = "0.8.14", default-features = false, features = ["parse"] }
 tower-http = { version = "0.5.2", features = ["fs"] }
+v8 = { version = "0.96.0", optional = true }
 vitrine_derive = { version = "=0.2.0", path = "crates/derive" }
 
 [dev-dependencies]

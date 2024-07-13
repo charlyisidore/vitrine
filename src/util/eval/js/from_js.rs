@@ -1,115 +1,80 @@
-//! Convert values from [`JsValueFacade`].
+//! Convert values from [`JsValue`].
 
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     hash::{BuildHasher, Hash},
     path::PathBuf,
-    sync::Arc,
 };
 
-use quickjs_runtime::{facades::QuickJsRuntimeFacade, values::JsValueFacade};
-
-use super::{into_js::IntoJs, JsError};
+use super::{into_js::IntoJs, JsError, JsValue};
 use crate::util::function::Function;
 
-/// Trait for types convertible from [`JsValueFacade`].
+/// Trait for types convertible from [`JsValue`].
 pub trait FromJs
 where
     Self: Sized,
 {
     /// Perform the conversion.
-    fn from_js(value: JsValueFacade, runtime: &Arc<QuickJsRuntimeFacade>) -> Result<Self, JsError>;
+    fn from_js(value: JsValue) -> Result<Self, JsError>;
 }
 
 impl FromJs for bool {
-    fn from_js(value: JsValueFacade, _: &Arc<QuickJsRuntimeFacade>) -> Result<Self, JsError> {
-        if value.is_bool() {
-            Ok(value.get_bool())
-        } else {
-            Err(JsError::FromJs {
-                from: value.get_value_type().to_string(),
+    fn from_js(value: JsValue) -> Result<Self, JsError> {
+        match value {
+            JsValue::Boolean(v) => Ok(v),
+            _ => Err(JsError::FromJs {
+                from: value.type_str(),
                 to: "bool",
                 message: Some("expected boolean".to_string()),
-            })
+            }),
         }
     }
 }
 
-/// Implements [`FromJs`] for integer types.
-macro_rules! impl_from_js_integer {
+/// Implements [`FromJs`] for number types.
+macro_rules! impl_from_js_number {
     ($ty:ty) => {
         impl FromJs for $ty {
-            fn from_js(
-                value: JsValueFacade,
-                _: &Arc<QuickJsRuntimeFacade>,
-            ) -> Result<Self, JsError> {
-                if value.is_i32() {
-                    Ok(value.get_i32() as $ty)
-                } else {
-                    Err(JsError::FromJs {
-                        from: value.get_value_type().to_string(),
+            fn from_js(value: JsValue) -> Result<Self, JsError> {
+                match value {
+                    JsValue::Number(v) => Ok(v as $ty),
+                    _ => Err(JsError::FromJs {
+                        from: value.type_str(),
                         to: stringify!($ty),
                         message: Some("expected number".to_string()),
-                    })
+                    }),
                 }
             }
         }
     };
 }
 
-impl_from_js_integer! { i8 }
-impl_from_js_integer! { i16 }
-impl_from_js_integer! { i32 }
-impl_from_js_integer! { i64 }
-impl_from_js_integer! { i128 }
-impl_from_js_integer! { isize }
-impl_from_js_integer! { u16 }
-impl_from_js_integer! { u32 }
-impl_from_js_integer! { u64 }
-impl_from_js_integer! { u128 }
-impl_from_js_integer! { usize }
-
-/// Implements [`FromJs`] for float types.
-macro_rules! impl_from_js_float {
-    ($ty:ty) => {
-        impl FromJs for $ty {
-            fn from_js(
-                value: JsValueFacade,
-                _: &Arc<QuickJsRuntimeFacade>,
-            ) -> Result<Self, JsError> {
-                if value.is_f64() {
-                    Ok(value.get_f64() as $ty)
-                } else {
-                    Err(JsError::FromJs {
-                        from: value.get_value_type().to_string(),
-                        to: stringify!($ty),
-                        message: Some("expected number".to_string()),
-                    })
-                }
-            }
-        }
-    };
-}
-
-impl_from_js_float! { f32 }
-impl_from_js_float! { f64 }
+impl_from_js_number! { i8 }
+impl_from_js_number! { i16 }
+impl_from_js_number! { i32 }
+impl_from_js_number! { i64 }
+impl_from_js_number! { i128 }
+impl_from_js_number! { isize }
+impl_from_js_number! { u16 }
+impl_from_js_number! { u32 }
+impl_from_js_number! { u64 }
+impl_from_js_number! { u128 }
+impl_from_js_number! { usize }
+impl_from_js_number! { f32 }
+impl_from_js_number! { f64 }
 
 /// Implements [`FromJs`] for string types.
 macro_rules! impl_from_js_string {
     ($ty:ty) => {
         impl FromJs for $ty {
-            fn from_js(
-                value: JsValueFacade,
-                _: &Arc<QuickJsRuntimeFacade>,
-            ) -> Result<Self, JsError> {
-                if value.is_string() {
-                    Ok(value.get_str().into())
-                } else {
-                    Err(JsError::FromJs {
-                        from: value.get_value_type().to_string(),
+            fn from_js(value: JsValue) -> Result<Self, JsError> {
+                match value {
+                    JsValue::String(v) => Ok(v.into()),
+                    _ => Err(JsError::FromJs {
+                        from: value.type_str(),
                         to: stringify!($ty),
                         message: Some("expected string".to_string()),
-                    })
+                    }),
                 }
             }
         }
@@ -125,11 +90,10 @@ impl<T> FromJs for Option<T>
 where
     T: FromJs,
 {
-    fn from_js(value: JsValueFacade, runtime: &Arc<QuickJsRuntimeFacade>) -> Result<Self, JsError> {
-        if value.is_null_or_undefined() {
-            Ok(None)
-        } else {
-            Ok(Some(T::from_js(value, runtime)?))
+    fn from_js(value: JsValue) -> Result<Self, JsError> {
+        match value {
+            JsValue::Null | JsValue::Undefined => Ok(None),
+            v => Ok(Some(T::from_js(v)?)),
         }
     }
 }
@@ -149,25 +113,13 @@ macro_rules! impl_from_js_array {
                 $($u: $tr0 $(+ $tr)*),+
         )?
         {
-            fn from_js(
-                value: JsValueFacade,
-                runtime: &Arc<QuickJsRuntimeFacade>,
-            ) -> Result<Self, JsError> {
+            fn from_js(value: JsValue) -> Result<Self, JsError> {
                 match value {
-                    JsValueFacade::Array { val } => val
-                        .into_iter()
-                        .map(|v| FromJs::from_js(v, runtime))
-                        .collect(),
-                    JsValueFacade::JsArray { cached_array } => {
-                        futures::executor::block_on(cached_array.get_array())?
-                            .into_iter()
-                            .map(|v| FromJs::from_js(v, runtime))
-                            .collect()
-                    },
+                    JsValue::Array(v) => v.into_iter().map(FromJs::from_js).collect(),
                     _ => Err(JsError::FromJs {
-                        from: value.get_value_type().to_string(),
+                        from: value.type_str(),
                         to: stringify!($ty),
-                        message: Some("expected array".to_string()),
+                        message: Some("expected Array".to_string()),
                     }),
                 }
             }
@@ -194,24 +146,14 @@ macro_rules! impl_from_js_object {
                 $($u: $tr0 $(<$($v),+>)? $(+ $tr $(<$($w),+>)?)*),+
         )?
         {
-            fn from_js(value: JsValueFacade, runtime: &Arc<QuickJsRuntimeFacade>)
-                -> Result<Self, JsError>
-            {
+            fn from_js(value: JsValue) -> Result<Self, JsError> {
                 match value {
-                    JsValueFacade::JsObject { cached_object } => cached_object
-                        .get_object_sync()
-                        .map_err(Into::into)
-                        .and_then(|object| {
-                            object
-                                .into_iter()
-                                .map(|(key, value)| Ok((
-                                    From::from(key),
-                                    FromJs::from_js(value, runtime)?,
-                                )))
-                                .collect()
-                        }),
+                    JsValue::Object(v) => v
+                        .into_iter()
+                        .map(|(k, v)| Ok((From::from(k), FromJs::from_js(v)?)))
+                        .collect(),
                     _ => Err(JsError::FromJs {
-                        from: value.get_value_type().to_string(),
+                        from: value.type_str(),
                         to: stringify!($ty),
                         message: Some("expected object".to_string()),
                     }),
@@ -231,72 +173,23 @@ impl_from_js_object! {
 }
 
 impl FromJs for crate::util::value::Value {
-    fn from_js(
-        value: JsValueFacade,
-        _runtime: &Arc<QuickJsRuntimeFacade>,
-    ) -> Result<Self, JsError> {
-        use futures::executor::block_on;
-
-        use crate::util::value::to_value;
-
-        let value_type = value.get_value_type();
-
+    fn from_js(value: JsValue) -> Result<Self, JsError> {
         match value {
-            JsValueFacade::Null => Ok(Self::Unit),
-            JsValueFacade::Undefined => Ok(Self::Unit),
-            JsValueFacade::Boolean { val } => Ok(Self::Bool(val)),
-            JsValueFacade::F64 { val } => Ok(Self::F64(val)),
-            JsValueFacade::I32 { val } => Ok(Self::I64(val.into())),
-            JsValueFacade::String { val } => Ok(Self::Str(val.to_string())),
-            JsValueFacade::Array { val } => Ok(Self::Seq(
-                val.into_iter()
-                    .map(|v| FromJs::from_js(v, _runtime))
-                    .collect::<Result<_, _>>()?,
+            JsValue::Null | JsValue::Undefined => Ok(Self::Unit),
+            JsValue::Boolean(v) => Ok(Self::Bool(v)),
+            JsValue::Number(v) => Ok(Self::F64(v)),
+            JsValue::String(v) => Ok(Self::Str(v)),
+            JsValue::Array(v) => Ok(Self::Seq(
+                v.into_iter().map(Self::from_js).collect::<Result<_, _>>()?,
             )),
-            JsValueFacade::JsArray { cached_array } => Ok(Self::Seq(
-                block_on(cached_array.get_array())?
-                    .into_iter()
-                    .map(|v| FromJs::from_js(v, _runtime))
-                    .collect::<Result<_, _>>()?,
-            )),
-            JsValueFacade::Object { val } => Ok(Self::Map(
-                val.into_iter()
-                    .map(|(k, v)| Ok((k, FromJs::from_js(v, _runtime)?)))
+            JsValue::Object(v) => Ok(Self::Map(
+                v.into_iter()
+                    .map(|(k, v)| Ok((k, Self::from_js(v)?)))
                     .collect::<Result<_, JsError>>()?,
             )),
-            JsValueFacade::JsObject { cached_object } => Ok(Self::Map(
-                cached_object
-                    .get_object_sync()?
-                    .into_iter()
-                    .map(|(k, v)| Ok((k, FromJs::from_js(v, _runtime)?)))
-                    .collect::<Result<_, JsError>>()?,
-            )),
-            JsValueFacade::JsPromise { ref cached_promise } => FromJs::from_js(
-                cached_promise
-                    .get_promise_result_sync()?
-                    .map_err(|e| JsError::FromJs {
-                        from: value_type.to_string(),
-                        to: "vitrine::Value",
-                        message: Some(e.stringify()),
-                    })?,
-                _runtime,
-            ),
-            JsValueFacade::JsonStr { json } => Ok(to_value(serde_json::from_str(&json)?).map_err(
-                |e| JsError::FromJs {
-                    from: value_type.to_string(),
-                    to: "vitrine::Value",
-                    message: Some(format!("{e}")),
-                },
-            )?),
-            JsValueFacade::SerdeValue { value } => {
-                Ok(to_value(value).map_err(|e| JsError::FromJs {
-                    from: value_type.to_string(),
-                    to: "vitrine::Value",
-                    message: Some(format!("{e}")),
-                })?)
-            },
+            JsValue::Date(v) => Ok(Self::F64(v)),
             _ => Err(JsError::FromJs {
-                from: value_type.to_string(),
+                from: value.type_str(),
                 to: "vitrine::Value",
                 message: Some("expected vitrine::Value".to_string()),
             }),
@@ -305,50 +198,26 @@ impl FromJs for crate::util::value::Value {
 }
 
 impl FromJs for serde_json::Value {
-    fn from_js(
-        value: JsValueFacade,
-        _runtime: &Arc<QuickJsRuntimeFacade>,
-    ) -> Result<Self, JsError> {
-        use futures::executor::block_on;
+    fn from_js(value: JsValue) -> Result<Self, JsError> {
         use serde_json::Map;
-
         match value {
-            JsValueFacade::Null => Ok(Self::Null),
-            JsValueFacade::Undefined => Ok(Self::Null),
-            JsValueFacade::Boolean { val } => Ok(Self::from(val)),
-            JsValueFacade::F64 { val } => Ok(Self::from(val)),
-            JsValueFacade::I32 { val } => Ok(Self::from(val)),
-            JsValueFacade::String { val } => Ok(Self::from(val.to_string())),
-            JsValueFacade::Array { val } => Ok(Self::from_iter(
-                val.into_iter()
-                    .map(|v| FromJs::from_js(v, _runtime))
-                    .collect::<Result<Vec<Self>, JsError>>()?,
+            JsValue::Null | JsValue::Undefined => Ok(Self::Null),
+            JsValue::Boolean(v) => Ok(Self::from(v)),
+            JsValue::Number(v) => Ok(Self::from(v)),
+            JsValue::String(v) => Ok(Self::from(v)),
+            JsValue::Array(v) => Ok(Self::from_iter(
+                v.into_iter()
+                    .map(Self::from_js)
+                    .collect::<Result<Vec<Self>, _>>()?,
             )),
-            JsValueFacade::JsArray { cached_array } => {
-                Ok(block_on(cached_array.get_serde_value())?)
-            },
-            JsValueFacade::Object { val } => Ok(Self::from_iter(
-                val.into_iter()
-                    .map(|(k, v)| Ok((k, FromJs::from_js(v, _runtime)?)))
+            JsValue::Object(v) => Ok(Self::from_iter(
+                v.into_iter()
+                    .map(|(k, v)| Ok((k, Self::from_js(v)?)))
                     .collect::<Result<Map<String, Self>, JsError>>()?,
             )),
-            JsValueFacade::JsObject { cached_object } => {
-                Ok(block_on(cached_object.get_serde_value())?)
-            },
-            JsValueFacade::JsPromise { ref cached_promise } => FromJs::from_js(
-                cached_promise
-                    .get_promise_result_sync()?
-                    .map_err(|e| JsError::FromJs {
-                        from: value.get_value_type().to_string(),
-                        to: "serde_json::Value",
-                        message: Some(e.stringify()),
-                    })?,
-                _runtime,
-            ),
-            JsValueFacade::JsonStr { json } => Ok(serde_json::from_str(&json)?),
-            JsValueFacade::SerdeValue { value } => Ok(value.clone()),
+            JsValue::Date(v) => Ok(Self::from(v)),
             _ => Err(JsError::FromJs {
-                from: value.get_value_type().to_string(),
+                from: value.type_str(),
                 to: "serde_json::Value",
                 message: Some("expected JSON value".to_string()),
             }),
@@ -364,24 +233,22 @@ macro_rules! impl_from_js_fn {
             $($ty: IntoJs,)*
             R: FromJs,
         {
-            fn from_js(value: JsValueFacade, runtime: &Arc<QuickJsRuntimeFacade>)
-                -> Result<Self, JsError> {
-                    match value {
-                        JsValueFacade::JsFunction { cached_function } => {
-                            let runtime = Arc::clone(&runtime);
-                            Ok(Self::from(move |$($arg: $ty),*| {
-                                let args = Vec::from([$($ty::into_js($arg)?,)*]);
-                                let result = cached_function.invoke_function_sync(args)?;
-                                R::from_js(result, &runtime)
-                            }))
-                        },
-                        _ => Err(JsError::FromJs {
-                            from: value.get_value_type().to_string(),
-                            to: "Function",
-                            message: Some("expected function".to_string()),
-                        }),
-                    }
+            fn from_js(value: JsValue) -> Result<Self, JsError> {
+                match value {
+                    JsValue::Function(_, v) => {
+                        Ok(Self::from(move |$($arg: $ty),*| {
+                            let args = Vec::from([$($ty::into_js($arg)?,)*]);
+                            let result = (v)(args)?;
+                            R::from_js(result)
+                        }))
+                    },
+                    _ => Err(JsError::FromJs {
+                        from: value.type_str(),
+                        to: "Function",
+                        message: Some("expected function".to_string()),
+                    }),
                 }
+            }
         }
     }
 }

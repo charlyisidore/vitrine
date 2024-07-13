@@ -49,7 +49,7 @@ pub fn expand_from_js(input: &syn::DeriveInput) -> TokenStream {
                         #field_ident: #crate_path::FromJs::from_js(
                             object.remove(::std::stringify!(#field_ident)).ok_or_else(
                                 || #crate_path::JsError::FromJs {
-                                    from: value.get_value_type().to_string(),
+                                    from: type_str,
                                     to: ::std::stringify!(#struct_ident),
                                     message: ::std::option::Option::Some(::std::format!(
                                         "required field `{}`",
@@ -57,7 +57,6 @@ pub fn expand_from_js(input: &syn::DeriveInput) -> TokenStream {
                                     )),
                                 }
                             )?,
-                            runtime,
                         ).map_err(#err_with_field)?
                     }
                 },
@@ -67,14 +66,14 @@ pub fn expand_from_js(input: &syn::DeriveInput) -> TokenStream {
                     Some(path) => quote! {
                         #field_ident: object.remove(::std::stringify!(#field_ident)).map_or_else(
                             || ::std::result::Result::Ok(#path()),
-                            |v| #crate_path::FromJs::from_js(v, runtime),
+                            #crate_path::FromJs::from_js,
                         ).map_err(#err_with_field)?
                     },
                     // `vitrine(default)`
                     None => quote! {
                         #field_ident: object.remove(::std::stringify!(#field_ident)).map_or_else(
                             || ::std::result::Result::Ok(::std::default::Default::default()),
-                            |v| #crate_path::FromJs::from_js(v, runtime),
+                            #crate_path::FromJs::from_js,
                         ).map_err(#err_with_field)?
                     },
                 },
@@ -90,22 +89,15 @@ pub fn expand_from_js(input: &syn::DeriveInput) -> TokenStream {
     quote! {
         impl #crate_path::FromJs for #struct_ident {
             fn from_js(
-                value: ::quickjs_runtime::values::JsValueFacade,
-                runtime: &::std::sync::Arc<::quickjs_runtime::facades::QuickJsRuntimeFacade>,
+                value: #crate_path::JsValue,
             ) -> ::std::result::Result<Self, #crate_path::JsError> {
+                let type_str = value.type_str();
                 match value {
-                    ::quickjs_runtime::values::JsValueFacade::JsObject {
-                        ref cached_object
-                    } => cached_object
-                        .get_object_sync()
-                        .map_err(::std::convert::Into::into)
-                        .and_then(|mut object| {
-                            ::std::result::Result::Ok(Self {
-                                #(#fields),*
-                            })
-                        }),
+                    #crate_path::JsValue::Object(mut object) => ::std::result::Result::Ok(Self {
+                        #(#fields),*
+                    }),
                     _ => ::std::result::Result::Err(#crate_path::JsError::FromJs {
-                        from: value.get_value_type().to_string(),
+                        from: type_str,
                         to: ::std::stringify!(#struct_ident),
                         message: ::std::option::Option::Some("expected object".to_string()),
                     }),

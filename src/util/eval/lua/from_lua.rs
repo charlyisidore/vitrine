@@ -46,9 +46,9 @@ impl_from_lua_from_lua! { u16 }
 impl_from_lua_from_lua! { u32 }
 impl_from_lua_from_lua! { u64 }
 impl_from_lua_from_lua! { u128 }
+impl_from_lua_from_lua! { usize }
 impl_from_lua_from_lua! { f32 }
 impl_from_lua_from_lua! { f64 }
-impl_from_lua_from_lua! { usize }
 impl_from_lua_from_lua! { String }
 
 /// Implements [`FromLua`] for string types.

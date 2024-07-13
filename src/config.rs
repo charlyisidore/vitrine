@@ -349,7 +349,10 @@ pub struct SitemapConfig {
 }
 
 /// Configuration for a syntax highlight theme.
-#[derive(Clone, Debug, Deserialize, FromJs, FromLua, FromRhai)]
+#[derive(Clone, Debug, Deserialize, VitrineNoop)]
+#[cfg_attr(feature = "js", derive(FromJs))]
+#[cfg_attr(feature = "lua", derive(FromLua))]
+#[cfg_attr(feature = "rhai", derive(FromRhai))]
 pub struct SyntaxHighlightThemeConfig {
     /// Theme name.
     ///
