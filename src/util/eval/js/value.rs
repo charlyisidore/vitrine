@@ -74,7 +74,8 @@ impl JsValue {
             let sender = sender.clone();
             let receiver = receiver.clone();
             let index = functions.len();
-            functions.push(value.clone().try_into().unwrap());
+            functions.push(value.try_into().unwrap());
+            debug_assert!(index + 1 == functions.len());
             Self::Function(
                 index,
                 Box::new(move |args: Vec<Self>| {
@@ -154,7 +155,7 @@ impl JsValue {
                 .into()
             },
             Date(v) => v8::Date::new(scope, v).unwrap().into(),
-            Function(i, _) => functions.get(i).unwrap().clone().into(),
+            Function(i, _) => (*functions.get(i).unwrap()).into(),
         }
     }
 }

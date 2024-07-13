@@ -67,7 +67,7 @@ where
 
     let source = std::fs::read_to_string(path)?;
 
-    Ok(from_str(source)?)
+    from_str(source)
 }
 
 /// Read value from a JavaScript script string.
@@ -102,7 +102,7 @@ fn run(code: &str, value_sender: Sender<JsValue>) -> anyhow::Result<()> {
     let context = v8::Context::new(handle_scope);
     let scope = &mut v8::ContextScope::new(handle_scope, context);
 
-    let code = v8::String::new(scope, &code).unwrap();
+    let code = v8::String::new(scope, code).unwrap();
 
     let resource_name = v8::String::new(scope, "index.js").unwrap();
     let source_map_url = v8::undefined(scope);
