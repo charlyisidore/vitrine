@@ -61,29 +61,38 @@ pub fn expand_from_js(input: &syn::DeriveInput) -> TokenStream {
                     }
                 },
                 |attr| match attr {
-                VitrineAttribute::Default(path) => match path {
-                    // `vitrine(default = "path")`
-                    Some(path) => quote! {
-                        #field_ident: object.remove(::std::stringify!(#field_ident)).map_or_else(
-                            || ::std::result::Result::Ok(#path()),
-                            #crate_path::FromJs::from_js,
-                        ).map_err(#err_with_field)?
+                    VitrineAttribute::Default(path) => match path {
+                        // `vitrine(default = "path")`
+                        Some(path) => quote! {
+                            #field_ident: object
+                                .remove(::std::stringify!(#field_ident))
+                                .map_or_else(
+                                    || ::std::result::Result::Ok(#path()),
+                                    #crate_path::FromJs::from_js,
+                                )
+                                .map_err(#err_with_field)?
+                        },
+                        // `vitrine(default)`
+                        None => quote! {
+                            #field_ident: object
+                                .remove(::std::stringify!(#field_ident))
+                                .map_or_else(
+                                    || ::std::result::Result::Ok(
+                                        ::std::default::Default::default()
+                                    ),
+                                    #crate_path::FromJs::from_js,
+                                )
+                                .map_err(#err_with_field)?
+                        },
                     },
-                    // `vitrine(default)`
-                    None => quote! {
-                        #field_ident: object.remove(::std::stringify!(#field_ident)).map_or_else(
-                            || ::std::result::Result::Ok(::std::default::Default::default()),
-                            #crate_path::FromJs::from_js,
-                        ).map_err(#err_with_field)?
+                    VitrineAttribute::Skip => {
+                        // vitrine(skip)
+                        quote! {
+                            #field_ident: ::std::default::Default::default()
+                        }
                     },
                 },
-                VitrineAttribute::Skip => {
-                    // vitrine(skip)
-                    quote! {
-                        #field_ident: ::std::default::Default::default()
-                    }
-                },
-            })
+            )
     });
 
     quote! {

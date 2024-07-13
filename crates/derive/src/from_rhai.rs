@@ -24,18 +24,17 @@ pub fn expand_from_rhai(input: &syn::DeriveInput) -> TokenStream {
         .to_compile_error();
     };
 
-    let fields =
-        fields.named.iter().map(|field| {
-            let field_ident = field.ident.as_ref().unwrap();
+    let fields = fields.named.iter().map(|field| {
+        let field_ident = field.ident.as_ref().unwrap();
 
-            let err_with_field = quote! {
-                |source| #crate_path::RhaiError::WithField {
-                    source: ::std::boxed::Box::new(source),
-                    field: ::std::stringify!(#field_ident).to_string(),
-                }
-            };
+        let err_with_field = quote! {
+            |source| #crate_path::RhaiError::WithField {
+                source: ::std::boxed::Box::new(source),
+                field: ::std::stringify!(#field_ident).to_string(),
+            }
+        };
 
-            field
+        field
             .attrs
             .iter()
             .filter(|attr| attr.path().is_ident("vitrine"))
@@ -61,31 +60,33 @@ pub fn expand_from_rhai(input: &syn::DeriveInput) -> TokenStream {
                             runtime,
                         ).map_err(#err_with_field)?
                     }
-                },|attr| match attr {
-                VitrineAttribute::Default(path) => match path {
-                    // `vitrine(default = "path")`
-                    Some(path) => quote! {
-                        #field_ident: map.remove(::std::stringify!(#field_ident)).map_or_else(
-                            || ::std::result::Result::Ok(#path()),
-                            |v| #crate_path::FromRhai::from_rhai(v, runtime),
-                        ).map_err(#err_with_field)?
+                },
+                |attr| match attr {
+                    VitrineAttribute::Default(path) => match path {
+                        // `vitrine(default = "path")`
+                        Some(path) => quote! {
+                            #field_ident: map.remove(::std::stringify!(#field_ident)).map_or_else(
+                                || ::std::result::Result::Ok(#path()),
+                                |v| #crate_path::FromRhai::from_rhai(v, runtime),
+                            ).map_err(#err_with_field)?
+                        },
+                        // `vitrine(default)`
+                        None => quote! {
+                            #field_ident: map.remove(::std::stringify!(#field_ident)).map_or_else(
+                                || ::std::result::Result::Ok(::std::default::Default::default()),
+                                |v| #crate_path::FromRhai::from_rhai(v, runtime),
+                            ).map_err(#err_with_field)?
+                        },
                     },
-                    // `vitrine(default)`
-                    None => quote! {
-                        #field_ident: map.remove(::std::stringify!(#field_ident)).map_or_else(
-                            || ::std::result::Result::Ok(::std::default::Default::default()),
-                            |v| #crate_path::FromRhai::from_rhai(v, runtime),
-                        ).map_err(#err_with_field)?
+                    VitrineAttribute::Skip => {
+                        // vitrine(skip)
+                        quote! {
+                            #field_ident: ::std::default::Default::default()
+                        }
                     },
                 },
-                VitrineAttribute::Skip => {
-                    // vitrine(skip)
-                    quote! {
-                        #field_ident: ::std::default::Default::default()
-                    }
-                },
-            })
-        });
+            )
+    });
 
     quote! {
         impl #crate_path::FromRhai for #struct_ident {
