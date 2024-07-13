@@ -31,6 +31,39 @@ impl FromJs for bool {
     }
 }
 
+/// Implements [`FromJs`] for integer types.
+macro_rules! impl_from_js_integer {
+    ($ty:ty) => {
+        impl FromJs for $ty {
+            fn from_js(value: JsValue) -> Result<Self, JsError> {
+                match value {
+                    JsValue::Number(v) if v.fract() == 0.0 => Ok(v as $ty),
+                    JsValue::Int32(v) => Ok(v as $ty),
+                    JsValue::Uint32(v) => Ok(v as $ty),
+                    _ => Err(JsError::FromJs {
+                        from: value.type_str(),
+                        to: stringify!($ty),
+                        message: Some("expected integer".to_string()),
+                    }),
+                }
+            }
+        }
+    };
+}
+
+impl_from_js_integer! { i8 }
+impl_from_js_integer! { i16 }
+impl_from_js_integer! { i32 }
+impl_from_js_integer! { i64 }
+impl_from_js_integer! { i128 }
+impl_from_js_integer! { isize }
+impl_from_js_integer! { u8 }
+impl_from_js_integer! { u16 }
+impl_from_js_integer! { u32 }
+impl_from_js_integer! { u64 }
+impl_from_js_integer! { u128 }
+impl_from_js_integer! { usize }
+
 /// Implements [`FromJs`] for number types.
 macro_rules! impl_from_js_number {
     ($ty:ty) => {
@@ -38,6 +71,8 @@ macro_rules! impl_from_js_number {
             fn from_js(value: JsValue) -> Result<Self, JsError> {
                 match value {
                     JsValue::Number(v) => Ok(v as $ty),
+                    JsValue::Int32(v) => Ok(v as $ty),
+                    JsValue::Uint32(v) => Ok(v as $ty),
                     _ => Err(JsError::FromJs {
                         from: value.type_str(),
                         to: stringify!($ty),
@@ -49,17 +84,6 @@ macro_rules! impl_from_js_number {
     };
 }
 
-impl_from_js_number! { i8 }
-impl_from_js_number! { i16 }
-impl_from_js_number! { i32 }
-impl_from_js_number! { i64 }
-impl_from_js_number! { i128 }
-impl_from_js_number! { isize }
-impl_from_js_number! { u16 }
-impl_from_js_number! { u32 }
-impl_from_js_number! { u64 }
-impl_from_js_number! { u128 }
-impl_from_js_number! { usize }
 impl_from_js_number! { f32 }
 impl_from_js_number! { f64 }
 
@@ -178,6 +202,8 @@ impl FromJs for crate::util::value::Value {
             JsValue::Null | JsValue::Undefined => Ok(Self::Unit),
             JsValue::Boolean(v) => Ok(Self::Bool(v)),
             JsValue::Number(v) => Ok(Self::F64(v)),
+            JsValue::Int32(v) => Ok(Self::I64(v as i64)),
+            JsValue::Uint32(v) => Ok(Self::U64(v as u64)),
             JsValue::String(v) => Ok(Self::Str(v)),
             JsValue::Array(v) => Ok(Self::Seq(
                 v.into_iter().map(Self::from_js).collect::<Result<_, _>>()?,
@@ -204,6 +230,8 @@ impl FromJs for serde_json::Value {
             JsValue::Null | JsValue::Undefined => Ok(Self::Null),
             JsValue::Boolean(v) => Ok(Self::from(v)),
             JsValue::Number(v) => Ok(Self::from(v)),
+            JsValue::Int32(v) => Ok(Self::from(v)),
+            JsValue::Uint32(v) => Ok(Self::from(v)),
             JsValue::String(v) => Ok(Self::from(v)),
             JsValue::Array(v) => Ok(Self::from_iter(
                 v.into_iter()

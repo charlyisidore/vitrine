@@ -365,17 +365,17 @@ mod tests {
             Value::Map(
                 [
                     ("bool".into(), Value::Bool(true)),
-                    ("int".into(), Value::F64(1.0)),
+                    ("int".into(), Value::I64(1)),
                     ("float".into(), Value::F64(3.14)),
                     ("string".into(), Value::Str("bar".into())),
                     ("unit".into(), Value::Unit),
                     (
                         "vec".into(),
-                        Value::Seq([Value::F64(1.0), Value::F64(2.0), Value::F64(3.0)].into()),
+                        Value::Seq([Value::I64(1), Value::I64(2), Value::I64(3)].into()),
                     ),
                     (
                         "map".into(),
-                        Value::Map([("baz".into(), Value::F64(1.0))].into()),
+                        Value::Map([("baz".into(), Value::I64(1))].into()),
                     ),
                 ]
                 .into(),

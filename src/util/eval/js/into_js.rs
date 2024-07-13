@@ -23,6 +23,50 @@ impl IntoJs for bool {
     }
 }
 
+/// Implements [`IntoJs`] for signed integer types.
+macro_rules! impl_into_js_int {
+    ($ty:ty) => {
+        impl IntoJs for $ty {
+            fn into_js(self) -> Result<JsValue, JsError> {
+                if <$ty>::BITS <= 32 || (self >= i32::MIN as $ty && self <= i32::MAX as $ty) {
+                    Ok(JsValue::Int32(self as i32))
+                } else {
+                    Ok(JsValue::Number(self as f64))
+                }
+            }
+        }
+    };
+}
+
+impl_into_js_int! { i8 }
+impl_into_js_int! { i16 }
+impl_into_js_int! { i32 }
+impl_into_js_int! { i64 }
+impl_into_js_int! { i128 }
+impl_into_js_int! { isize }
+
+/// Implements [`IntoJs`] for unsigned integer types.
+macro_rules! impl_into_js_uint {
+    ($ty:ty) => {
+        impl IntoJs for $ty {
+            fn into_js(self) -> Result<JsValue, JsError> {
+                if <$ty>::BITS <= 32 || self <= u32::MAX as $ty {
+                    Ok(JsValue::Uint32(self as u32))
+                } else {
+                    Ok(JsValue::Number(self as f64))
+                }
+            }
+        }
+    };
+}
+
+impl_into_js_uint! { u8 }
+impl_into_js_uint! { u16 }
+impl_into_js_uint! { u32 }
+impl_into_js_uint! { u64 }
+impl_into_js_uint! { u128 }
+impl_into_js_uint! { usize }
+
 /// Implements [`IntoJs`] for number types.
 macro_rules! impl_into_js_number {
     ($ty:ty) => {
@@ -34,18 +78,6 @@ macro_rules! impl_into_js_number {
     };
 }
 
-impl_into_js_number! { i8 }
-impl_into_js_number! { i16 }
-impl_into_js_number! { i32 }
-impl_into_js_number! { u8 }
-impl_into_js_number! { u16 }
-impl_into_js_number! { i64 }
-impl_into_js_number! { i128 }
-impl_into_js_number! { isize }
-impl_into_js_number! { u32 }
-impl_into_js_number! { u64 }
-impl_into_js_number! { u128 }
-impl_into_js_number! { usize }
 impl_into_js_number! { f32 }
 impl_into_js_number! { f64 }
 

@@ -18,6 +18,10 @@ pub enum JsValue {
     Boolean(bool),
     /// Number.
     Number(f64),
+    /// 32-bit signed integer.
+    Int32(i32),
+    /// 32-bit unsigned integer.
+    Uint32(u32),
     /// String.
     String(String),
     /// Array.
@@ -42,6 +46,8 @@ impl JsValue {
             Undefined => "undefined",
             Boolean(..) => "boolean",
             Number(..) => "number",
+            Int32(..) => "Int32",
+            Uint32(..) => "Uint32",
             String(..) => "string",
             Array(..) => "Array",
             Object(..) => "object",
@@ -64,6 +70,10 @@ impl JsValue {
             Self::Undefined
         } else if value.is_boolean() {
             Self::Boolean(value.is_true())
+        } else if value.is_int32() {
+            Self::Int32(value.int32_value(scope).unwrap())
+        } else if value.is_uint32() {
+            Self::Uint32(value.uint32_value(scope).unwrap())
         } else if value.is_number() {
             Self::Number(value.number_value(scope).unwrap())
         } else if value.is_string() {
@@ -127,6 +137,8 @@ impl JsValue {
             Undefined => v8::undefined(scope).into(),
             Boolean(v) => v8::Boolean::new(scope, v).into(),
             Number(v) => v8::Number::new(scope, v).into(),
+            Int32(v) => v8::Number::new(scope, v as f64).into(),
+            Uint32(v) => v8::Number::new(scope, v as f64).into(),
             String(v) => v8::String::new(scope, &v).unwrap().into(),
             Array(vec) => {
                 let elements: Vec<_> = vec
@@ -168,6 +180,8 @@ impl std::fmt::Debug for JsValue {
             Undefined => write!(f, "Undefined"),
             Boolean(v) => f.debug_tuple("Boolean").field(v).finish(),
             Number(v) => f.debug_tuple("Number").field(v).finish(),
+            Int32(v) => f.debug_tuple("Int32").field(v).finish(),
+            Uint32(v) => f.debug_tuple("Uint32").field(v).finish(),
             String(v) => f.debug_tuple("String").field(v).finish(),
             Array(v) => f.debug_tuple("Array").field(v).finish(),
             Object(v) => f.debug_tuple("Object").field(v).finish(),
