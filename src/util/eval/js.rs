@@ -87,15 +87,17 @@ where
 }
 
 /// Initialize the [`v8`] engine.
-fn initialize_v8() {
-    let platform = v8::new_default_platform(0, false).make_shared();
-    v8::V8::initialize_platform(platform);
-    v8::V8::initialize();
+pub fn initialize_v8() {
+    INITIALIZE_V8.call_once(|| {
+        let platform = v8::new_default_platform(0, false).make_shared();
+        v8::V8::initialize_platform(platform);
+        v8::V8::initialize();
+    });
 }
 
 /// Run a JavaScript code using the [`v8`] engine.
 fn run(code: &str, value_sender: Sender<JsValue>) -> anyhow::Result<()> {
-    INITIALIZE_V8.call_once(initialize_v8);
+    initialize_v8();
 
     let isolate = &mut v8::Isolate::new(v8::CreateParams::default());
     let handle_scope = &mut v8::HandleScope::new(isolate);
@@ -122,14 +124,11 @@ fn run(code: &str, value_sender: Sender<JsValue>) -> anyhow::Result<()> {
     let source = v8::script_compiler::Source::new(code, Some(&origin));
 
     let module = with_try_catch(scope, |scope| {
-        v8::script_compiler::compile_module(scope, source)
+        let module = v8::script_compiler::compile_module(scope, source)?;
+        module.instantiate_module(scope, |_, _, _, _| None)?;
+        module.evaluate(scope)?;
+        Some(module)
     })?;
-
-    module
-        .instantiate_module(scope, |_, _, _, _| unimplemented!())
-        .unwrap();
-
-    module.evaluate(scope).unwrap();
 
     if module.get_status() == v8::ModuleStatus::Errored {
         return Err(anyhow::anyhow!(module
@@ -191,10 +190,12 @@ fn with_try_catch<'s, R>(
     match f(&mut tc_scope) {
         Some(result) => Ok(result),
         None => {
-            debug_assert!(tc_scope.has_caught());
-            let exception = tc_scope.exception().unwrap();
-            drop(tc_scope);
-            Err(anyhow::anyhow!(exception.to_rust_string_lossy(scope)))
+            if let Some(exception) = tc_scope.exception() {
+                drop(tc_scope);
+                Err(anyhow::anyhow!(exception.to_rust_string_lossy(scope)))
+            } else {
+                Err(anyhow::anyhow!("unknown error"))
+            }
         },
     }
 }
