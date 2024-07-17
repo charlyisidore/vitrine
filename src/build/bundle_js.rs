@@ -2,6 +2,10 @@
 //!
 //! This module uses [`swc_core`] under the hood.
 
+pub mod hook;
+pub mod jsx;
+pub mod loader;
+
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -37,10 +41,12 @@ pub fn bundle_js_file(path: impl AsRef<Path>, minify: bool) -> Result<String, Bu
             resolver::environment_resolver,
             try_with_handler, BoolOrDataConfig, Compiler, PrintArgs,
         },
-        bundler::{node::loaders::swc::SwcLoader, Bundler},
+        bundler::Bundler,
         common::{FileName, Globals, SourceMap, GLOBALS},
         ecma::{loader::TargetEnv, transforms::base::fixer::fixer, visit::FoldWith},
     };
+
+    use self::{hook::Hook, loader::Loader};
 
     let path = path.as_ref();
 
@@ -73,7 +79,7 @@ pub fn bundle_js_file(path: impl AsRef<Path>, minify: bool) -> Result<String, Bu
         try_with_handler(cm.clone(), Default::default(), |_handler| {
             let compiler = Arc::new(Compiler::new(cm.clone()));
 
-            let loader = SwcLoader::new(compiler.clone(), options);
+            let loader = Loader::new(compiler.clone(), options, true);
 
             let resolver = environment_resolver(TargetEnv::Browser, Default::default(), false);
 
@@ -120,50 +126,6 @@ pub fn bundle_js_file(path: impl AsRef<Path>, minify: bool) -> Result<String, Bu
     })?;
 
     Ok(output)
-}
-
-/// SWC bundle hook.
-pub struct Hook;
-
-impl swc_core::bundler::Hook for Hook {
-    fn get_import_meta_props(
-        &self,
-        span: swc_core::common::Span,
-        module_record: &swc_core::bundler::ModuleRecord,
-    ) -> Result<Vec<swc_core::ecma::ast::KeyValueProp>, anyhow::Error> {
-        use swc_core::ecma::ast::{
-            Bool, Expr, IdentName, KeyValueProp, Lit, MemberExpr, MemberProp, MetaPropExpr,
-            MetaPropKind, PropName, Str,
-        };
-
-        let file_name = module_record.file_name.to_string();
-
-        Ok(vec![
-            KeyValueProp {
-                key: PropName::Ident(IdentName::new("url".into(), span)),
-                value: Box::new(Expr::Lit(Lit::Str(Str {
-                    span,
-                    raw: None,
-                    value: file_name.into(),
-                }))),
-            },
-            KeyValueProp {
-                key: PropName::Ident(IdentName::new("main".into(), span)),
-                value: Box::new(if module_record.is_entry {
-                    Expr::Member(MemberExpr {
-                        span,
-                        obj: Box::new(Expr::MetaProp(MetaPropExpr {
-                            span,
-                            kind: MetaPropKind::ImportMeta,
-                        })),
-                        prop: MemberProp::Ident(IdentName::new("main".into(), span)),
-                    })
-                } else {
-                    Expr::Lit(Lit::Bool(Bool { span, value: false }))
-                }),
-            },
-        ])
-    }
 }
 
 /// Pipeline task.

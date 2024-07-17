@@ -35,6 +35,7 @@ clap = { version = "4.5.9", features = ["derive"] }
 futures = "0.3.30"
 grass = { version = "0.13.3", default-features = false }
 ignore = "0.4.22"
+jsx-dom-expressions = { git = "https://github.com/charlyisidore/swc-plugin-jsx-dom-expressions.git", version = "0.1.0" }
 lightningcss = { version = "1.0.0-alpha.57", default-features = false, features = [
     "bundler",
     "grid",
@@ -60,7 +61,7 @@ serde = "1.0.204"
 serde_json = "1.0.120"
 serde_yaml = "0.9.34"
 slug = "0.1.5"
-swc_core = { version = "0.97.1", features = [
+swc_core = { version = "0.96.9", features = [
     "base",
     "bundler",
     "bundler_node_v1",
@@ -68,7 +69,11 @@ swc_core = { version = "0.97.1", features = [
     "ecma_ast",
     "ecma_codegen",
     "ecma_loader",
+    "ecma_parser",
     "ecma_transforms",
+    "ecma_transforms_optimization",
+    "ecma_transforms_react",
+    "ecma_transforms_typescript",
     "ecma_visit",
 ] }
 syntect = { version = "5.2.0", default-features = false, features = [
@@ -77,10 +82,11 @@ syntect = { version = "5.2.0", default-features = false, features = [
 tera = { version = "1.20.0", optional = true }
 thiserror = "1.0.62"
 time = { version = "0.3.36", features = ["macros", "parsing"] }
-tokio = { version = "1.38.0", features = ["rt-multi-thread"] }
-toml = { version = "0.8.14", default-features = false, features = ["parse"] }
+tokio = { version = "1.38.1", features = ["rt-multi-thread"] }
+toml = { version = "0.8.15", default-features = false, features = ["parse"] }
 tower-http = { version = "0.5.2", features = ["fs"] }
-v8 = { version = "0.98.0", optional = true }
+tracing = "0.1.40"
+v8 = { version = "0.98.1", optional = true }
 vitrine_derive = { version = "=0.2.0", path = "crates/derive" }
 
 [dev-dependencies]
