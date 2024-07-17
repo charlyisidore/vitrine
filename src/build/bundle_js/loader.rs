@@ -38,7 +38,8 @@ use super::jsx::jsx_dom_expressions;
 
 /// SWC loader.
 ///
-/// This loader is similar to [`swc_core::node::loaders::swc::SwcLoader`].
+/// This loader is similar to
+/// [`swc_core::bundler::node::loaders::swc::SwcLoader`].
 pub struct Loader {
     compiler: Arc<swc::Compiler>,
     options: swc::config::Options,

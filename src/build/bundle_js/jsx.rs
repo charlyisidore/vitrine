@@ -1,4 +1,4 @@
-//! Provides [`jsx_dom_expressions`].
+//! Provides [`self::jsx_dom_expressions`].
 
 use jsx_dom_expressions::{config::Config, TransformVisitor};
 use swc_core::{
