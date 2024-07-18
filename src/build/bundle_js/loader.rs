@@ -1,5 +1,4 @@
 //! Provides [`Loader`].
-
 use std::{collections::HashMap, env, sync::Arc};
 
 use anyhow::{anyhow, bail, Context, Error};
@@ -88,11 +87,12 @@ impl Loader {
         for (k, v) in envs_map {
             m.insert(
                 k,
-                Expr::Lit(Lit::Str(Str {
+                Lit::Str(Str {
                     span: DUMMY_SP,
                     raw: None,
                     value: v,
-                })),
+                })
+                .into(),
             );
         }
 
@@ -109,7 +109,7 @@ impl Loader {
                 let fm = self
                     .compiler
                     .cm
-                    .new_source_file(name.clone(), "".to_string());
+                    .new_source_file(name.clone().into(), "".to_string());
                 return Ok(ModuleData {
                     fm,
                     module: Module {
@@ -127,7 +127,7 @@ impl Loader {
                 let fm = self
                     .compiler
                     .cm
-                    .new_source_file(name.clone(), "module.exports = {}".to_string());
+                    .new_source_file(name.clone().into(), "module.exports = {}".to_string());
 
                 let module = parse_file_as_module(
                     &fm,
@@ -188,7 +188,11 @@ impl Loader {
                     let top_level_mark = Mark::new();
 
                     program.visit_mut_with(&mut resolver(unresolved_mark, top_level_mark, false));
-                    program.visit_mut_with(&mut typescript(Default::default(), top_level_mark));
+                    program.visit_mut_with(&mut typescript(
+                        Default::default(),
+                        unresolved_mark,
+                        top_level_mark,
+                    ));
 
                     if self.jsx_dom_expressions {
                         program.visit_mut_with(&mut jsx_dom_expressions(NoopComments));
@@ -286,7 +290,11 @@ impl Loader {
                             top_level_mark,
                             false,
                         ));
-                        program.visit_mut_with(&mut typescript(Default::default(), top_level_mark));
+                        program.visit_mut_with(&mut typescript(
+                            Default::default(),
+                            unresolved_mark,
+                            top_level_mark,
+                        ));
 
                         if self.jsx_dom_expressions {
                             program.visit_mut_with(&mut jsx_dom_expressions(NoopComments));
@@ -358,20 +366,22 @@ fn load_json_as_module(fm: &Arc<SourceFile>) -> Result<Module, Error> {
     let expr = parse_file_as_expr(fm, Syntax::default(), EsVersion::Es2020, None, &mut vec![])
         .map_err(|err| anyhow!("failed parse json as javascript object: {:#?}", err))?;
 
-    let export = ModuleItem::Stmt(Stmt::Expr(ExprStmt {
+    let export = ExprStmt {
         span: DUMMY_SP,
-        expr: Box::new(Expr::Assign(AssignExpr {
+        expr: AssignExpr {
             span: DUMMY_SP,
             op: op!("="),
             left: MemberExpr {
                 span: DUMMY_SP,
-                obj: Box::new(Expr::Ident(Ident::new("module".into(), DUMMY_SP))),
-                prop: MemberProp::Ident(Ident::new("exports".into(), DUMMY_SP)),
+                obj: Box::new(Ident::new_no_ctxt("module".into(), DUMMY_SP).into()),
+                prop: MemberProp::Ident(IdentName::new("exports".into(), DUMMY_SP)),
             }
             .into(),
             right: expr,
-        })),
-    }));
+        }
+        .into(),
+    }
+    .into();
 
     Ok(Module {
         span: DUMMY_SP,
