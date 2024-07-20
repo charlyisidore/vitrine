@@ -2,6 +2,8 @@
 //!
 //! This module uses [`syntect`] under the hood.
 
+use std::path::Path;
+
 use once_cell::sync::Lazy;
 use syntect::{
     highlighting::{FontStyle, ThemeSet},
@@ -20,6 +22,9 @@ pub enum SyntaxHighlightError {
     /// Syntect error.
     #[error(transparent)]
     Syntect(#[from] syntect::Error),
+    /// Syntect loading error.
+    #[error(transparent)]
+    SyntectLoading(#[from] syntect::LoadingError),
     /// Theme not found error.
     #[error("theme not found")]
     ThemeNotFound,
@@ -89,6 +94,17 @@ pub struct Theme {
 }
 
 impl Theme {
+    /// Load a theme file.
+    pub fn from_file(path: impl AsRef<Path>) -> Result<Self, SyntaxHighlightError> {
+        let theme = ThemeSet::get_theme(path)?;
+
+        Ok(Self {
+            theme,
+            prefix: String::new(),
+            selector: String::new(),
+        })
+    }
+
     /// Load a builtin theme by name.
     pub fn from_name(name: impl AsRef<str>) -> Result<Self, SyntaxHighlightError> {
         let name = name.as_ref();
@@ -296,7 +312,8 @@ pub mod task {
 
             // Create CSS themes for syntax highlight
             for config in &self.config.syntax_highlight.themes {
-                let theme = Theme::from_name(&config.name)
+                let theme = Theme::from_file(&config.name)
+                    .or_else(|_| Theme::from_name(&config.name))
                     .map_err(|source| SyntaxHighlightError::WithTheme {
                         source: Box::new(source),
                         theme: config.name.clone(),
