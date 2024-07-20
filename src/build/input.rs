@@ -96,6 +96,11 @@ pub fn path_to_url(path: impl AsRef<Path>) -> String {
 
     let path = path.as_ref();
 
+    // Empty path
+    if path.components().next().is_none() {
+        return "/".to_string();
+    }
+
     path.components()
         .fold(String::new(), |mut url, component| match component {
             Component::Normal(segment) => {

@@ -20,8 +20,9 @@ fn empty() -> Result<(), Box<dyn std::error::Error>> {
         "#,
     )?;
 
-    dir.child("index.md").write_str("Home")?;
-    dir.child("foo/bar.md").write_str("FooBar")?;
+    dir.child("index.md").write_str("Home [link](foo/bar.md)")?;
+    dir.child("foo/bar.md")
+        .write_str("FooBar [link](../index.md)")?;
 
     let mut cmd = Command::cargo_bin("vitrine")?;
     cmd.args(["build"]).current_dir(&dir);
@@ -29,11 +30,13 @@ fn empty() -> Result<(), Box<dyn std::error::Error>> {
 
     dir.child("_dist/index.html")
         .assert(predicate::path::is_file())
-        .assert(predicate::str::contains("Home"));
+        .assert(predicate::str::contains("Home"))
+        .assert(predicate::str::contains(r#"<a href=/foo/bar>link</a>"#));
 
     dir.child("_dist/foo/bar/index.html")
         .assert(predicate::path::is_file())
-        .assert(predicate::str::contains("FooBar"));
+        .assert(predicate::str::contains("FooBar"))
+        .assert(predicate::str::contains(r#"<a href=/>link</a>"#));
 
     Ok(())
 }
@@ -52,8 +55,9 @@ fn path() -> Result<(), Box<dyn std::error::Error>> {
         "#,
     )?;
 
-    dir.child("index.md").write_str("Home")?;
-    dir.child("foo/bar.md").write_str("FooBar")?;
+    dir.child("index.md").write_str("Home [link](foo/bar.md)")?;
+    dir.child("foo/bar.md")
+        .write_str("FooBar [link](../index.md)")?;
 
     let mut cmd = Command::cargo_bin("vitrine")?;
     cmd.args(["build"]).current_dir(&dir);
@@ -61,11 +65,15 @@ fn path() -> Result<(), Box<dyn std::error::Error>> {
 
     dir.child("_dist/my/demo/index.html")
         .assert(predicate::path::is_file())
-        .assert(predicate::str::contains("Home"));
+        .assert(predicate::str::contains("Home"))
+        .assert(predicate::str::contains(
+            r#"<a href=/my/demo/foo/bar>link</a>"#,
+        ));
 
     dir.child("_dist/my/demo/foo/bar/index.html")
         .assert(predicate::path::is_file())
-        .assert(predicate::str::contains("FooBar"));
+        .assert(predicate::str::contains("FooBar"))
+        .assert(predicate::str::contains(r#"<a href=/my/demo/>link</a>"#));
 
     Ok(())
 }
@@ -84,8 +92,9 @@ fn url() -> Result<(), Box<dyn std::error::Error>> {
         "#,
     )?;
 
-    dir.child("index.md").write_str("Home")?;
-    dir.child("foo/bar.md").write_str("FooBar")?;
+    dir.child("index.md").write_str("Home [link](foo/bar.md)")?;
+    dir.child("foo/bar.md")
+        .write_str("FooBar [link](../index.md)")?;
 
     let mut cmd = Command::cargo_bin("vitrine")?;
     cmd.args(["build"]).current_dir(&dir);
@@ -93,11 +102,15 @@ fn url() -> Result<(), Box<dyn std::error::Error>> {
 
     dir.child("_dist/my/demo/index.html")
         .assert(predicate::path::is_file())
-        .assert(predicate::str::contains("Home"));
+        .assert(predicate::str::contains("Home"))
+        .assert(predicate::str::contains(
+            r#"<a href=/my/demo/foo/bar>link</a>"#,
+        ));
 
     dir.child("_dist/my/demo/foo/bar/index.html")
         .assert(predicate::path::is_file())
-        .assert(predicate::str::contains("FooBar"));
+        .assert(predicate::str::contains("FooBar"))
+        .assert(predicate::str::contains(r#"<a href=/my/demo/>link</a>"#));
 
     Ok(())
 }
