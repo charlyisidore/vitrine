@@ -827,26 +827,26 @@ impl<'de> serde::de::Visitor<'de> for ValueVisitor {
         Ok(Value::Unit)
     }
 
-    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+    fn visit_seq<A>(self, mut access: A) -> Result<Self::Value, A::Error>
     where
         A: serde::de::SeqAccess<'de>,
     {
-        let mut values = Vec::new();
-        while let Some(v) = seq.next_element()? {
-            values.push(v);
+        let mut seq = Vec::with_capacity(access.size_hint().unwrap_or(0));
+        while let Some(v) = access.next_element()? {
+            seq.push(v);
         }
-        Ok(Value::Seq(values))
+        Ok(Value::Seq(seq))
     }
 
-    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    fn visit_map<A>(self, mut access: A) -> Result<Self::Value, A::Error>
     where
         A: serde::de::MapAccess<'de>,
     {
-        let mut pairs = Map::new();
-        while let Some((k, v)) = map.next_entry()? {
-            pairs.insert(k, v);
+        let mut map = Map::with_capacity(access.size_hint().unwrap_or(0));
+        while let Some((k, v)) = access.next_entry()? {
+            map.insert(k, v);
         }
-        Ok(Value::Map(pairs))
+        Ok(Value::Map(map))
     }
 }
 
