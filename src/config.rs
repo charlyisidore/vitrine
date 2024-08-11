@@ -303,12 +303,12 @@ pub struct SyntaxHighlightConfig {
     /// HTML attributes for syntax highlight `<code>` element.
     #[serde(default)]
     #[vitrine(default)]
-    pub code_attributes: HashMap<String, String>,
+    pub code_attributes: Map<String, String>,
 
     /// HTML attributes for syntax highlight `<pre>` element.
     #[serde(default)]
     #[vitrine(default)]
-    pub pre_attributes: HashMap<String, String>,
+    pub pre_attributes: Map<String, String>,
 
     /// Syntax highlight function.
     #[serde(skip)]
