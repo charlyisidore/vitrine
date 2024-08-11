@@ -1,9 +1,6 @@
 //! Configure the site builder.
 
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 use thiserror::Error;
