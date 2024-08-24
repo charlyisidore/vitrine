@@ -1,4 +1,4 @@
-//! Jinja layout engine.
+//! minijinja (Jinja) layout engine.
 //!
 //! This module uses [`minijinja`] under the hood.
 
@@ -10,7 +10,7 @@ use super::{LayoutEngine, LayoutFilter, LayoutFunction, LayoutTest};
 
 /// List of errors for this module.
 #[derive(Debug, Error)]
-pub enum JinjaError {
+pub enum MinijinjaError {
     /// Minijinja error.
     #[error(transparent)]
     Minijinja(#[from] minijinja::Error),
@@ -18,12 +18,12 @@ pub enum JinjaError {
 
 /// Jinja layout engine.
 #[derive(Debug)]
-pub struct JinjaEngine<'source> {
+pub struct MinijinjaEngine<'source> {
     /// Minijinja environment.
     env: Environment<'source>,
 }
 
-impl<'source> JinjaEngine<'source> {
+impl<'source> MinijinjaEngine<'source> {
     /// Create a Jinja layout engine.
     pub fn new() -> Self {
         Self {
@@ -42,8 +42,8 @@ impl<'source> JinjaEngine<'source> {
     }
 }
 
-impl LayoutEngine for JinjaEngine<'_> {
-    type Error = JinjaError;
+impl LayoutEngine for MinijinjaEngine<'_> {
+    type Error = MinijinjaError;
 
     fn add_layouts(
         &mut self,
@@ -135,7 +135,7 @@ impl LayoutEngine for JinjaEngine<'_> {
     }
 }
 
-impl Default for JinjaEngine<'_> {
+impl Default for MinijinjaEngine<'_> {
     fn default() -> Self {
         Self::new()
     }
@@ -145,7 +145,7 @@ impl Default for JinjaEngine<'_> {
 mod tests {
     use serde::Serialize;
 
-    use super::JinjaEngine;
+    use super::MinijinjaEngine;
     use crate::build::layout::{LayoutEngine, Value as LayoutValue};
 
     #[derive(Serialize)]
@@ -155,7 +155,7 @@ mod tests {
 
     #[test]
     fn render_layouts() {
-        let mut engine = JinjaEngine::new();
+        let mut engine = MinijinjaEngine::new();
 
         engine
             .add_layouts([
@@ -178,7 +178,7 @@ mod tests {
 
     #[test]
     fn custom_filter() {
-        let mut engine = JinjaEngine::new();
+        let mut engine = MinijinjaEngine::new();
 
         let filter = |value: LayoutValue, _, _| -> LayoutValue {
             value
@@ -204,7 +204,7 @@ mod tests {
 
     #[test]
     fn custom_function() {
-        let mut engine = JinjaEngine::new();
+        let mut engine = MinijinjaEngine::new();
 
         let function = |args: Vec<LayoutValue>, _| -> LayoutValue {
             args.get(0)
@@ -230,7 +230,7 @@ mod tests {
 
     #[test]
     fn custom_test() {
-        let mut engine = JinjaEngine::new();
+        let mut engine = MinijinjaEngine::new();
 
         let test = |value: LayoutValue, _, _| -> bool {
             value

@@ -2,8 +2,8 @@
 //!
 //! This module provides the [`LayoutEngine`] trait to unify layout engine APIs.
 
-#[cfg(feature = "jinja")]
-pub mod jinja;
+#[cfg(feature = "minijinja")]
+pub mod minijinja;
 pub mod multi;
 #[cfg(feature = "tera")]
 pub mod tera;
@@ -31,7 +31,7 @@ pub type Map<K, V> = std::collections::HashMap<K, V>;
 ///
 /// This type unifies the signature for all layout engines.
 ///
-/// - Jinja: `Fn(Value, *args, **kwargs) -> Value`
+/// - minijinja: `Fn(Value, *args, **kwargs) -> Value`
 /// - Liquid: `Fn(Value, *args, **kwargs) -> Value`
 /// - Tera: `Fn(&Value, &HashMap<String, Value>) -> Value`
 pub type LayoutFilter = Function<(Value, Vec<Value>, Map<String, Value>), Value>;
@@ -40,7 +40,7 @@ pub type LayoutFilter = Function<(Value, Vec<Value>, Map<String, Value>), Value>
 ///
 /// This type unifies the signature for all layout engines.
 ///
-/// - Jinja: `Fn(*args, **kwargs) -> Value`
+/// - minijinja: `Fn(*args, **kwargs) -> Value`
 /// - Liquid: not applicable
 /// - Tera: `Fn(&HashMap<String, Value>) -> Value`
 pub type LayoutFunction = Function<(Vec<Value>, Map<String, Value>), Value>;
@@ -49,7 +49,7 @@ pub type LayoutFunction = Function<(Vec<Value>, Map<String, Value>), Value>;
 ///
 /// This type unifies the signature for all layout engines.
 ///
-/// - Jinja: `Fn(Value, *args, **kwargs) -> bool`
+/// - minijinja: `Fn(Value, *args, **kwargs) -> bool`
 /// - Liquid: not applicable
 /// - Tera: `Fn(Option<&Value>, &[Value]) -> bool`
 pub type LayoutTest = Function<(Value, Vec<Value>, Map<String, Value>), bool>;
@@ -203,8 +203,8 @@ impl LayoutEngine for NullEngine {
 
 /// Pipeline task.
 pub mod task {
-    #[cfg(feature = "jinja")]
-    use super::jinja::JinjaEngine;
+    #[cfg(feature = "minijinja")]
+    use super::minijinja::MinijinjaEngine;
     #[cfg(feature = "tera")]
     use super::tera::TeraEngine;
     use super::{DynamicLayoutEngine, LayoutError, Map};
@@ -214,13 +214,13 @@ pub mod task {
         util::pipeline::{Receiver, Sender, Task},
     };
 
-    #[cfg(feature = "jinja")]
-    type DefaultEngine<'source> = JinjaEngine<'source>;
+    #[cfg(feature = "minijinja")]
+    type DefaultEngine<'source> = MinijinjaEngine<'source>;
 
-    #[cfg(all(not(feature = "jinja"), feature = "tera"))]
+    #[cfg(all(not(feature = "minijinja"), feature = "tera"))]
     type DefaultEngine = TeraEngine;
 
-    #[cfg(all(not(feature = "jinja"), not(feature = "tera")))]
+    #[cfg(all(not(feature = "minijinja"), not(feature = "tera")))]
     type DefaultEngine = super::NullEngine;
 
     /// Task to render layouts.
@@ -236,8 +236,8 @@ pub mod task {
             let mut engine: Box<dyn DynamicLayoutEngine> =
                 if let Some(engine) = &config.layout.engine {
                     match engine.as_str() {
-                        #[cfg(feature = "jinja")]
-                        "jinja" => Box::new(JinjaEngine::new()),
+                        #[cfg(feature = "minijinja")]
+                        "jinja" => Box::new(MinijinjaEngine::new()),
                         #[cfg(feature = "tera")]
                         "tera" => Box::new(TeraEngine::new()),
                         _ => Box::new(DefaultEngine::new()),

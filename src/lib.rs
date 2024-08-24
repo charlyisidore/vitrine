@@ -4,12 +4,13 @@
 //!
 //! # Feature flags
 //!
-//! - `default`: Enable `jinja`, `js`, `lua`, `rhai`, and `tera` feature flags.
-//! - `jinja`: Enable Jinja layout engine.
-//! - `js`: Enable JavaScript script engine.
-//! - `lua`: Enable Lua script engine.
+//! - `default`: Enable `minijinja`, `mlua`, `rhai`, `tera`, and `v8` feature
+//!   flags.
+//! - `minijinja`: Enable minijinja (Jinja) layout engine.
+//! - `mlua`: Enable mlua (Lua) script engine.
 //! - `rhai`: Enable Rhai script engine.
 //! - `tera`: Enable Tera layout engine.
+//! - `v8`: Enable v8 (JavaScript) script engine.
 
 #![warn(missing_docs)]
 

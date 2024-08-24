@@ -204,14 +204,14 @@ mod tests {
         foo: String,
     }
 
-    #[cfg(feature = "jinja")]
+    #[cfg(feature = "minijinja")]
     #[test]
     fn render_jinja() {
-        use crate::build::layout::jinja::JinjaEngine;
+        use crate::build::layout::minijinja::MinijinjaEngine;
 
         let mut engine = MultiEngine::new();
 
-        engine.add_engine("jinja", JinjaEngine::new());
+        engine.add_engine("jinja", MinijinjaEngine::new());
 
         engine.add_layouts([("page.jinja", "{{ foo }}")]).unwrap();
 

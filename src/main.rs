@@ -135,10 +135,10 @@ fn create_config(build_args: BuildArgs) -> anyhow::Result<Config> {
 /// Return the path of a default configuration file, if the latter exists.
 fn default_config_path() -> Option<PathBuf> {
     [
-        #[cfg(feature = "js")]
+        #[cfg(feature = "v8")]
         "vitrine.config.js",
         "vitrine.config.json",
-        #[cfg(feature = "lua")]
+        #[cfg(feature = "mlua")]
         "vitrine.config.lua",
         #[cfg(feature = "rhai")]
         "vitrine.config.rhai",

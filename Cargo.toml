@@ -18,12 +18,12 @@ categories = [
 members = ["crates/derive"]
 
 [features]
-default = ["jinja", "js", "lua", "rhai", "tera"]
-jinja = ["dep:minijinja"]
-js = ["dep:v8"]
-lua = ["dep:mlua"]
+default = ["minijinja", "mlua", "rhai", "tera", "v8"]
+minijinja = ["dep:minijinja"]
+mlua = ["dep:mlua"]
 rhai = ["dep:rhai"]
 tera = ["dep:tera"]
+v8 = ["dep:v8"]
 
 [dependencies]
 anyhow = "1.0.86"

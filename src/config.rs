@@ -4,9 +4,9 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 use thiserror::Error;
-#[cfg(feature = "js")]
+#[cfg(feature = "v8")]
 use vitrine_derive::FromJs;
-#[cfg(feature = "lua")]
+#[cfg(feature = "mlua")]
 use vitrine_derive::FromLua;
 #[cfg(feature = "rhai")]
 use vitrine_derive::FromRhai;
@@ -29,14 +29,14 @@ use crate::{
 #[derive(Debug, Error)]
 pub enum ConfigError {
     /// Error loading JavaScript.
-    #[cfg(feature = "js")]
+    #[cfg(feature = "v8")]
     #[error("failed to load JavaScript")]
     FromJs(#[source] crate::util::eval::js::JsError),
     /// Error loading JSON.
     #[error("failed to load JSON")]
     FromJson(#[source] crate::util::eval::json::JsonError),
     /// Error loading Lua.
-    #[cfg(feature = "lua")]
+    #[cfg(feature = "mlua")]
     #[error("failed to load Lua")]
     FromLua(#[source] crate::util::eval::lua::LuaError),
     /// Error loading Rhai.
@@ -90,8 +90,8 @@ pub type Map<K, V> = std::collections::HashMap<K, V>;
 
 /// Configuration for the site builder.
 #[derive(Clone, Debug, Default, Deserialize, VitrineNoop)]
-#[cfg_attr(feature = "js", derive(FromJs))]
-#[cfg_attr(feature = "lua", derive(FromLua))]
+#[cfg_attr(feature = "v8", derive(FromJs))]
+#[cfg_attr(feature = "mlua", derive(FromLua))]
 #[cfg_attr(feature = "rhai", derive(FromRhai))]
 pub struct Config {
     /// Configuration file path, if any.
@@ -161,8 +161,8 @@ pub struct Config {
 
 /// Configuration for feed generation.
 #[derive(Clone, Debug, Default, Deserialize, VitrineNoop)]
-#[cfg_attr(feature = "js", derive(FromJs))]
-#[cfg_attr(feature = "lua", derive(FromLua))]
+#[cfg_attr(feature = "v8", derive(FromJs))]
+#[cfg_attr(feature = "mlua", derive(FromLua))]
 #[cfg_attr(feature = "rhai", derive(FromRhai))]
 pub struct FeedConfig {
     /// URL of the feed.
@@ -229,8 +229,8 @@ pub struct FeedConfig {
 
 /// Configuration for feed persons (author or contributor).
 #[derive(Clone, Debug, Default, Deserialize, VitrineNoop)]
-#[cfg_attr(feature = "js", derive(FromJs))]
-#[cfg_attr(feature = "lua", derive(FromLua))]
+#[cfg_attr(feature = "v8", derive(FromJs))]
+#[cfg_attr(feature = "mlua", derive(FromLua))]
 #[cfg_attr(feature = "rhai", derive(FromRhai))]
 pub struct FeedPersonConfig {
     /// Person name.
@@ -249,8 +249,8 @@ pub struct FeedPersonConfig {
 
 /// Configuration for the layout engine.
 #[derive(Clone, Debug, Default, Deserialize, VitrineNoop)]
-#[cfg_attr(feature = "js", derive(FromJs))]
-#[cfg_attr(feature = "lua", derive(FromLua))]
+#[cfg_attr(feature = "v8", derive(FromJs))]
+#[cfg_attr(feature = "mlua", derive(FromLua))]
 #[cfg_attr(feature = "rhai", derive(FromRhai))]
 pub struct LayoutConfig {
     /// Engine identifier.
@@ -276,8 +276,8 @@ pub struct LayoutConfig {
 
 /// Configuration for the markdown parser.
 #[derive(Clone, Debug, Default, Deserialize, VitrineNoop)]
-#[cfg_attr(feature = "js", derive(FromJs))]
-#[cfg_attr(feature = "lua", derive(FromLua))]
+#[cfg_attr(feature = "v8", derive(FromJs))]
+#[cfg_attr(feature = "mlua", derive(FromLua))]
 #[cfg_attr(feature = "rhai", derive(FromRhai))]
 pub struct MarkdownConfig {
     /// List of plugins to add.
@@ -288,8 +288,8 @@ pub struct MarkdownConfig {
 
 /// Configuration for syntax highlight.
 #[derive(Clone, Debug, Default, Deserialize, VitrineNoop)]
-#[cfg_attr(feature = "js", derive(FromJs))]
-#[cfg_attr(feature = "lua", derive(FromLua))]
+#[cfg_attr(feature = "v8", derive(FromJs))]
+#[cfg_attr(feature = "mlua", derive(FromLua))]
 #[cfg_attr(feature = "rhai", derive(FromRhai))]
 pub struct SyntaxHighlightConfig {
     /// Prefix for CSS class names.
@@ -320,8 +320,8 @@ pub struct SyntaxHighlightConfig {
 
 /// Configuration for sitemap generation.
 #[derive(Clone, Debug, Default, Deserialize, VitrineNoop)]
-#[cfg_attr(feature = "js", derive(FromJs))]
-#[cfg_attr(feature = "lua", derive(FromLua))]
+#[cfg_attr(feature = "v8", derive(FromJs))]
+#[cfg_attr(feature = "mlua", derive(FromLua))]
 #[cfg_attr(feature = "rhai", derive(FromRhai))]
 pub struct SitemapConfig {
     /// Default page change frequency.
@@ -347,8 +347,8 @@ pub struct SitemapConfig {
 
 /// Configuration for a syntax highlight theme.
 #[derive(Clone, Debug, Deserialize, VitrineNoop)]
-#[cfg_attr(feature = "js", derive(FromJs))]
-#[cfg_attr(feature = "lua", derive(FromLua))]
+#[cfg_attr(feature = "v8", derive(FromJs))]
+#[cfg_attr(feature = "mlua", derive(FromLua))]
 #[cfg_attr(feature = "rhai", derive(FromRhai))]
 pub struct SyntaxHighlightThemeConfig {
     /// Theme name.
@@ -390,10 +390,10 @@ impl Config {
         };
 
         let config: Self = match extension {
-            #[cfg(feature = "js")]
+            #[cfg(feature = "v8")]
             "js" => crate::util::eval::js::from_file(path).map_err(ConfigError::FromJs),
             "json" => crate::util::eval::json::from_file(path).map_err(ConfigError::FromJson),
-            #[cfg(feature = "lua")]
+            #[cfg(feature = "mlua")]
             "lua" => crate::util::eval::lua::from_file(path).map_err(ConfigError::FromLua),
             #[cfg(feature = "rhai")]
             "rhai" => crate::util::eval::rhai::from_file(path).map_err(ConfigError::FromRhai),

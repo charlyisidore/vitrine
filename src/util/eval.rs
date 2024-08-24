@@ -1,9 +1,9 @@
 //! Read values from data files and scripts.
 
-#[cfg(feature = "js")]
+#[cfg(feature = "v8")]
 pub mod js;
 pub mod json;
-#[cfg(feature = "lua")]
+#[cfg(feature = "mlua")]
 pub mod lua;
 #[cfg(feature = "rhai")]
 pub mod rhai;
