@@ -101,13 +101,12 @@ fn run(code: &str, value_sender: Sender<JsValue>) -> anyhow::Result<()> {
 
     let isolate = &mut v8::Isolate::new(v8::CreateParams::default());
     let handle_scope = &mut v8::HandleScope::new(isolate);
-    let context = v8::Context::new(handle_scope);
+    let context = v8::Context::new(handle_scope, Default::default());
     let scope = &mut v8::ContextScope::new(handle_scope, context);
 
     let code = v8::String::new(scope, code).unwrap();
 
     let resource_name = v8::String::new(scope, "index.js").unwrap();
-    let source_map_url = v8::undefined(scope);
     let origin = v8::ScriptOrigin::new(
         scope,
         resource_name.into(),
@@ -115,16 +114,17 @@ fn run(code: &str, value_sender: Sender<JsValue>) -> anyhow::Result<()> {
         0,
         false,
         0,
-        source_map_url.into(),
+        None,
         false,
         false,
         true,
+        None,
     );
 
-    let source = v8::script_compiler::Source::new(code, Some(&origin));
+    let mut source = v8::script_compiler::Source::new(code, Some(&origin));
 
     let module = with_try_catch(scope, |scope| {
-        let module = v8::script_compiler::compile_module(scope, source)?;
+        let module = v8::script_compiler::compile_module(scope, &mut source)?;
         module.instantiate_module(scope, |_, _, _, _| None)?;
         module.evaluate(scope)?;
         Some(module)
