@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+env:
+  CRATE: vitrine
+  CARGO_INCREMENTAL: 0
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build
+        run: |-
+          sudo apt update && sudo apt install -y --no-install-recommends clang
+          cargo build --release --locked --target ${{ matrix.target }}
+      - name: Package
+        id: package
+        run: |-
+          tar -czvf ${{ env.CRATE }}-${{ github.ref_name }}-${{ matrix.target }}.tar.gz \
+            -C target/${{ matrix.target }}/release ${{ env.CRATE }}
+      - uses: actions/upload-artifact@v4
+        with:
+          path: ${{ env.CRATE }}-${{ github.ref_name }}-${{ matrix.target }}.tar.gz
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v5
+      - name: Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |-
+          gh release create --generate-notes ${{ github.ref_name }} *.tar.gz
