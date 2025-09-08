@@ -1,9 +1,9 @@
 [package]
 name = "vitrine"
-version = "0.1.29"
+version = "0.3.0-alpha"
 authors = ["Charly Lersteau"]
-edition = "2021"
-description = "A scriptable static site generator"
+edition = "2024"
+description = "Hackable static site generator"
 repository = "https://github.com/charlyisidore/vitrine"
 license = "AGPL-3.0-only"
 keywords = ["static", "site", "generator"]
@@ -15,58 +15,43 @@ categories = [
 ]
 
 [workspace]
-members = ["vitrine_derive"]
+members = ["crates/deno"]
+
+[features]
+default = ["deno"]
+deno = ["dep:vitrine_deno"]
 
 [dependencies]
-anyhow = "1.0.86"
-axum = "0.7.5"
-chrono = { version = "0.4.38", features = ["serde"] }
-clap = { version = "4.5.7", features = ["derive"] }
-futures = "0.3.30"
-globset = "0.4.14"
-grass = "0.13.3"
-katex = { version = "0.4.6", default-features = false, features = ["duktape"] }
-lightningcss = "1.0.0-alpha.57"
-lol_html = "1.2.1"
-markdown-it = "0.6.0"
-markdown-it-footnote = "0.2.0"
-minify-html = "0.15.0"
-minify-js = "0.5.6"
-mlua = { version = "0.9.9", features = [
-    "lua51",
-    "send",
-    "serialize",
-    "vendored",
-] }
-notify-debouncer-full = { version = "0.3.1", default-features = false }
-quick-xml = { version = "0.33.0", features = ["serialize"] }
-quickjs_runtime = { version = "0.13.4", default-features = false, features = [
-    "bellard",
-] }
-rhai = { version = "1.18.0", features = ["serde", "sync"] }
-serde = { version = "1.0.203", features = ["derive"] }
-serde_json = "1.0.117"
-serde_yaml = "0.9.34"
-slug = "0.1.5"
-swc_core = { version = "0.95.6", features = [
-    "common",
-    "ecma_codegen",
-    "ecma_parser",
-    "ecma_transforms_typescript",
-    "ecma_visit",
-] }
-syntect = "5.2.0"
-tera = "1.20.0"
-thiserror = "1.0.61"
-tokio = { version = "1.38.0", features = ["macros", "rt-multi-thread"] }
-toml = "0.8.14"
-tower-http = { version = "0.5.2", features = ["fs"] }
-tracing = "0.1.40"
-tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
-vitrine_derive = { version = "=0.1.4", path = "vitrine_derive" }
-walkdir = "2.5.0"
+anyhow = "1.0.99"
+async-channel = "2.5.0"
+axum = { version = "0.8.4", default-features = false, features = ["http1", "tokio"] }
+clap = { version = "4.5.47", features = ["derive"] }
+env_logger = "0.11.6"
+grass = { version = "0.13.4", default-features = false }
+ignore = "0.4.23"
+iri-string = { version = "0.7.8", features = ["serde"] }
+lightningcss = { version = "1.0.0-alpha.67", default-features = false, features = ["bundler"] }
+log = "0.4.28"
+lol_html = "2.6.0"
+markdown-it = { git = "https://github.com/charlyisidore/markdown-it-rust.git", version = "0.6.1" }
+minify-html = { git = "https://github.com/charlyisidore/minify-html.git", version = "0.16.4", default-features = false }
+minijinja = { version = "2.12.0", features = ["json", "loader", "urlencode"] }
+minijinja-contrib = { version = "2.12.0", features = ["datetime", "rand", "wordcount"] }
+notify = "8.2.0"
+parcel_sourcemap = "2.1.1"
+quick-xml = { version = "0.38.3", features = ["serialize"] }
+rolldown = { git = "https://github.com/rolldown/rolldown.git", tag = "v1.0.0-beta.35", version = "0.1.0" }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.143"
+serde_norway = "0.9.42"
+slug = "0.1.6"
+time = { version = "0.3.43", features = ["formatting", "macros", "parsing", "serde"] }
+tokio = { version = "1.47.1", features = ["rt"] }
+toml = { version = "0.9.5", default-features = false, features = ["parse", "serde"] }
+tower-http = { version = "0.6.6", features = ["fs"] }
+vitrine_deno = { version = "0.1.0", path = "crates/deno", optional = true }
 
 [dev-dependencies]
-assert_cmd = "2.0.14"
-assert_fs = "1.1.1"
-predicates = "3.1.0"
+assert_cmd = "2.0.17"
+assert_fs = "1.1.3"
+predicates = "3.1.3"

@@ -1,14 +1,19 @@
-//! Utility functions for paths.
+//! Utility methods for paths.
 
 use std::path::{Path, PathBuf};
 
 /// Extend [`std::path::Path`] with utility methods.
-pub(crate) trait PathExt {
+pub trait PathExt {
     /// Normalize the path by removing unnecessary separators and `.` and `..`
     /// components.
     ///
-    /// This method calls [`normalize_path`] under the hood.
+    /// This method calls [`normalize`] under the hood.
     fn normalize(&self) -> PathBuf;
+
+    /// Make the path absolute.
+    ///
+    /// This method calls [`make_absolute`] under the hood.
+    fn to_absolute(&self) -> std::io::Result<PathBuf>;
 }
 
 impl<T> PathExt for T
@@ -16,7 +21,11 @@ where
     T: AsRef<Path>,
 {
     fn normalize(&self) -> PathBuf {
-        self::normalize_path(self)
+        normalize(self)
+    }
+
+    fn to_absolute(&self) -> std::io::Result<PathBuf> {
+        make_absolute(self)
     }
 }
 
@@ -36,7 +45,7 @@ where
 /// [js]: https://nodejs.org/api/path.html#pathnormalizepath
 /// [py]: https://docs.python.org/3/library/os.path.html#os.path.normpath
 #[cfg(unix)]
-pub(crate) fn normalize_path<P>(path: P) -> PathBuf
+pub fn normalize<P>(path: P) -> PathBuf
 where
     P: AsRef<Path>,
 {
@@ -59,8 +68,7 @@ where
                 if !has_root && result.is_empty()
                     || result
                         .last()
-                        .map(|c| matches!(c, Component::ParentDir))
-                        .unwrap_or(false)
+                        .is_some_and(|c| matches!(c, Component::ParentDir))
                 {
                     result.push(component);
                 } else {
@@ -105,7 +113,7 @@ where
 /// [js]: https://nodejs.org/api/path.html#pathnormalizepath
 /// [py]: https://docs.python.org/3/library/os.path.html#os.path.normpath
 #[cfg(windows)]
-pub(crate) fn normalize_path<P>(path: P) -> PathBuf
+pub fn normalize<P>(path: P) -> PathBuf
 where
     P: AsRef<Path>,
 {
@@ -125,8 +133,7 @@ where
                 if !has_root && result.is_empty()
                     || result
                         .last()
-                        .map(|c| matches!(c, Component::ParentDir))
-                        .unwrap_or(false)
+                        .is_some_and(|c| matches!(c, Component::ParentDir))
                 {
                     result.push(component);
                 } else {
@@ -161,12 +168,33 @@ where
     })
 }
 
+/// Make a path absolute.
+///
+/// If the given path is relative, it is prepended with the current working
+/// directory. If the given path is absolute, it is returned as it is.
+pub fn make_absolute<P>(path: P) -> std::io::Result<PathBuf>
+where
+    P: AsRef<Path>,
+{
+    let path = path.as_ref();
+
+    Ok(if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        std::env::current_dir()?.join(path)
+    })
+}
+
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
+    use super::PathExt;
+
     #[test]
     #[cfg(unix)]
     fn normalize_path_unix() {
-        const CASES: [(&str, &str); 67] = [
+        const CASES: [(&str, &str); 66] = [
             ("", "."),
             ("/", "/"),
             ("/.", "/"),
@@ -195,7 +223,6 @@ mod tests {
             ("../../foo", "../../foo"),
             ("../foo/../bar", "../bar"),
             ("../../foo/../bar/./baz/boom/..", "../../bar/baz"),
-            ("/..", "/"),
             ("/..", "/"),
             ("/../", "/"),
             ("/..//", "/"),
@@ -267,11 +294,11 @@ mod tests {
         ];
 
         for (input, expected) in CASES {
-            let result = super::normalize_path(input);
+            let result = Path::new(input).normalize();
             assert_eq!(
                 result.to_str().unwrap(),
                 expected,
-                "\nnormalize_path({input:?}) expected {expected:?} but received {result:?}"
+                "\nPathExt::normalize({input:?}) expected {expected:?} but received {result:?}"
             );
         }
     }
@@ -372,12 +399,68 @@ mod tests {
         ];
 
         for (input, expected) in CASES {
-            let result = super::normalize_path(input);
+            let result = Path::new(input).normalize();
             assert_eq!(
                 result.to_str().unwrap(),
                 expected,
-                "\nnormalize_path({input:?}) expected {expected:?} but received {result:?}"
+                "\nPathExt::normalize({input:?}) expected {expected:?} but received {result:?}"
             );
         }
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn make_absolute_path_from_absolute_path_unix() {
+        let input = "/foo";
+        let result = Path::new(input).to_absolute().unwrap();
+        let expected = "/foo";
+
+        assert_eq!(
+            result.to_str().unwrap(),
+            expected,
+            "\nPathExt::to_absolute({input:?}) expected {expected:?} but received {result:?}"
+        );
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn make_absolute_path_from_absolute_path_windows() {
+        let input = "C:\\foo";
+        let result = Path::new(input).to_absolute().unwrap();
+        let expected = "C:\\foo";
+
+        assert_eq!(
+            result.to_str().unwrap(),
+            expected,
+            "\nPathExt::to_absolute({input:?}) expected {expected:?} but received {result:?}"
+        );
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn make_absolute_path_from_relative_path_unix() {
+        let input = "foo";
+        let result = Path::new(input).to_absolute().unwrap();
+        let expected = std::env::current_dir().unwrap().join("foo");
+
+        assert_eq!(
+            result.to_str().unwrap(),
+            expected.to_str().unwrap(),
+            "\nPathExt::to_absolute({input:?}) expected {expected:?} but received {result:?}"
+        );
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn make_absolute_path_from_relative_path_windows() {
+        let input = "foo";
+        let result = Path::new(input).to_absolute().unwrap();
+        let expected = std::env::current_dir().unwrap().join("foo");
+
+        assert_eq!(
+            result.to_str().unwrap(),
+            expected.to_str().unwrap(),
+            "\nPathExt::to_absolute({input:?}) expected {expected:?} but received {result:?}"
+        );
     }
 }

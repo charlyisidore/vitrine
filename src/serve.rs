@@ -1,41 +1,52 @@
 //! Serve the site.
 
-use std::net::SocketAddr;
+use std::{net::SocketAddr, path::Path};
 
-use axum::Router;
-use tower_http::services::{ServeDir, ServeFile};
-
-use crate::{config::Config, error::Error};
-
-/// Relative path to the file to send for 404 errors.
-const NOT_FOUND_PATH: &str = "404/index.html";
+use anyhow::Result;
+use async_channel::Receiver;
+use axum::{
+    Router,
+    response::{
+        Sse,
+        sse::{Event, KeepAlive},
+    },
+    routing::get,
+};
+use log::info;
+use tokio::runtime::Runtime;
+use tower_http::services::ServeDir;
 
 /// Serve the site.
-pub(super) async fn serve(config: &Config) -> Result<(), Error> {
-    let Some(output_dir) = config.output_dir.as_ref() else {
-        return Err(Error::Serve {
-            source: anyhow::anyhow!("No output directory specified"),
-        });
-    };
+///
+/// This function creates a HTTP server that delivers static files.
+pub fn serve(
+    dir: impl AsRef<Path>,
+    port: u16,
+    sse_rx: Receiver<Result<Event>>,
+    shutdown_rx: Receiver<()>,
+) -> Result<()> {
+    debug_assert!(dir.as_ref().is_absolute());
 
-    let serve_dir = ServeDir::new(output_dir)
-        .not_found_service(ServeFile::new(output_dir.join(NOT_FOUND_PATH)));
+    let rt = Runtime::new()?;
 
-    let router = Router::new().nest_service("/", serve_dir);
+    let router = Router::new()
+        .route(
+            "/_vitrine",
+            get(async move || Sse::new(sse_rx).keep_alive(KeepAlive::default())),
+        )
+        .fallback_service(ServeDir::new(dir));
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], config.serve_port));
+    let addr = SocketAddr::from(([127, 0, 0, 1], port));
 
-    tracing::info!("Listening on {}", addr);
+    info!("Listening on {}", addr);
 
-    let listener = tokio::net::TcpListener::bind(addr)
-        .await
-        .map_err(|error| Error::Serve {
-            source: error.into(),
-        })?;
+    let listener = rt.block_on(tokio::net::TcpListener::bind(addr))?;
 
-    axum::serve(listener, router.into_make_service())
-        .await
-        .map_err(|error| Error::Serve {
-            source: error.into(),
-        })
+    Ok(rt.block_on(async {
+        axum::serve(listener, router)
+            .with_graceful_shutdown(async move {
+                let _ = shutdown_rx.recv().await;
+            })
+            .await
+    })?)
 }
