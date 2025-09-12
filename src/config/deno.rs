@@ -13,6 +13,7 @@ use serde::Deserialize;
 use serde_json::Value;
 use vitrine_deno::{
     CliFactory,
+    args::{Flags, PermissionFlags},
     deno_runtime::{
         WorkerExecutionMode,
         deno_core::{
@@ -201,7 +202,13 @@ pub fn from_path(
 
         let main_module = resolve_url_or_path(&path, &std::env::current_dir()?)?;
 
-        let cli_factory = CliFactory::from_flags(Arc::new(Default::default()));
+        let cli_factory = CliFactory::from_flags(Arc::new(Flags {
+            permissions: PermissionFlags {
+                allow_all: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        }));
         let worker_factory = rt.block_on(cli_factory.create_cli_main_worker_factory())?;
 
         let mut worker = rt

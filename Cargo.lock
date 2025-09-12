@@ -10727,6 +10727,7 @@ dependencies = [
  "once_cell",
  "percent-encoding",
  "regex",
+ "rustls",
  "serde",
  "sys_traits",
  "tempfile",

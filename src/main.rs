@@ -15,7 +15,12 @@ fn main() -> Result<()> {
         .init();
 
     #[cfg(feature = "deno")]
-    JsRuntime::init_platform(None, false);
+    {
+        vitrine_deno::rustls::crypto::aws_lc_rs::default_provider()
+            .install_default()
+            .unwrap();
+        JsRuntime::init_platform(None, false);
+    }
 
     let cli = Cli::parse();
 

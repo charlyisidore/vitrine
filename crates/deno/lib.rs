@@ -1,4 +1,4 @@
-mod args;
+pub mod args;
 mod cache;
 mod cdp;
 mod factory;
@@ -31,3 +31,4 @@ pub use deno_cache_dir;
 pub use deno_runtime;
 use deno_terminal::colors;
 pub use factory::CliFactory;
+pub use rustls;
