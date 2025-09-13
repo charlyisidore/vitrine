@@ -98,11 +98,11 @@ pub fn run(
                                         element.set_attribute(HREF, url.as_str())?;
                                     } else {
                                         let url = build_url(&link, &config.input_dir)?;
-                                        let href: UriReferenceString = href.try_into()?;
                                         let mut url: UriReferenceString = url.try_into()?;
+                                        let href: UriReferenceString = href.try_into()?;
+                                        links.insert(link, url.clone().try_into()?);
                                         url.set_fragment(href.fragment());
                                         element.set_attribute(HREF, url.as_str())?;
-                                        links.insert(link, url.try_into()?);
                                     }
                                 }
                             }
